@@ -4,6 +4,18 @@
 
 const APP_FRONTEND_VERSION = "8.6.27";
 
+function compare_semver(v1, v2) {
+  const p1 = String(v1 || "0").replace(/^[^\d]*/, "").split(".").map((x) => parseInt(x, 10) || 0);
+  const p2 = String(v2 || "0").replace(/^[^\d]*/, "").split(".").map((x) => parseInt(x, 10) || 0);
+  const len = Math.max(p1.length, p2.length);
+  for (let i = 0; i < len; i++) {
+    const n1 = p1[i] || 0;
+    const n2 = p2[i] || 0;
+    if (n1 !== n2) return n1 - n2;
+  }
+  return 0;
+}
+
 const CSV_URL_THONG_KE =
   "https://docs.google.com/spreadsheets/d/1gC1_mygyFOTmDHgtKPzMulTq3HoxVA91suHSEM0cr7k/export?format=csv&gid=1227181736";
 const CSV_URL_THONG_KE_FALLBACK =
@@ -909,9 +921,9 @@ async function dong_bo_cau_hinh_tu_server_neu_co() {
         if (statusEl && upData.status) {
           statusEl.textContent = upData.status.replace(/8\.6\.18/g, APP_FRONTEND_VERSION);
         }
-        if (headerVerEl && upData.version) {
-          const rawVer = String(upData.version).replace(/^v/i, "");
-          const displayVer = rawVer === "8.6.18" ? APP_FRONTEND_VERSION : rawVer;
+        if (headerVerEl) {
+          const rawVer = String(upData.version || "").replace(/^v/i, "");
+          const displayVer = (rawVer && compare_semver(rawVer, APP_FRONTEND_VERSION) > 0) ? rawVer : APP_FRONTEND_VERSION;
           headerVerEl.textContent = `v${displayVer}`;
         }
       }
@@ -3164,9 +3176,9 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (statusEl && data.status) {
           statusEl.textContent = data.status.replace(/8\.6\.18/g, APP_FRONTEND_VERSION);
         }
-        if (headerVerEl && data.version) {
-          const rawVer = String(data.version).replace(/^v/i, "");
-          const displayVer = rawVer === "8.6.18" ? APP_FRONTEND_VERSION : rawVer;
+        if (headerVerEl) {
+          const rawVer = String(data.version || "").replace(/^v/i, "");
+          const displayVer = (rawVer && compare_semver(rawVer, APP_FRONTEND_VERSION) > 0) ? rawVer : APP_FRONTEND_VERSION;
           headerVerEl.textContent = `v${displayVer}`;
         }
         if (data.updated) {

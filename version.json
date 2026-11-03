@@ -1,11 +1,11 @@
 ﻿{
     "version":  "8.6.27",
-    "published_at":  "2026-11-03 08:19:41",
-    "index.html_sha256":  "b2143dfe5ce70aed3d1973f20f71255969d2a16780aa854a72ee313dd22fd1ee",
+    "published_at":  "2026-11-03 08:38:35",
+    "index.html_sha256":  "04ea165b68446ad8e5cb04458c83cda4c6d43439a65d15f5b3f14b91f44a3a63",
     "styles.css_sha256":  "263877b3375f1278d90609398b9d9386b4dd681f24df654f53bcd8feaef36e35",
-    "app.js_sha256":  "b628fa03056d22b0879e86af7452395714339835739c9d23e841412993c9bd92",
-    "exe_sha256":  "842c716ffdca6aed4a483a08649f3034fb7605bb94a8c54be5304484d606f3ca",
+    "app.js_sha256":  "974cc95a0abb1b84c6f6224d7f6db9ef1dd3aa6aaca1d0c850d8c610c169ef8d",
+    "exe_sha256":  "1871a1b2f79359912f3f64cbf806075d4373d19171d66e40ca529daf50690b7f",
     "exe_url":  "APP%20LAM%20v8.6.27.exe",
     "update_exe":  false,
-    "note":  "v8.6.27: Them mo ta ti le chot \u0026 bang thoi gian goi so trung binh (loai tru khung gio nghi)"
+    "note":  "v8.6.27: Them mo ta ti le chot \u0026 thoi gian goi so trung binh (loai tru khung gio nghi)"
 }
