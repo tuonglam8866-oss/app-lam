@@ -1,8 +1,8 @@
-// ==============================================================
+﻿// ==============================================================
 // APP LÂM v8.6.28 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.28";
+const APP_FRONTEND_VERSION = "8.6.29";
 
 function compare_semver(v1, v2) {
   const p1 = String(v1 || "0").replace(/^[^\d]*/, "").split(".").map((x) => parseInt(x, 10) || 0);
