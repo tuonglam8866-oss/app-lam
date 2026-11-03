@@ -1,11 +1,11 @@
 ﻿{
     "version":  "8.6.28",
-    "published_at":  "2026-11-03 14:58:41",
+    "published_at":  "2026-11-03 15:14:13",
     "index.html_sha256":  "6da0fd04f014a1b365c5acc717e5a07309388902b16b125194469cbd8f28688a",
     "styles.css_sha256":  "263877b3375f1278d90609398b9d9386b4dd681f24df654f53bcd8feaef36e35",
-    "app.js_sha256":  "84985ad3ecc98b9a608aa6d18ecd435b34bc7894906ca92d3dcf3ca504b91142",
-    "exe_sha256":  "102bddb03d3c941bfbbdff95b4dc20f226cbea9b3201acd6568024150b656f35",
+    "app.js_sha256":  "3c5380610c5c0608c41ede9692a4d98f9a0c16b0a4d0518125344507113de075",
+    "exe_sha256":  "7dc0b5466413724fbe47dab331c6c69edc4ed8eeaea35cd8366e0b1fd4b8d7ab",
     "exe_url":  "APP%20LAM%20v8.6.28.exe",
     "update_exe":  false,
-    "note":  "v8.6.28: Fix loi ota reload lap vo tan gay blur va parse CSV da dong"
+    "note":  "v8.6.28: Tu dong cap nhat ngam 100% khong reload, khong blur, giu nguyen man hinh"
 }

@@ -1664,6 +1664,36 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   };
 }
 
+function show_update_toast_notification(msg) {
+  let toast = document.getElementById("updateNotificationToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "updateNotificationToast";
+    toast.style.position = "fixed";
+    toast.style.top = "18px";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
+    toast.style.backgroundColor = "rgba(61, 35, 20, 0.94)";
+    toast.style.color = "#FAF5ED";
+    toast.style.padding = "10px 22px";
+    toast.style.borderRadius = "24px";
+    toast.style.boxShadow = "0 8px 24px rgba(61, 35, 20, 0.25)";
+    toast.style.fontSize = "13.5px";
+    toast.style.fontWeight = "bold";
+    toast.style.zIndex = "99999";
+    toast.style.transition = "all 0.35s ease";
+    toast.style.pointerEvents = "none";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = "1";
+  toast.style.transform = "translateX(-50%) translateY(0)";
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(-50%) translateY(-12px)";
+  }, 4500);
+}
+
 // ==============================================================
 // HIỂN THỊ TOAST COPY & POPUP GÓC MÀN HÌNH
 // ==============================================================
@@ -2623,6 +2653,10 @@ function update_date_buttons_text() {
 function set_and_refresh(st, en) {
   current_start_date = st;
   current_end_date = en;
+  try {
+    sessionStorage.setItem("applam_start_date", st);
+    sessionStorage.setItem("applam_end_date", en);
+  } catch (e) {}
   update_date_buttons_text();
   hide_all_popups();
   tai_va_cap_nhat_theo_ngay();
@@ -2667,6 +2701,10 @@ function render_calendar_grid(year, month) {
       } else if (current_cal_target === "end") {
         current_end_date = d_str;
       }
+      try {
+        sessionStorage.setItem("applam_start_date", current_start_date);
+        sessionStorage.setItem("applam_end_date", current_end_date);
+      } catch (e) {}
       update_date_buttons_text();
       hide_all_popups();
       tai_va_cap_nhat_theo_ngay();
@@ -2810,6 +2848,25 @@ async function quet_don_dinh_ky() {
               window.location.reload();
               return;
             }
+            if (ev.silentUpdate || ev.newVersionReady) {
+              const cleanVer = String(ev.version || "").replace(/^v/i, "");
+              const headerVerEl = document.getElementById("headerVersionBadge");
+              if (headerVerEl && cleanVer) {
+                headerVerEl.textContent = `v${cleanVer}`;
+              }
+              if (cleanVer) {
+                document.title = `APP LÂM v${cleanVer}`;
+              }
+
+              // Nạp lại stylesheet mới mà KHÔNG cần reload trang
+              const cssLink = document.querySelector('link[rel="stylesheet"]');
+              if (cssLink) {
+                const baseHref = cssLink.href.split("?")[0];
+                cssLink.href = `${baseHref}?t=${Date.now()}`;
+              }
+
+              show_update_toast_notification(`✨ Đã tự động cập nhật ngầm lên bản v${cleanVer || APP_FRONTEND_VERSION}!`);
+            }
             if (ev.toast && bat_popup_thong_bao) {
               hien_thi_popup_goc_man_hinh(
                 t().newOrderPopupTitle,
@@ -2901,8 +2958,15 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const today = new Date();
   const todayStr = format_ymd_date(today);
-  current_start_date = todayStr;
-  current_end_date = todayStr;
+  const savedStart = sessionStorage.getItem("applam_start_date");
+  const savedEnd = sessionStorage.getItem("applam_end_date");
+  if (savedStart && savedEnd) {
+    current_start_date = savedStart;
+    current_end_date = savedEnd;
+  } else {
+    current_start_date = todayStr;
+    current_end_date = todayStr;
+  }
   update_date_buttons_text();
 
   window.addEventListener("mousemove", (e) => {
