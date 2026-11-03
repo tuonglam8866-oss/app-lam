@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.27 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.28 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.27";
+const APP_FRONTEND_VERSION = "8.6.28";
 
 function compare_semver(v1, v2) {
   const p1 = String(v1 || "0").replace(/^[^\d]*/, "").split(".").map((x) => parseInt(x, 10) || 0);
@@ -1159,48 +1159,62 @@ function play_web_speech_vi(text_doc) {
 }
 
 // ==============================================================
-// PARSE CSV & TẢI DỮ LIỆU GOOGLE SHEETS
+// PARSE CSV & TẢI DỮ LIỆU GOOGLE SHEETS (Hỗ trợ ô chứa ký tự xuống dòng \n bên trong dấu ngoặc kép)
 // ==============================================================
 function parse_csv_lines(csvText) {
-  const rawLines = String(csvText || "").split(/\r?\n/);
+  const text = String(csvText || "");
   const rows = [];
+  let row = [];
+  let cur = "";
+  let inQuotes = false;
 
-  for (const line of rawLines) {
-    if (!line.trim()) continue;
-    const row = [];
-    let cur = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (i + 1 < line.length && line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else {
-            inQuotes = false;
-          }
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < text.length && text[i + 1] === '"') {
+          cur += '"';
+          i++;
         } else {
-          cur += ch;
+          inQuotes = false;
         }
+      } else if (ch === "\r" || ch === "\n") {
+        if (ch === "\r" && i + 1 < text.length && text[i + 1] === "\n") {
+          i++;
+        }
+        cur += " ";
       } else {
-        if (ch === '"') {
-          inQuotes = true;
-        } else if (ch === ",") {
-          row.push(cur);
-          cur = "";
-        } else {
-          cur += ch;
+        cur += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        row.push(cur);
+        cur = "";
+      } else if (ch === "\r" || ch === "\n") {
+        if (ch === "\r" && i + 1 < text.length && text[i + 1] === "\n") {
+          i++;
         }
+        row.push(cur);
+        if (row.some((field) => field.trim().length > 0)) {
+          rows.push(row);
+        }
+        row = [];
+        cur = "";
+      } else {
+        cur += ch;
       }
     }
-    row.push(cur);
+  }
 
+  if (cur.length > 0 || row.length > 0) {
+    row.push(cur);
     if (row.some((field) => field.trim().length > 0)) {
       rows.push(row);
     }
   }
+
   return rows;
 }
 
