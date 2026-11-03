@@ -1,9 +1,18 @@
-﻿﻿// ==============================================================
+// ==============================================================
 // APP LÂM v8.6.28 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.29";
-let last_notified_update_version = APP_FRONTEND_VERSION;
+const APP_FRONTEND_VERSION = "8.6.31";
+let last_notified_update_version = (function () {
+  try {
+    return (
+      localStorage.getItem("app_lam_last_notified_version") ||
+      APP_FRONTEND_VERSION
+    );
+  } catch (e) {
+    return APP_FRONTEND_VERSION;
+  }
+})();
 
 function compare_semver(v1, v2) {
   const p1 = String(v1 || "0").replace(/^[^\d]*/, "").split(".").map((x) => parseInt(x, 10) || 0);
@@ -535,7 +544,7 @@ function play_fireworks_sound_web() {
   } catch (e) {}
 }
 
-function trigger_confetti_burst() {
+function trigger_confetti_burst(customX, customY) {
   if (!bat_phao_hoa) return;
   play_fireworks_sound_web();
   const canvas = document.getElementById("confettiCanvas");
@@ -554,8 +563,8 @@ function trigger_confetti_burst() {
     "#10B981",
     "#F97316",
   ];
-  const originX = window.innerWidth - 160;
-  const originY = window.innerHeight - 90;
+  const originX = customX !== undefined ? customX : (window.innerWidth - 160);
+  const originY = customY !== undefined ? customY : (window.innerHeight - 90);
 
   // 1. Pháo giấy bắn vọt cao từ góc popup thông báo
   for (let i = 0; i < 65; i++) {
@@ -827,11 +836,7 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("lblSettingUiScale", dict.lblUiScale);
   setText("lblSettingTheme", dict.lblTheme);
   setText("lblSettingLang", dict.lblLang);
-  setText("lblSettingUpdate", dict.lblUpdate);
-  setText("btnSaveUpdateUrl", dict.btnSaveUpdateUrl);
-  setText("btnCheckUpdateNow", dict.btnCheckUpdateNow);
-  const entryUpdateUrl = document.getElementById("entryUpdateUrl");
-  if (entryUpdateUrl) entryUpdateUrl.placeholder = dict.updateUrlPlaceholder;
+
   setText("btnTestVoice", dict.btnTestVoice);
   setText("btnTestPopup", dict.btnTestPopup);
   setText("scannerStatusText", dict.scannerStatus);
@@ -916,12 +921,6 @@ async function dong_bo_cau_hinh_tu_server_neu_co() {
       const upRes = await fetch("/api/update-status", { cache: "no-store" });
       if (upRes.ok) {
         const upData = await upRes.json();
-        const urlInput = document.getElementById("entryUpdateUrl");
-        const statusEl = document.getElementById("updateStatusText");
-        if (urlInput && upData.baseUrl) urlInput.value = upData.baseUrl;
-        if (statusEl && upData.status) {
-          statusEl.textContent = upData.status.replace(/8\.6\.18/g, APP_FRONTEND_VERSION);
-        }
         if (headerVerEl) {
           const rawVer = String(upData.version || "").replace(/^v/i, "");
           const displayVer = (rawVer && compare_semver(rawVer, APP_FRONTEND_VERSION) > 0) ? rawVer : APP_FRONTEND_VERSION;
@@ -1665,7 +1664,8 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   };
 }
 
-function show_update_toast_notification("\uD83D\uDE80 \u0110\u00E3 t\u1EF1 \u0111\u1ED9ng c\u1EADp nh\u1EADt ng\u1EA7m l\u00EAn b\u1EA3n v" + cleanVer + "!");
+function show_update_toast_notification(msg) {
+  let toast = document.getElementById("updateNotificationToast");
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "updateNotificationToast";
@@ -1692,6 +1692,89 @@ function show_update_toast_notification("\uD83D\uDE80 \u0110\u00E3 t\u1EF1 \u011
     toast.style.opacity = "0";
     toast.style.transform = "translateX(-50%) translateY(-12px)";
   }, 4500);
+}
+
+function trigger_celebration_fireworks() {
+  play_fireworks_sound_web();
+
+  try {
+    fetch("/api/fireworks", { method: "POST" }).catch(() => {});
+  } catch (e) {}
+
+  const canvas = document.getElementById("confettiCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = [
+    "#F59E0B", "#10B981", "#D97706", "#3B82F6",
+    "#EC4899", "#8B5CF6", "#F97316", "#EF4444", "#FBBF24"
+  ];
+
+  // Đợt 1: Hai chùm pháo hoa 2 bên bắn lên
+  spawn_firework_explosion(window.innerWidth * 0.22, window.innerHeight * 0.42, colors, 55);
+  spawn_firework_explosion(window.innerWidth * 0.78, window.innerHeight * 0.42, colors, 55);
+  start_confetti_loop(canvas, ctx);
+
+  // Đợt 2: Pháo nổ rực rỡ ngay tâm cao
+  setTimeout(() => {
+    spawn_firework_explosion(window.innerWidth * 0.5, window.innerHeight * 0.28, colors, 65);
+    start_confetti_loop(canvas, ctx);
+  }, 240);
+
+  // Đợt 3: Hai bên trên cao
+  setTimeout(() => {
+    spawn_firework_explosion(window.innerWidth * 0.35, window.innerHeight * 0.32, colors, 50);
+    spawn_firework_explosion(window.innerWidth * 0.65, window.innerHeight * 0.32, colors, 50);
+    start_confetti_loop(canvas, ctx);
+  }, 500);
+
+  // Đợt 4: Chùm pháo hoa bung tỏa cuối cùng
+  setTimeout(() => {
+    spawn_firework_explosion(window.innerWidth * 0.5, window.innerHeight * 0.38, colors, 60);
+    start_confetti_loop(canvas, ctx);
+  }, 780);
+}
+
+function hien_thi_bang_chuc_mung_cap_nhat(version) {
+  const modal = document.getElementById("updateCelebrationModal");
+  const verText = document.getElementById("ucVersionText");
+  const cleanVer = String(version || "").replace(/^v/i, "");
+  if (verText && cleanVer) {
+    verText.textContent = `Phiên bản v${cleanVer}`;
+  }
+
+  const headerVerEl = document.getElementById("headerVersionBadge");
+  if (headerVerEl && cleanVer) {
+    headerVerEl.textContent = `v${cleanVer}`;
+  }
+  if (cleanVer) {
+    document.title = `APP LÂM v${cleanVer}`;
+  }
+
+  if (modal) {
+    modal.classList.remove("hidden");
+  }
+
+  // Chạy ngầm xong hiện bảng thành công, không pháo hoa
+
+  const dismissBtn = document.getElementById("btnDismissCelebration");
+  const dong_modal = () => {
+    if (modal) modal.classList.add("hidden");
+    setTimeout(() => {
+      window.location.reload();
+    }, 250);
+  };
+
+  if (dismissBtn) {
+    dismissBtn.onclick = dong_modal;
+  }
+  if (modal) {
+    modal.onclick = (e) => {
+      if (e.target === modal) dong_modal();
+    };
+  }
 }
 
 // ==============================================================
@@ -2867,7 +2950,7 @@ async function quet_don_dinh_ky() {
 
               if (cleanVer && cleanVer !== last_notified_update_version && compare_semver(cleanVer, last_notified_update_version) > 0) {
                 last_notified_update_version = cleanVer;
-                show_update_toast_notification("\uD83D\uDE80 \u0110\u00E3 t\u1EF1 \u0111\u1ED9ng c\u1EADp nh\u1EADt ng\u1EA7m l\u00EAn b\u1EA3n v" + cleanVer + "!");
+                hien_thi_bang_chuc_mung_cap_nhat(cleanVer);
               }
             }
             if (ev.toast) {
@@ -2878,8 +2961,9 @@ async function quet_don_dinh_ky() {
                   false,
                   false
                 );
+              } else {
+                trigger_confetti_burst();
               }
-              trigger_confetti_burst();
             }
             if (ev.voice && bat_thong_bao_gtts) {
               doc_am_thanh(ev.voice);
@@ -3205,54 +3289,20 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // Cài đặt Tự động cập nhật từ GitHub (Kèm hiệu ứng Gaussian Blur giống nút Tải Lại)
+  // Kiểm tra & cập nhật chạy ngầm 100%, tuyệt đối không làm mờ (blur) màn hình
   async function thuc_hien_kiem_tra_cap_nhat_thu_cong() {
     const statusEl = document.getElementById("updateStatusText");
     const headerVerEl = document.getElementById("headerVersionBadge");
     const headerIconEl = document.getElementById("headerUpdateIcon");
     const btnHeaderUpdate = document.getElementById("btnHeaderUpdate");
-    const loadingOverlay = document.getElementById("loadingOverlay");
-    const loadingMainEl = document.getElementById("loadingMainText");
-    const loadingSubEl = document.getElementById("loadingSubText");
 
     if (btnHeaderUpdate) btnHeaderUpdate.disabled = true;
     if (headerIconEl) headerIconEl.classList.add("spinning");
-    if (loadingMainEl) loadingMainEl.textContent = "⏳ Đang kiểm tra & cập nhật phiên bản...";
-    if (loadingSubEl) loadingSubEl.textContent = "Đang đồng bộ bản mới nhất và dữ liệu hệ thống";
-    if (loadingOverlay) loadingOverlay.classList.remove("hidden");
-    if (statusEl) statusEl.textContent = "⏳ Đang kiểm tra bản cập nhật...";
+    if (statusEl) statusEl.textContent = "⏳ Đang kiểm tra bản cập nhật ngầm...";
 
     try {
-      const checkPromise = fetch("/api/check-update", { method: "POST" })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null);
-
-      const [data] = await Promise.all([
-        checkPromise,
-        tai_du_lieu_google_sheets().catch(() => {}),
-        quet_chi_phi_facebook_helper(current_start_date, current_end_date)
-          .then((fbResult) => {
-            cached_fb_chi_tiet = fbResult.local_chi_tiet;
-            cached_fb_tong = fbResult.local_tong;
-            ve_noi_dung_dashboard(
-              current_start_date,
-              current_end_date,
-              cached_fb_chi_tiet,
-              cached_fb_tong
-            );
-          })
-          .catch(() => {}),
-      ]);
-
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
-      last_sync_time_str = `${hh}:${mm}:${ss}`;
-      const lastSyncEl = document.getElementById("lastSyncText");
-      if (lastSyncEl) {
-        lastSyncEl.textContent = `${t().lastSyncPrefix}${last_sync_time_str}`;
-      }
+      const res = await fetch("/api/check-update", { method: "POST" }).catch(() => null);
+      const data = (res && res.ok) ? await res.json().catch(() => null) : null;
 
       if (data) {
         if (statusEl && data.status) {
@@ -3264,55 +3314,22 @@ window.addEventListener("DOMContentLoaded", async () => {
           headerVerEl.textContent = `v${displayVer}`;
         }
         if (data.updated) {
-          setTimeout(() => window.location.reload(), 400);
+          hien_thi_bang_chuc_mung_cap_nhat(data.version || APP_FRONTEND_VERSION);
           return;
+        } else {
+          show_update_toast_notification("Bạn đang dùng phiên bản mới nhất (v" + APP_FRONTEND_VERSION + ")");
         }
+      } else {
+        show_update_toast_notification("Bạn đang dùng phiên bản mới nhất (v" + APP_FRONTEND_VERSION + ")");
       }
     } catch (e) {
     } finally {
-      if (loadingMainEl) loadingMainEl.textContent = t().loadingMain;
-      if (loadingSubEl) loadingSubEl.textContent = t().loadingSub;
-      if (loadingOverlay) loadingOverlay.classList.add("hidden");
       if (btnHeaderUpdate) btnHeaderUpdate.disabled = false;
       if (headerIconEl) headerIconEl.classList.remove("spinning");
     }
   }
 
-  document.getElementById("btnSaveUpdateUrl")?.addEventListener("click", async () => {
-    const urlInput = document.getElementById("entryUpdateUrl");
-    const statusEl = document.getElementById("updateStatusText");
-    const headerVerEl = document.getElementById("headerVersionBadge");
-    if (!urlInput) return;
-    let rawUrl = urlInput.value.trim();
-    if (!rawUrl) {
-      rawUrl = "https://raw.githubusercontent.com/nguyen27004-cyber/app-lam/main";
-      urlInput.value = rawUrl;
-    }
-    if (statusEl) statusEl.textContent = "⏳ Đang lưu và kiểm tra cập nhật...";
-    try {
-      const res = await fetch("/api/update-config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baseUrl: rawUrl }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.baseUrl) urlInput.value = data.baseUrl;
-        if (statusEl && data.status) statusEl.textContent = data.status;
-        if (headerVerEl && data.version) {
-          const v = String(data.version).startsWith("v") ? data.version : `v${data.version}`;
-          headerVerEl.textContent = v;
-        }
-        if (data.updated) {
-          setTimeout(() => window.location.reload(), 600);
-        }
-      }
-    } catch (e) {
-      if (statusEl) statusEl.textContent = "Chỉ hỗ trợ khi chạy trên ứng dụng .exe";
-    }
-  });
-
-  document.getElementById("btnCheckUpdateNow")?.addEventListener("click", thuc_hien_kiem_tra_cap_nhat_thu_cong);
+  
   document.getElementById("btnHeaderUpdate")?.addEventListener("click", thuc_hien_kiem_tra_cap_nhat_thu_cong);
 
   document

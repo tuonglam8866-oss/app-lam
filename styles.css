@@ -1481,43 +1481,7 @@ html, body {
   border-color: #B38668;
 }
 
-/* Auto-Update Settings Section */
-.update-url-row {
-  display: flex;
-  margin-bottom: 6px;
-}
 
-.entry-update-url {
-  width: 100%;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 9px;
-  border: 1.5px solid var(--border-soft);
-  background: var(--card-fill);
-  color: var(--choco-dark);
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 700;
-  outline: none;
-}
-
-.entry-update-url:focus {
-  border-color: var(--color-highlight);
-}
-
-.update-btn-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.update-status-text {
-  margin-top: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-green);
-  line-height: 1.35;
-}
 
 .settings-status-row {
   margin-top: 2px;
@@ -1939,4 +1903,115 @@ html, body {
   border-top: 1.5px solid var(--border-soft);
   border-bottom: none;
   font-weight: 800;
+}
+/* Celebration Modal for Auto Update (Thiet ke sang trong, khong chua icon, khong blur) */
+.update-celebration-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(30, 18, 10, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  animation: ucFadeIn 0.3s ease;
+}
+
+.update-celebration-backdrop.hidden {
+  display: none !important;
+}
+
+@keyframes ucFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.update-celebration-card {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FAF5ED 55%, #F4ECE0 100%);
+  border: 1.5px solid rgba(190, 150, 115, 0.55);
+  box-shadow: 0 28px 65px -10px rgba(45, 25, 12, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  border-radius: 26px;
+  padding: 34px 38px 28px;
+  text-align: center;
+  max-width: 420px;
+  width: 90%;
+  animation: ucCardPop 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+@keyframes ucCardPop {
+  0% { transform: scale(0.78); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.uc-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #8C5D36;
+  background: rgba(140, 93, 54, 0.08);
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(140, 93, 54, 0.15);
+}
+
+.uc-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #3D2314;
+  margin: 0 0 12px 0;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.uc-version-pill {
+  display: inline-block;
+  background: linear-gradient(135deg, #3D2314 0%, #29160B 100%);
+  color: #FAF5ED;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 20px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(61, 35, 20, 0.22);
+  letter-spacing: 0.5px;
+}
+
+.uc-desc {
+  font-size: 13.5px;
+  color: #6E4F39;
+  line-height: 1.55;
+  margin: 0 0 24px 0;
+  font-weight: 500;
+}
+
+.uc-action-row {
+  display: flex;
+  justify-content: center;
+}
+
+.uc-btn {
+  background: linear-gradient(135deg, #4A2B18 0%, #351C0F 100%);
+  color: #FAF5ED;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 48px;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(61, 35, 20, 0.25);
+  transition: all 0.2s ease;
+  letter-spacing: 0.4px;
+}
+
+.uc-btn:hover {
+  background: linear-gradient(135deg, #5B351E 0%, #3D2314 100%);
+  box-shadow: 0 8px 24px rgba(61, 35, 20, 0.35);
+  transform: translateY(-1px);
+}
+
+.uc-btn:active {
+  transform: translateY(1px) scale(0.98);
 }

@@ -1,11 +1,9 @@
-﻿{
-    "version": "8.6.29",
-    "published_at": "2026-11-03 17:14:36",
-    "index.html_sha256": "b62e3b09924d4a12b65676783b116224fd0737ea409d5f11ca3b1e7ec26a564e",
-    "styles.css_sha256": "263877b3375f1278d90609398b9d9386b4dd681f24df654f53bcd8feaef36e35",
-    "app.js_sha256": "0f2eaf98a80b48efb3bda67308297dc594e3ce6ee489ab7507c7d86b99dbac8a",
-    "exe_sha256": "405791b1eb66d0cbcb42c4faf2256b195c8277262cb8fd36297178b98db03357",
-    "exe_url": "APP%20LAM%20v8.6.29.exe",
-    "update_exe": false,
-    "note": "v8.6.29: Fix thong bao update dung 1 lan duy nhat, luu cache ota_web vinh vien"
+{
+  "version": "8.6.31",
+  "update_exe": true,
+  "exe_url": "https://raw.githubusercontent.com/tuonglam8866-oss/app-lam/main/APP%20LAM%20v8.6.31.exe",
+  "exe_sha256": "3cf71307c6e8e70bd8d30bb60314b7fc246e466acfe19ec098f2f63eca7dd01e",
+  "app_js_sha256": "709461168cfe20b143d5c4e3d9ad7dfe6227b0e012cb4fa82734a675bc8db9cc",
+  "index_html_sha256": "7345fae081c15ad171e42d9468b22f27038608af3f7544863cb684ed6a18de2f",
+  "styles_css_sha256": "590a5a3385a7f43516604d01e822492093400ed9698ad0dc6ff8361f57d4619d"
 }
