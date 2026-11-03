@@ -1,11 +1,11 @@
 ﻿{
     "version":  "8.6.28",
-    "published_at":  "2026-11-03 10:27:54",
+    "published_at":  "2026-11-03 14:58:41",
     "index.html_sha256":  "6da0fd04f014a1b365c5acc717e5a07309388902b16b125194469cbd8f28688a",
     "styles.css_sha256":  "263877b3375f1278d90609398b9d9386b4dd681f24df654f53bcd8feaef36e35",
     "app.js_sha256":  "84985ad3ecc98b9a608aa6d18ecd435b34bc7894906ca92d3dcf3ca504b91142",
-    "exe_sha256":  "db5c8887620933cf72a1b0dcecb528b973eacdad368af450442428bb26128e7e",
+    "exe_sha256":  "102bddb03d3c941bfbbdff95b4dc20f226cbea9b3201acd6568024150b656f35",
     "exe_url":  "APP%20LAM%20v8.6.28.exe",
     "update_exe":  false,
-    "note":  "v8.6.28: Fix parse CSV da dong va dong bo 100% phien ban"
+    "note":  "v8.6.28: Fix loi ota reload lap vo tan gay blur va parse CSV da dong"
 }
