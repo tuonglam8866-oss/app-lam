@@ -1,4 +1,4 @@
-﻿// ==============================================================
+﻿﻿// ==============================================================
 // APP LÂM v8.6.28 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
@@ -1665,8 +1665,7 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   };
 }
 
-function show_update_toast_notification(msg) {
-  let toast = document.getElementById("updateNotificationToast");
+function show_update_toast_notification("\uD83D\uDE80 \u0110\u00E3 t\u1EF1 \u0111\u1ED9ng c\u1EADp nh\u1EADt ng\u1EA7m l\u00EAn b\u1EA3n v" + cleanVer + "!");
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "updateNotificationToast";
@@ -2868,17 +2867,18 @@ async function quet_don_dinh_ky() {
 
               if (cleanVer && cleanVer !== last_notified_update_version && compare_semver(cleanVer, last_notified_update_version) > 0) {
                 last_notified_update_version = cleanVer;
-                show_update_toast_notification(`🚀 Đã tự động cập nhật ngầm lên bản v${cleanVer}!`);
+                show_update_toast_notification("\uD83D\uDE80 \u0110\u00E3 t\u1EF1 \u0111\u1ED9ng c\u1EADp nh\u1EADt ng\u1EA7m l\u00EAn b\u1EA3n v" + cleanVer + "!");
               }
             }
-            if (ev.toast && bat_popup_thong_bao) {
-              hien_thi_popup_goc_man_hinh(
-                t().newOrderPopupTitle,
-                ev.toast,
-                false,
-                false
-              );
-            } else if (!ev.reload) {
+            if (ev.toast) {
+              if (bat_popup_thong_bao) {
+                hien_thi_popup_goc_man_hinh(
+                  t().newOrderPopupTitle,
+                  ev.toast,
+                  false,
+                  false
+                );
+              }
               trigger_confetti_burst();
             }
             if (ev.voice && bat_thong_bao_gtts) {

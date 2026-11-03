@@ -1,11 +1,11 @@
 ﻿{
     "version": "8.6.29",
-    "published_at": "2026-11-03 16:42:45",
+    "published_at": "2026-11-03 17:14:36",
     "index.html_sha256": "b62e3b09924d4a12b65676783b116224fd0737ea409d5f11ca3b1e7ec26a564e",
     "styles.css_sha256": "263877b3375f1278d90609398b9d9386b4dd681f24df654f53bcd8feaef36e35",
-    "app.js_sha256": "c371286675dc7e88bd8bea269bf93075c2e333c5e13709db670383f6c661e1e7",
-    "exe_sha256": "",
+    "app.js_sha256": "0f2eaf98a80b48efb3bda67308297dc594e3ce6ee489ab7507c7d86b99dbac8a",
+    "exe_sha256": "405791b1eb66d0cbcb42c4faf2256b195c8277262cb8fd36297178b98db03357",
     "exe_url": "APP%20LAM%20v8.6.29.exe",
     "update_exe": false,
-    "note": "v8.6.29: Fix thong bao update hien thi dung 1 lan duy nhat"
+    "note": "v8.6.29: Fix thong bao update dung 1 lan duy nhat, luu cache ota_web vinh vien"
 }
