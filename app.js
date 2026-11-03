@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.26 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.27 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.26";
+const APP_FRONTEND_VERSION = "8.6.27";
 
 const CSV_URL_THONG_KE =
   "https://docs.google.com/spreadsheets/d/1gC1_mygyFOTmDHgtKPzMulTq3HoxVA91suHSEM0cr7k/export?format=csv&gid=1227181736";
@@ -164,7 +164,10 @@ const I18N = {
     colOrders: "Đơn",
     allCodesTotal: "TỔNG",
     crBadgeTitle: "TỈ LỆ CHỐT ĐƠN LANDING PAGE TỔNG CÔNG TY",
+    crDescText: "Đã lọc đơn trùng, đơn Capture Form",
     crSubHint: "Xem chi tiết →",
+    actBadgeTitle: "THỜI GIAN GỌI SỐ TRUNG BÌNH",
+    actDescText: "(đã loại trừ khung giờ nghỉ)",
     crLblClosed: "ĐƠN ĐÃ CHỐT",
     crLblTotal: "ĐẾM ĐƠN",
     crLblUnclosed: "CHƯA CHỐT",
@@ -242,8 +245,11 @@ const I18N = {
     colCode: "产品代码",
     colOrders: "订单",
     allCodesTotal: "合计",
-    crBadgeTitle: "🎯 成交率",
-    crSubHint: "营销明细 ▾",
+    crBadgeTitle: "公司总落地页成交率",
+    crDescText: "已过滤重复单与 Capture Form",
+    crSubHint: "查看详情 →",
+    actBadgeTitle: "平均拨号响应时间",
+    actDescText: "(已扣除休息时段)",
     crLblClosed: "已成交",
     crLblTotal: "总单数",
     crLblUnclosed: "未成交",
@@ -321,8 +327,11 @@ const I18N = {
     colCode: "Code",
     colOrders: "Orders",
     allCodesTotal: "TOTAL",
-    crBadgeTitle: "🎯 CLOSING RATE",
-    crSubHint: "MKT Details ▾",
+    crBadgeTitle: "COMPANY LANDING PAGE CLOSING RATE",
+    crDescText: "Filtered duplicates & Capture Form",
+    crSubHint: "View details →",
+    actBadgeTitle: "AVERAGE CALL RESPONSE TIME",
+    actDescText: "(excluding break hours)",
     crLblClosed: "CLOSED",
     crLblTotal: "TOTAL LEADS",
     crLblUnclosed: "UNCLOSED",
@@ -775,7 +784,10 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("btnThemSpText", dict.btnAddSp);
   setText("btnAllCodesText", dict.allCodesBtn);
   setText("crBadgeTitle", dict.crBadgeTitle);
+  setText("crDescText", dict.crDescText);
   setText("crSubHint", dict.crSubHint);
+  setText("actBadgeTitle", dict.actBadgeTitle);
+  setText("actDescText", dict.actDescText);
   setText("crLblClosed", dict.crLblClosed);
   setText("crLblTotal", dict.crLblTotal);
   setText("crLblUnclosed", dict.crLblUnclosed);
@@ -1432,6 +1444,80 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
   };
 }
 
+function parse_datetime_vn(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  // Format 1: YYYY-MM-DD HH:mm(:ss) or YYYY/MM/DD HH:mm(:ss)
+  let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+  if (m) {
+    return new Date(
+      parseInt(m[1], 10),
+      parseInt(m[2], 10) - 1,
+      parseInt(m[3], 10),
+      parseInt(m[4], 10),
+      parseInt(m[5], 10),
+      m[6] ? parseInt(m[6], 10) : 0
+    );
+  }
+  // Format 2: DD/MM/YYYY HH:mm(:ss) or DD-MM-YYYY HH:mm(:ss)
+  m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+  if (m) {
+    return new Date(
+      parseInt(m[3], 10),
+      parseInt(m[2], 10) - 1,
+      parseInt(m[1], 10),
+      parseInt(m[4], 10),
+      parseInt(m[5], 10),
+      m[6] ? parseInt(m[6], 10) : 0
+    );
+  }
+  return null;
+}
+
+// Tính số giây làm việc giữa thời điểm đơn về (dtStart) và thời điểm gọi (dtEnd)
+// Loại trừ khung giờ nghỉ: 23:00 - 08:00, 12:00 - 12:30, 18:00 - 18:30
+function calc_working_call_seconds(dtStart, dtEnd) {
+  if (!dtStart || !dtEnd) return null;
+  const tStart = dtStart.getTime();
+  const tEnd = dtEnd.getTime();
+  if (isNaN(tStart) || isNaN(tEnd) || tEnd < tStart) return null;
+
+  // Giới hạn tối đa 7 ngày để tránh vòng lặp dài với dữ liệu lỗi
+  if (tEnd - tStart > 7 * 86400 * 1000) return null;
+
+  const dayCursor = new Date(dtStart.getFullYear(), dtStart.getMonth(), dtStart.getDate(), 0, 0, 0, 0);
+  const lastDay = new Date(dtEnd.getFullYear(), dtEnd.getMonth(), dtEnd.getDate(), 0, 0, 0, 0);
+
+  // Các khung giờ làm việc trong ngày (đã loại trừ 23h-8h, 12h-12h30, 18h-18h30):
+  // Ca sáng: 08:00 - 12:00 | Ca chiều: 12:30 - 18:00 | Ca tối: 18:30 - 23:00
+  const shifts = [
+    [8, 0, 12, 0],
+    [12, 30, 18, 0],
+    [18, 30, 23, 0],
+  ];
+
+  let totalSec = 0;
+  while (dayCursor <= lastDay) {
+    const y = dayCursor.getFullYear();
+    const mo = dayCursor.getMonth();
+    const d = dayCursor.getDate();
+
+    for (const [sh, sm, eh, em] of shifts) {
+      const wStart = new Date(y, mo, d, sh, sm, 0, 0).getTime();
+      const wEnd = new Date(y, mo, d, eh, em, 0, 0).getTime();
+      const overlapStart = Math.max(tStart, wStart);
+      const overlapEnd = Math.min(tEnd, wEnd);
+      if (overlapEnd > overlapStart) {
+        totalSec += (overlapEnd - overlapStart) / 1000;
+      }
+    }
+
+    dayCursor.setDate(dayCursor.getDate() + 1);
+  }
+
+  return totalSec;
+}
+
 function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   let start_date = parse_ymd_date(start_str);
   let end_date = parse_ymd_date(end_str);
@@ -1464,6 +1550,7 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
 
   let colTg = 0;
   let colMkt = 6;
+  let colTgGoi = 23; // Cột X: Thời gian gọi
   let colDaChot = 24;
   let colDemDon = 25;
 
@@ -1471,7 +1558,8 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
     const headerRow = data_tong_don_upyo[0];
     for (let i = 0; i < headerRow.length; i++) {
       const h = String(headerRow[i] || "").trim().toLowerCase();
-      if (h === "đơn đã chốt" || h === "don da chot") colDaChot = i;
+      if (h === "thời gian gọi" || h === "thoi gian goi") colTgGoi = i;
+      else if (h === "đơn đã chốt" || h === "don da chot") colDaChot = i;
       else if (h === "đếm đơn" || h === "dem don") colDemDon = i;
       else if (h === "mkt" || h === "marketer") colMkt = i;
     }
@@ -1479,6 +1567,8 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
 
   let tong_dem = 0;
   let tong_chot = 0;
+  let tong_tg_goi_sec = 0;
+  let so_don_da_goi = 0;
   const by_mkt = {};
 
   for (const r of data_tong_don_upyo) {
@@ -1516,18 +1606,34 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
         }
         by_mkt[mkt_norm].dem += dem;
         by_mkt[mkt_norm].chot += chot;
+
+        if (r.length > colTgGoi) {
+          const tgGoiRaw = String(r[colTgGoi] || "").trim();
+          if (tgGoiRaw) {
+            const dtOrder = parse_datetime_vn(tg);
+            const dtCall = parse_datetime_vn(tgGoiRaw);
+            const callSec = calc_working_call_seconds(dtOrder, dtCall);
+            if (callSec !== null && callSec >= 0) {
+              tong_tg_goi_sec += callSec;
+              so_don_da_goi += 1;
+            }
+          }
+        }
       }
     }
   }
 
   const tong_chua_chot = Math.max(0, tong_dem - tong_chot);
   const ty_le_chot = tong_dem > 0 ? (tong_chot / tong_dem) * 100 : 0;
+  const avg_call_sec = so_don_da_goi > 0 ? tong_tg_goi_sec / so_don_da_goi : 0;
 
   return {
     tong_dem,
     tong_chot,
     tong_chua_chot,
     ty_le_chot,
+    avg_call_sec,
+    so_don_da_goi,
     by_mkt,
   };
 }
@@ -1786,12 +1892,34 @@ function get_closing_rate_pill_cls(pct, totalDem) {
   return "val-red";
 }
 
+function format_call_duration(sec) {
+  const s = Math.max(0, Math.round(sec || 0));
+  if (s < 60) return `${s}s`;
+  const mins = Math.floor(s / 60);
+  const remSec = s % 60;
+  if (mins < 60) {
+    return remSec > 0 ? `${mins}p ${String(remSec).padStart(2, "0")}s` : `${mins}p`;
+  }
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hrs}h ${String(remMins).padStart(2, "0")}p`;
+}
+
+function get_call_time_pill_cls(avgSec, calledCount) {
+  if (!calledCount || calledCount <= 0) return "val-muted";
+  if (avgSec <= 10 * 60) return "val-green";
+  if (avgSec <= 25 * 60) return "val-highlight";
+  return "val-red";
+}
+
 function render_closing_rate_card(crData) {
   last_closing_rate_data = crData || {
     tong_dem: 0,
     tong_chot: 0,
     tong_chua_chot: 0,
     ty_le_chot: 0,
+    avg_call_sec: 0,
+    so_don_da_goi: 0,
     by_mkt: {},
   };
 
@@ -1799,6 +1927,7 @@ function render_closing_rate_card(crData) {
   const totalEl = document.getElementById("crValTotal");
   const unclosedEl = document.getElementById("crValUnclosed");
   const rateEl = document.getElementById("crValRate");
+  const callTimeEl = document.getElementById("actValTime");
 
   if (closedEl) {
     animate_number(closedEl, last_closing_rate_data.tong_chot, (v) => String(Math.round(v)), 420);
@@ -1815,6 +1944,13 @@ function render_closing_rate_card(crData) {
     rateEl.textContent = dem > 0 ? `${pct.toFixed(1)}%` : "0%";
     const pillCls = get_closing_rate_pill_cls(pct, dem);
     rateEl.className = `cpds-pill ${pillCls} cr-rate-pill`;
+  }
+  if (callTimeEl) {
+    const calledCount = last_closing_rate_data.so_don_da_goi || 0;
+    const avgSec = last_closing_rate_data.avg_call_sec || 0;
+    callTimeEl.textContent = calledCount > 0 ? format_call_duration(avgSec) : "--";
+    const callPillCls = get_call_time_pill_cls(avgSec, calledCount);
+    callTimeEl.className = `cpds-pill ${callPillCls} cr-rate-pill`;
   }
 
   render_closing_rate_popup_table();

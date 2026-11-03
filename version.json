@@ -1,11 +1,11 @@
 ﻿{
-    "version":  "8.6.26",
-    "published_at":  "2026-11-02 21:27:36",
-    "index.html_sha256":  "e519e0fba27638d5bb12dc6b171603f4defe4c2356407e2ab8d02338433b1a30",
-    "styles.css_sha256":  "6b5cb4cceb68ca876fc848ce9f3cf0a85a720bdfd877edfa97b1733eac8516aa",
-    "app.js_sha256":  "bc4f4b5f9c6b7369d843a71b77ffbfc275097d376b0e520ab64eca97ab550011",
-    "exe_sha256":  "96ef56824e7b351af799d33eea73de051e4cdc967caef88ccd43fb5b5458e112",
-    "exe_url":  "APP%20LAM%20v8.6.26.exe",
+    "version":  "8.6.27",
+    "published_at":  "2026-11-03 08:19:41",
+    "index.html_sha256":  "b2143dfe5ce70aed3d1973f20f71255969d2a16780aa854a72ee313dd22fd1ee",
+    "styles.css_sha256":  "263877b3375f1278d90609398b9d9386b4dd681f24df654f53bcd8feaef36e35",
+    "app.js_sha256":  "b628fa03056d22b0879e86af7452395714339835739c9d23e841412993c9bd92",
+    "exe_sha256":  "842c716ffdca6aed4a483a08649f3034fb7605bb94a8c54be5304484d606f3ca",
+    "exe_url":  "APP%20LAM%20v8.6.27.exe",
     "update_exe":  false,
-    "note":  "v8.6.26: Bo tieu de chi tiet ti le chot MKT"
+    "note":  "v8.6.27: Them mo ta ti le chot \u0026 bang thoi gian goi so trung binh (loai tru khung gio nghi)"
 }
