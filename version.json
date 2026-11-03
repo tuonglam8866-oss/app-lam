@@ -1,11 +1,11 @@
 ﻿{
     "version": "8.6.29",
-    "published_at": "2026-11-03 16:23:57",
+    "published_at": "2026-11-03 16:42:45",
     "index.html_sha256": "b62e3b09924d4a12b65676783b116224fd0737ea409d5f11ca3b1e7ec26a564e",
     "styles.css_sha256": "263877b3375f1278d90609398b9d9386b4dd681f24df654f53bcd8feaef36e35",
-    "app.js_sha256": "54fa7aac02290d21235525faa03943ed0f8cdb98d6cf9e7055bc2709ccd7d639",
+    "app.js_sha256": "c371286675dc7e88bd8bea269bf93075c2e333c5e13709db670383f6c661e1e7",
     "exe_sha256": "",
     "exe_url": "APP%20LAM%20v8.6.29.exe",
     "update_exe": false,
-    "note": "v8.6.29: Test tu dong cap nhat ngam 100% khong reload, hien thong bao em diu"
+    "note": "v8.6.29: Fix thong bao update hien thi dung 1 lan duy nhat"
 }

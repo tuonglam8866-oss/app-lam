@@ -3,6 +3,7 @@
 // ==============================================================
 
 const APP_FRONTEND_VERSION = "8.6.29";
+let last_notified_update_version = APP_FRONTEND_VERSION;
 
 function compare_semver(v1, v2) {
   const p1 = String(v1 || "0").replace(/^[^\d]*/, "").split(".").map((x) => parseInt(x, 10) || 0);
@@ -2865,7 +2866,10 @@ async function quet_don_dinh_ky() {
                 cssLink.href = `${baseHref}?t=${Date.now()}`;
               }
 
-              show_update_toast_notification(`✨ Đã tự động cập nhật ngầm lên bản v${cleanVer || APP_FRONTEND_VERSION}!`);
+              if (cleanVer && cleanVer !== last_notified_update_version && compare_semver(cleanVer, last_notified_update_version) > 0) {
+                last_notified_update_version = cleanVer;
+                show_update_toast_notification(`🚀 Đã tự động cập nhật ngầm lên bản v${cleanVer}!`);
+              }
             }
             if (ev.toast && bat_popup_thong_bao) {
               hien_thi_popup_goc_man_hinh(
