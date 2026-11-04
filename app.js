@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.39 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.60 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.39";
+const APP_FRONTEND_VERSION = "8.6.60";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2653,7 +2653,7 @@ function create_mkt_table_card(
 }
 
 // ==============================================================
-// MODAL CHI TIẾT ĐƠN HÀNG CỦA SẢN PHẨM / MKT (v8.6.39)
+// MODAL CHI TIẾT ĐƠN HÀNG CỦA SẢN PHẨM / MKT (v8.6.60)
 // ==============================================================
 let current_od_raw_list = [];
 
@@ -2773,6 +2773,7 @@ function render_order_detail_table(ordersToRender) {
       <td class="col-phiship">${format_tien_vnd(order.phi_ship)}</td>
       <td class="col-nentang"><span class="pill-platform ${platformCls}">${escape_html(order.nen_tang || "Khác")}</span></td>
       <td class="col-sale">${escape_html(order.sale || "—")}</td>
+      <td class="col-mkt"><span class="pill-mkt">${escape_html(order.mkt || "—")}</span></td>
     `;
     tbody.appendChild(tr);
   });
@@ -3868,7 +3869,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Modal Chi Tiết Đơn Hàng (v8.6.39)
+  // Modal Chi Tiết Đơn Hàng (v8.6.60)
   const odSearchInput = document.getElementById("odSearchInput");
   const odClearBtn = document.getElementById("btnClearOdSearch");
 
@@ -3891,7 +3892,8 @@ window.addEventListener("DOMContentLoaded", async () => {
         (o.mau_sac || "").toLowerCase().includes(q) ||
         (o.size || "").toLowerCase().includes(q) ||
         (o.nen_tang || "").toLowerCase().includes(q) ||
-        (o.sale || "").toLowerCase().includes(q)
+        (o.sale || "").toLowerCase().includes(q) ||
+        (o.mkt || "").toLowerCase().includes(q)
       );
     });
 

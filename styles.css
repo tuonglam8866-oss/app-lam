@@ -2330,7 +2330,7 @@ input::-ms-clear {
 }
 
 /* ==============================================================
-   MODAL BẢNG CHI TIẾT ĐƠN HÀNG SẢN PHẨM / MKT (v8.6.39)
+   MODAL BẢNG CHI TIẾT ĐƠN HÀNG SẢN PHẨM / MKT (v8.6.60)
    ============================================================== */
 .order-detail-backdrop {
   position: fixed;
@@ -2529,6 +2529,32 @@ input::-ms-clear {
   position: relative;
   background: var(--card-fill, #FFFDF9);
   user-select: text; /* Cho phép bôi đen copy SĐT, địa chỉ, mã vận đơn */
+  scrollbar-width: thin;
+  scrollbar-color: #CDB7A3 rgba(245, 236, 225, 0.65);
+}
+
+.od-table-wrapper::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.od-table-wrapper::-webkit-scrollbar-track {
+  background: rgba(245, 236, 225, 0.65);
+  border-radius: 8px;
+}
+
+.od-table-wrapper::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #D5BFAB 0%, #C3A68F 100%);
+  border: 1.5px solid rgba(255, 253, 249, 0.85);
+  border-radius: 8px;
+}
+
+.od-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #A8866E 0%, #8C654B 100%);
+}
+
+.od-table-wrapper::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .od-table {
@@ -2656,6 +2682,23 @@ input::-ms-clear {
   border: 1px solid rgba(107, 114, 128, 0.3);
 }
 
+.od-table .col-mkt {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.od-table .pill-mkt {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  background: rgba(61, 35, 20, 0.1);
+  color: #3D2314;
+  border: 1px solid rgba(61, 35, 20, 0.22);
+}
+
 .od-footer {
   padding: 12px 24px;
   background: linear-gradient(135deg, #FAF2E8 0%, #F3E5D5 100%);
@@ -2749,6 +2792,26 @@ input::-ms-clear {
 
 [data-theme="dark"] .od-table-wrapper {
   background: #231A14;
+  scrollbar-color: #6D503C #1C1510;
+}
+
+[data-theme="dark"] .od-table-wrapper::-webkit-scrollbar-track {
+  background: #1C1510;
+}
+
+[data-theme="dark"] .od-table-wrapper::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #5A4132 0%, #463023 100%);
+  border: 1.5px solid #231A14;
+}
+
+[data-theme="dark"] .od-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #7C5B46 0%, #634533 100%);
+}
+
+[data-theme="dark"] .od-table .pill-mkt {
+  background: rgba(255, 240, 225, 0.1);
+  color: #FAF5ED;
+  border-color: rgba(255, 240, 225, 0.2);
 }
 
 [data-theme="dark"] .od-table thead th {

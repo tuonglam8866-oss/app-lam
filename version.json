@@ -1,9 +1,9 @@
 {
-  "version": "8.6.39",
+  "version": "8.6.60",
   "update_exe": true,
-  "exe_url": "https://raw.githubusercontent.com/tuonglam8866-oss/app-lam/main/APP%20LAM%20v8.6.39.exe",
-  "exe_sha256": "1a2792e8b04d05b16f3a6e70ba9b40acb36a4ae1130a9c72b4e6aae5bd439100",
-  "app_js_sha256": "24b470eff0b9c45aaae8e6ea5aa86ebf51ad2c71ce0902dca4f002b7dc12ea87",
-  "index_html_sha256": "0c1b8e6872d98b0b7e274a49a383d34cc93a76407c20b85efde068d7c5327371",
-  "styles_css_sha256": "e4342bf5c5403d8bb0ac63835cf94d3f267d737ab350639f5244feb233a3f0fc"
+  "exe_url": "https://raw.githubusercontent.com/tuonglam8866-oss/app-lam/main/APP%20LAM%20v8.6.60.exe",
+  "exe_sha256": "19ca3dd09c357ef547539099609c05f7ec057035002f05cf7a22530239134067",
+  "app_js_sha256": "1a3c33d2a7e63ee09a27e7f58323925d5e949e1576b3e2b38f5560002f843e2c",
+  "index_html_sha256": "c9baeb47eb183d3dfd7f82904acd374b8379d75c76bcd3819f7a93ef8a26b9cb",
+  "styles_css_sha256": "640573081547896eb278b957b86ee9ec62332245e21174bfdabdbc69a7132f51"
 }
