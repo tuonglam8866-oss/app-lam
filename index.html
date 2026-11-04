@@ -7,7 +7,7 @@
   <meta name="microsoft" content="notranslate" />
   <meta name="translate" content="no" />
   <meta http-equiv="Content-Language" content="vi" />
-  <title>APP LÂM v8.6.32</title>
+  <title>APP LÂM v8.6.35</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="shortcut icon" href="/favicon.ico" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233D2314'/%3E%3Crect x='2.5' y='2.5' width='59' height='59' rx='10' fill='none' stroke='%23FAF5ED' stroke-width='2.5'/%3E%3Ctext x='32' y='45' font-family='Arial, sans-serif' font-size='38' font-weight='bold' fill='%23FAF5ED' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E" />
@@ -28,7 +28,7 @@
     <!-- Top Header Row -->
     <header class="header-top-frame">
       <div class="cozy-header-card main-title-card">
-        <div class="app-logo-badge" title="APP LÂM v8.6.32 - Đang trực chiến">
+        <div class="app-logo-badge" title="APP LÂM v8.6.35 - Đang trực chiến">
           <span class="logo-letter">L</span>
           <span class="live-dot" id="livePollIndicator" title="Đang trực chiến quét đơn mới mỗi 3 giây"></span>
         </div>
@@ -141,7 +141,7 @@
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-choco btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon" id="headerUpdateIcon">↻</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.32</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.35</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -277,6 +277,13 @@
       </div>
     </div>
 
+    <div class="settings-section">
+      <label class="settings-label" id="lblSettingLock">8. Bảo mật ứng dụng:</label>
+      <button type="button" id="btnLockApp" class="rounded-btn btn-choco settings-toggle-btn" style="width: 100%; justify-content: center; gap: 8px;">
+        🔒 Khóa ứng dụng (Đăng xuất)
+      </button>
+    </div>
+
     <div class="settings-section settings-status-row">
       <div class="scanner-status">
         <span class="status-dot-online"></span>
@@ -347,7 +354,7 @@
     <div class="update-celebration-card">
       <div class="uc-tag">HỆ THỐNG</div>
       <h2 class="uc-title">CẬP NHẬT THÀNH CÔNG</h2>
-      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.32</div>
+      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.35</div>
       <p class="uc-desc">Ứng dụng đã hoàn tất cập nhật lên phiên bản mới nhất.</p>
       <div class="uc-action-row">
         <button type="button" id="btnDismissCelebration" class="uc-btn">
@@ -357,6 +364,47 @@
     </div>
   </div>
 
-    <script src="app.js" defer></script>
+  <!-- Man hinh khoa bao mat dang nhap mat khau -->
+  <div id="authLockScreen" class="auth-lock-backdrop hidden">
+    <div class="auth-lock-card">
+      <div class="auth-logo-badge">
+        <span class="auth-logo-letter">L</span>
+      </div>
+      <div class="auth-tag">XÁC THỰC BẢO MẬT</div>
+      <h2 class="auth-title">APP LÂM</h2>
+      <p class="auth-desc">Vui lòng nhập mật khẩu để truy cập hệ thống trực chiến</p>
+      
+      <form id="authLoginForm" class="auth-form" onsubmit="return false;">
+        <div class="auth-input-wrapper">
+          <input
+            type="password"
+            id="authPasswordInput"
+            class="auth-input"
+            placeholder="Nhập mật khẩu..."
+            autocomplete="current-password"
+            required
+          />
+          <button type="button" id="btnToggleAuthPassword" class="auth-eye-btn" title="Hiện / Ẩn mật khẩu" tabindex="-1">
+            👁️
+          </button>
+        </div>
+
+        <div id="authErrorMessage" class="auth-error-msg hidden">
+          Mật khẩu không chính xác, vui lòng thử lại!
+        </div>
+
+        <label class="auth-remember-row">
+          <input type="checkbox" id="authRememberCheckbox" class="auth-checkbox" checked />
+          <span>Ghi nhớ đăng nhập trên thiết bị này</span>
+        </label>
+
+        <button type="submit" id="btnAuthSubmit" class="auth-submit-btn">
+          ĐĂNG NHẬP
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js" defer></script>
 </body>
 </html>

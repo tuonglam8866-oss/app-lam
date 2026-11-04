@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.32 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.35 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.32";
+const APP_FRONTEND_VERSION = "8.6.35";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -27,14 +27,14 @@ function compare_semver(v1, v2) {
 }
 
 const CSV_URL_THONG_KE =
-  "https://docs.google.com/spreadsheets/d/1gC1_mygyFOTmDHgtKPzMulTq3HoxVA91suHSEM0cr7k/export?format=csv&gid=1227181736";
+  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=1227181736";
 const CSV_URL_THONG_KE_FALLBACK =
-  "https://docs.google.com/spreadsheets/d/1gC1_mygyFOTmDHgtKPzMulTq3HoxVA91suHSEM0cr7k/gviz/tq?tqx=out:csv&gid=1227181736";
+  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=1227181736";
 
 const CSV_URL_THONG_BAO =
-  "https://docs.google.com/spreadsheets/d/1gC1_mygyFOTmDHgtKPzMulTq3HoxVA91suHSEM0cr7k/export?format=csv&gid=0";
+  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=0";
 const CSV_URL_THONG_BAO_FALLBACK =
-  "https://docs.google.com/spreadsheets/d/1gC1_mygyFOTmDHgtKPzMulTq3HoxVA91suHSEM0cr7k/gviz/tq?tqx=out:csv&gid=0";
+  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=0";
 
 const FB_TOKEN =
   "EAAXG9iM6xxUBSs07QihLBBE9G0EO51KvuwL8OZCivrZCJZCRsZBaJQYj8DRGCXo7Gre8HKFxRB0YZCitwq0eQVoyZBkR1lo6Mq37COclCnbvJCESPtn8cdecYnghPaFCWRFo7QK0wBJcYnZBY6vzAIQPbKxEZC8BCw2XjBNXnJWVADZCt45x56gDHrOv85lqMkgZDZD";
@@ -57,6 +57,66 @@ const TU_DIEN_PHAT_AM = {
   vip: "víp",
   pro: "pờ rô",
 };
+
+// ==============================================================
+// XÁC THỰC BẢO MẬT MẬT KHẨU (PASSWORD SECURITY)
+// ==============================================================
+const APP_AUTH_PASSWORD = "upyo@2026";
+const AUTH_STORAGE_KEY = "app_lam_auth_token";
+
+function is_app_authenticated() {
+  try {
+    const token =
+      localStorage.getItem(AUTH_STORAGE_KEY) ||
+      sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return token === APP_AUTH_PASSWORD;
+  } catch (e) {
+    return false;
+  }
+}
+
+function set_app_authenticated(remember) {
+  try {
+    if (remember) {
+      localStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_PASSWORD);
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    } else {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_PASSWORD);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  } catch (e) {}
+}
+
+function lock_app() {
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch (e) {}
+  show_auth_lock_screen();
+}
+
+function show_auth_lock_screen() {
+  const lockScreen = document.getElementById("authLockScreen");
+  const pwdInput = document.getElementById("authPasswordInput");
+  const errMsg = document.getElementById("authErrorMessage");
+  const appContainer = document.getElementById("appContainer");
+  if (appContainer) appContainer.classList.add("hidden");
+  if (errMsg) errMsg.classList.add("hidden");
+  if (pwdInput) pwdInput.value = "";
+  if (lockScreen) {
+    lockScreen.classList.remove("hidden");
+    setTimeout(() => {
+      if (pwdInput) pwdInput.focus();
+    }, 120);
+  }
+}
+
+function unlock_app() {
+  const lockScreen = document.getElementById("authLockScreen");
+  const appContainer = document.getElementById("appContainer");
+  if (lockScreen) lockScreen.classList.add("hidden");
+  if (appContainer) appContainer.classList.remove("hidden");
+}
 
 const KNOWN_CODES_DEFAULT = [
   "ELITE",
@@ -1229,7 +1289,7 @@ async function fetch_csv_with_fallback(primaryUrl, fallbackUrl, apiType) {
   for (const url of urlsToTry) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
+      const timer = setTimeout(() => controller.abort(), 25000);
       const res = await fetch(url, {
         cache: "no-store",
         signal: controller.signal,
@@ -1248,23 +1308,29 @@ async function fetch_csv_with_fallback(primaryUrl, fallbackUrl, apiType) {
 
 async function tai_du_lieu_google_sheets() {
   doc_cau_hinh_tu_storage();
-  const [rowsThongKe, rowsThongBao] = await Promise.all([
-    fetch_csv_with_fallback(
-      CSV_URL_THONG_KE,
-      CSV_URL_THONG_KE_FALLBACK,
-      "thong_ke"
-    ),
-    fetch_csv_with_fallback(
-      CSV_URL_THONG_BAO,
-      CSV_URL_THONG_BAO_FALLBACK,
-      "thong_bao"
-    ),
-  ]);
+
+  // Tải ngầm bảng thông báo/tỉ lệ chốt song song, hoàn toàn không chặn màn hình tải
+  fetch_csv_with_fallback(
+    CSV_URL_THONG_BAO,
+    CSV_URL_THONG_BAO_FALLBACK,
+    "thong_bao"
+  ).then((rowsThongBao) => {
+    if (rowsThongBao && rowsThongBao.length > 0) {
+      data_tong_don_upyo = rowsThongBao;
+      try {
+        render_closing_rate_card(tinh_ty_le_chot_theo_ngay(current_start_date, current_end_date));
+      } catch (e) {}
+    }
+  }).catch(() => {});
+
+  // Giao diện chính chỉ cần chờ bảng thống kê (Doanh số, Đơn, MKT - cực nhẹ, tải dưới 0.5s)
+  const rowsThongKe = await fetch_csv_with_fallback(
+    CSV_URL_THONG_KE,
+    CSV_URL_THONG_KE_FALLBACK,
+    "thong_ke"
+  );
   if (rowsThongKe) {
     data_hien_tai = rowsThongKe;
-  }
-  if (rowsThongBao) {
-    data_tong_don_upyo = rowsThongBao;
   }
 }
 
@@ -2516,30 +2582,29 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     }
 
     mkt_hien_thi.sort((a, b) => {
-      // 1. Ai Doanh số (DS) cao hơn thì xếp cao hơn
+      // 1. Ai Lợi nhuận (Doanh số - Chi phí) cao hơn thì xếp cao hơn
+      const loiNhuanA = a.doanh_so - a.tien;
+      const loiNhuanB = b.doanh_so - b.tien;
+      if (Math.abs(loiNhuanB - loiNhuanA) > 0.001) {
+        return loiNhuanB - loiNhuanA;
+      }
+
+      // 2. Nếu bằng Lợi nhuận: Ai Doanh số cao hơn thì xếp cao hơn
       if (b.doanh_so !== a.doanh_so) {
         return b.doanh_so - a.doanh_so;
       }
 
-      // 2. Nếu bằng Doanh số: Ai CP/DS thấp hơn thì xếp cao hơn
-      if (a.doanh_so > 0) {
-        const ratioA = a.tien / a.doanh_so;
-        const ratioB = b.tien / b.doanh_so;
-        if (Math.abs(ratioA - ratioB) > 0.000001) {
-          return ratioA - ratioB;
-        }
-      } else {
-        if (a.tien !== b.tien) {
-          return a.tien - b.tien;
-        }
+      // 3. Nếu bằng Doanh số: Ai Chi phí thấp hơn thì xếp cao hơn
+      if (a.tien !== b.tien) {
+        return a.tien - b.tien;
       }
 
-      // 3. Nếu tỉ lệ CP/DS cũng bằng nhau: Ai nhiều đơn hơn thì xếp cao hơn
+      // 4. Nếu bằng nhau: Ai nhiều đơn hơn thì xếp cao hơn
       if (b.don !== a.don) {
         return b.don - a.don;
       }
 
-      // 4. Nếu bằng nhau toàn bộ: xếp theo thứ tự bảng chữ cái
+      // 5. Nếu bằng nhau toàn bộ: xếp theo thứ tự bảng chữ cái
       return a.mkt.localeCompare(b.mkt);
     });
 
@@ -2582,17 +2647,14 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     ).sort((maA, maB) => {
       const dsA = dt_cua_mkt[maA] || 0.0;
       const dsB = dt_cua_mkt[maB] || 0.0;
-      if (dsB !== dsA) return dsB - dsA;
-
       const cpA = chi_tiet_fb[maA] || 0.0;
       const cpB = chi_tiet_fb[maB] || 0.0;
-      if (dsA > 0) {
-        const rA = cpA / dsA;
-        const rB = cpB / dsB;
-        if (Math.abs(rA - rB) > 0.000001) return rA - rB;
-      } else {
-        if (cpA !== cpB) return cpA - cpB;
-      }
+      const lnA = dsA - cpA;
+      const lnB = dsB - cpB;
+      if (Math.abs(lnB - lnA) > 0.001) return lnB - lnA;
+
+      if (dsB !== dsA) return dsB - dsA;
+      if (cpA !== cpB) return cpA - cpB;
 
       const donA = don_cua_mkt[maA] || 0;
       const donB = don_cua_mkt[maB] || 0;
@@ -3391,6 +3453,49 @@ window.addEventListener("DOMContentLoaded", async () => {
     .getElementById("settingsPopup")
     ?.addEventListener("click", (e) => e.stopPropagation());
 
+  // Nút khóa ứng dụng trong cài đặt
+  document.getElementById("btnLockApp")?.addEventListener("click", () => {
+    hide_all_popups();
+    lock_app();
+  });
+
+  // Xử lý đăng nhập mật khẩu bảo mật
+  const authForm = document.getElementById("authLoginForm");
+  const pwdInput = document.getElementById("authPasswordInput");
+  const errMsg = document.getElementById("authErrorMessage");
+  const rememberChk = document.getElementById("authRememberCheckbox");
+  const lockCard = document.querySelector(".auth-lock-card");
+
+  function xu_ly_xac_thuc_mat_khau() {
+    if (!pwdInput) return;
+    const val = pwdInput.value.trim();
+    if (val === APP_AUTH_PASSWORD) {
+      if (errMsg) errMsg.classList.add("hidden");
+      set_app_authenticated(rememberChk ? rememberChk.checked : true);
+      unlock_app();
+      tai_va_cap_nhat_theo_ngay();
+    } else {
+      if (errMsg) errMsg.classList.remove("hidden");
+      if (lockCard) {
+        lockCard.classList.remove("shake");
+        void lockCard.offsetWidth;
+        lockCard.classList.add("shake");
+      }
+      pwdInput.focus();
+      pwdInput.select();
+    }
+  }
+
+  authForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    xu_ly_xac_thuc_mat_khau();
+  });
+
+  document.getElementById("btnToggleAuthPassword")?.addEventListener("click", () => {
+    if (!pwdInput) return;
+    pwdInput.type = pwdInput.type === "password" ? "text" : "password";
+  });
+
   window.addEventListener("click", () => {
     hide_all_popups();
   });
@@ -3399,7 +3504,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Escape") hide_all_popups();
   });
 
-  await tai_va_cap_nhat_theo_ngay();
+  // Kiểm tra trạng thái đăng nhập khi mở app
+  if (!is_app_authenticated()) {
+    show_auth_lock_screen();
+  } else {
+    unlock_app();
+    await tai_va_cap_nhat_theo_ngay();
+  }
 
   await quet_don_dinh_ky();
   setInterval(quet_don_dinh_ky, 3000);
