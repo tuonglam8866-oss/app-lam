@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg-main: #FAF5ED;
   --choco-dark: #3D2314;
   --choco-muted: #7A5E4C;
@@ -2330,7 +2330,7 @@ input::-ms-clear {
 }
 
 /* ==============================================================
-   MODAL BẢNG CHI TIẾT ĐƠN HÀNG SẢN PHẨM / MKT (v8.6.60)
+   MODAL BẢNG CHI TIẾT ĐƠN HÀNG SẢN PHẨM / MKT (v8.6.62)
    ============================================================== */
 .order-detail-backdrop {
   position: fixed;

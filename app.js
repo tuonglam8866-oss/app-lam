@@ -1,8 +1,8 @@
-// ==============================================================
-// APP LÂM v8.6.60 - Upgraded Web & Desktop Hybrid Application Logic
+﻿// ==============================================================
+// APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.60";
+const APP_FRONTEND_VERSION = "8.6.62";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2653,7 +2653,7 @@ function create_mkt_table_card(
 }
 
 // ==============================================================
-// MODAL CHI TIẾT ĐƠN HÀNG CỦA SẢN PHẨM / MKT (v8.6.60)
+// MODAL CHI TIẾT ĐƠN HÀNG CỦA SẢN PHẨM / MKT (v8.6.62)
 // ==============================================================
 let current_od_raw_list = [];
 
@@ -3383,10 +3383,138 @@ function cap_nhat_giao_dien_toggle_init() {
 }
 
 // ==============================================================
-// LUỒNG QUÉT ĐƠN MỚI MỖI 3 GIÂY (quet_don)
+// LUỒNG QUÉT ĐƠN MỚI MỖI 3 GIÂY (quet_don) - Universal Signature Engine v8.6.62
 // ==============================================================
+let known_signatures_web = new Set();
+let announced_phone_keys_web = new Set();
+
+function chuan_hoa_sdt_vn(sdt) {
+  if (!sdt) return "";
+  let clean = String(sdt).replace(/[\s.-]/g, "").trim();
+  if (clean.startsWith("+84")) clean = "0" + clean.slice(3);
+  else if (clean.startsWith("84") && clean.length > 9) clean = "0" + clean.slice(2);
+  else if (!clean.startsWith("0") && clean.length === 9) clean = "0" + clean;
+  return clean;
+}
+
+function chuan_hoa_mkt_ten(mkt) {
+  if (!mkt) return "";
+  const clean = String(mkt).trim();
+  const upper = clean.toUpperCase();
+  if (["MKT", "MARKETER", "TÊN MKT", "SALE", "TÊN", "NAME"].includes(upper)) return "";
+  return clean;
+}
+
+function chuan_hoa_sp_ten(sp) {
+  if (!sp) return "Sản phẩm";
+  const clean = String(sp).trim();
+  const upper = clean.toUpperCase();
+  if (["DÒNG SP", "DONG SP", "SẢN PHẨM", "SAN PHAM", "MÃ SP"].includes(upper)) return "Sản phẩm";
+  return clean;
+}
+
+function extract_orders_web_tb(rows) {
+  const list = [];
+  if (!Array.isArray(rows) || rows.length < 2) return list;
+
+  let colTg = 0, colTen = 1, colSdt = 2, colMkt = 6, colSp = 7, colSaleNote = 20;
+  const h = rows[0];
+  if (Array.isArray(h)) {
+    for (let c = 0; c < h.length; c++) {
+      const name = String(h[c] || "").trim().toLowerCase();
+      if (name === "thời gian" || name === "thoi gian" || name === "ngày") colTg = c;
+      else if (name === "họ tên" || name === "ho ten" || name === "tên khách") colTen = c;
+      else if (name === "số điện thoại" || name === "so dien thoai" || name === "sđt" || name === "sdt") colSdt = c;
+      else if (name === "mkt" || name === "marketer" || name === "tên mkt") colMkt = c;
+      else if (name === "dòng sp" || name === "dong sp" || name === "sản phẩm" || name === "san pham") colSp = c;
+      else if (name.includes("ghi chú sale") || name.includes("trạng thái")) colSaleNote = c;
+    }
+  }
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!Array.isArray(r) || r.length === 0) continue;
+
+    const tg = String(r[colTg] || "").trim();
+    const ten = String(r[colTen] || "").trim();
+    const sdt = String(r[colSdt] || "").trim();
+    const mkt = String(r[colMkt] || "").trim();
+    const sp = String(r[colSp] || "").trim();
+    const note = String(r[colSaleNote] || "").trim().toLowerCase();
+
+    if (!sdt && !ten) continue;
+    if (note.includes("huỷ") || note.includes("huy") || note.includes("trùng") || note.includes("trung")) continue;
+
+    const mktClean = chuan_hoa_mkt_ten(mkt);
+    const spClean = chuan_hoa_sp_ten(sp);
+    const sdtClean = chuan_hoa_sdt_vn(sdt);
+
+    const sig = `TB|${tg}|${sdtClean}|${spClean.toUpperCase()}|${mktClean.toUpperCase()}`;
+    const phoneKey = sdtClean && sdtClean.length >= 8 ? `${sdtClean}_${spClean.toUpperCase()}` : "";
+
+    const voice = mktClean ? `${mktClean} ơi, có đơn rồi` : "Có đơn mới rồi";
+    const toast = mktClean ? `MKT ${mktClean}\n${spClean}` : `Vừa có đơn mới!\n${spClean}`;
+
+    list.push({ sig, phoneKey, mkt: mktClean, sp: spClean, voice, toast });
+  }
+  return list;
+}
+
+function extract_orders_web_tk(rows) {
+  const list = [];
+  if (!Array.isArray(rows) || rows.length < 2) return list;
+
+  let colTg = 0, colMvd = 1, colTen = 2, colSdt = 3, colSp = 5, colMkt = 12, colTt = 13;
+  const h = rows[0];
+  if (Array.isArray(h)) {
+    for (let c = 0; c < h.length; c++) {
+      const name = String(h[c] || "").trim().toLowerCase();
+      if (name === "thời gian" || name === "thoi gian" || name === "ngày") colTg = c;
+      else if (name === "mã vận đơn" || name === "ma van don" || name === "mã đơn") colMvd = c;
+      else if (name === "họ tên" || name === "ho ten" || name === "tên khách") colTen = c;
+      else if (name === "số điện thoại" || name === "so dien thoai" || name === "sđt" || name === "sdt") colSdt = c;
+      else if (name === "dòng sp" || name === "dong sp" || name === "sản phẩm" || name === "san pham") colSp = c;
+      else if (name === "mkt" || name === "marketer" || name === "tên mkt") colMkt = c;
+      else if (name.includes("trạng thái")) colTt = c;
+    }
+  }
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!Array.isArray(r) || r.length === 0) continue;
+
+    const tg = String(r[colTg] || "").trim();
+    const mvd = String(r[colMvd] || "").trim();
+    const ten = String(r[colTen] || "").trim();
+    const sdt = String(r[colSdt] || "").trim();
+    const sp = String(r[colSp] || "").trim();
+    const mkt = String(r[colMkt] || "").trim();
+    const tt = String(r[colTt] || "").trim().toLowerCase();
+
+    if (!sdt && !ten && !mvd) continue;
+    if (tt.includes("huỷ") || tt.includes("huy") || tt.includes("trùng") || tt.includes("trung") || tt.includes("test")) continue;
+
+    const mktClean = chuan_hoa_mkt_ten(mkt);
+    const spClean = chuan_hoa_sp_ten(sp);
+    const sdtClean = chuan_hoa_sdt_vn(sdt);
+
+    const sig = (mvd && mvd.length > 4 && !mvd.toLowerCase().includes("test"))
+      ? `TK_MVD|${mvd.toUpperCase()}`
+      : `TK_INFO|${tg}|${sdtClean}|${spClean.toUpperCase()}|${mktClean.toUpperCase()}|${ten.toLowerCase()}`;
+
+    const phoneKey = sdtClean && sdtClean.length >= 8 ? `${sdtClean}_${spClean.toUpperCase()}` : "";
+
+    const voice = mktClean ? `${mktClean} ơi, có đơn rồi` : "Có đơn mới rồi";
+    const toast = mktClean ? `MKT ${mktClean}\n${spClean}` : `Vừa có đơn mới!\n${spClean}`;
+
+    list.push({ sig, phoneKey, mkt: mktClean, sp: spClean, voice, toast });
+  }
+  return list;
+}
+
 async function quet_don_dinh_ky() {
   try {
+    // 1. Chế độ Native EXE: Nhận sự kiện đơn từ C# server
     if (native_exe_mode) {
       const res = await fetch(`/api/events?t=${Date.now()}`, {
         cache: "no-store",
@@ -3409,7 +3537,6 @@ async function quet_don_dinh_ky() {
                 document.title = `APP LÂM v${cleanVer}`;
               }
 
-              // Nạp lại stylesheet mới mà KHÔNG cần reload trang
               const cssLink = document.querySelector('link[rel="stylesheet"]');
               if (cssLink) {
                 const baseHref = cssLink.href.split("?")[0];
@@ -3421,19 +3548,13 @@ async function quet_don_dinh_ky() {
                 hien_thi_bang_chuc_mung_cap_nhat(cleanVer);
               }
             }
-            if (ev.toast) {
-              if (bat_popup_thong_bao) {
-                hien_thi_popup_goc_man_hinh(
-                  t().newOrderPopupTitle,
-                  ev.toast,
-                  false,
-                  false
-                );
-              } else {
-                trigger_confetti_burst();
-              }
+            if (ev.toast || ev.newOrder) {
+              trigger_confetti_burst();
+              try {
+                tai_va_cap_nhat_theo_ngay();
+              } catch (e) {}
             }
-            if (ev.voice && bat_thong_bao_gtts) {
+            if (ev.voice && !ev.voiceHandled && bat_thong_bao_gtts) {
               doc_am_thanh(ev.voice);
             }
           }
@@ -3442,51 +3563,64 @@ async function quet_don_dinh_ky() {
       }
     }
 
-    const du_lieu_moi = await fetch_csv_with_fallback(
-      CSV_URL_THONG_BAO,
-      CSV_URL_THONG_BAO_FALLBACK,
-      "thong_bao"
-    );
+    // 2. Chế độ chạy trên trình duyệt web: Lấy đơn từ DÒNG ĐẦU TIÊN (Dòng 1) của Bảng Thông Báo
+    const rowsTb = await fetch_csv_with_fallback(CSV_URL_THONG_BAO, CSV_URL_THONG_BAO_FALLBACK, "thong_bao").catch(() => []);
+    if (!Array.isArray(rowsTb) || rowsTb.length < 2) return;
 
-    if (!du_lieu_moi) return;
-    const tong_so_dong = du_lieu_moi.length;
+    let colTg = 0, colTen = 1, colSdt = 2, colMkt = 6, colSp = 7;
+    const h = rowsTb[0];
+    if (Array.isArray(h)) {
+      for (let c = 0; c < h.length; c++) {
+        const name = String(h[c] || "").trim().toLowerCase();
+        if (name === "thời gian" || name === "thoi gian" || name === "ngày") colTg = c;
+        else if (name === "họ tên" || name === "ho ten" || name === "tên khách") colTen = c;
+        else if (name === "số điện thoại" || name === "so dien thoai" || name === "sđt" || name === "sdt") colSdt = c;
+        else if (name === "mkt" || name === "marketer" || name === "tên mkt") colMkt = c;
+        else if (name === "dòng sp" || name === "dong sp" || name === "sản phẩm" || name === "san pham") colSp = c;
+      }
+    }
+
+    const dongDau = rowsTb[1];
+    const tgDau = String(dongDau[colTg] || "").trim();
+    const sdtDau = String(dongDau[colSdt] || "").trim();
+    const mktDau = String(dongDau[colMkt] || "").trim();
+    const spDau = String(dongDau[colSp] || "").trim();
+
+    const curRow1Key = `${tgDau}_${sdtDau}_${spDau}_${mktDau}`;
 
     if (!scanner_initialized) {
-      dong_cuoi_cung = tong_so_dong;
+      last_row1_key_web = curRow1Key;
       scanner_initialized = true;
       return;
     }
 
-    if (dong_cuoi_cung === 0 || tong_so_dong < dong_cuoi_cung) {
-      dong_cuoi_cung = tong_so_dong;
-    } else if (tong_so_dong > dong_cuoi_cung) {
+    if (curRow1Key && curRow1Key !== last_row1_key_web) {
       const danh_sach_doc = [];
       const danh_sach_toast = [];
 
-      for (let idx = dong_cuoi_cung; idx < tong_so_dong; idx++) {
-        const dong_moi = du_lieu_moi[idx];
-        const mkt = dong_moi.length > 6 ? String(dong_moi[6] || "").trim() : "";
-        const sp =
-          dong_moi.length > 7 && String(dong_moi[7] || "").trim()
-            ? String(dong_moi[7]).trim()
-            : "Sản phẩm";
+      for (let i = 1; i < Math.Min(15, rowsTb.length); i++) {
+        const r = rowsTb[i];
+        const tg = String(r[colTg] || "").trim();
+        const sdt = String(r[colSdt] || "").trim();
+        const mkt = String(r[colMkt] || "").trim();
+        const sp = String(r[colSp] || "").trim();
 
-        if (
-          ["mkt", "marketer", "tên mkt", "sale"].includes(mkt.toLowerCase())
-        ) {
-          continue;
-        }
+        const key_i = `${tg}_${sdt}_${sp}_${mkt}`;
+        if (key_i === last_row1_key_web) break;
 
-        if (mkt) {
-          danh_sach_doc.push(`${mkt} ơi, có đơn rồi`);
-          danh_sach_toast.push(`MKT ${mkt}\n${sp}`);
+        const mktClean = chuan_hoa_mkt_ten(mkt);
+        const spClean = chuan_hoa_sp_ten(sp);
+
+        if (mktClean) {
+          danh_sach_doc.push(`${mktClean} ơi, có đơn rồi`);
+          danh_sach_toast.push(`MKT ${mktClean}\n${spClean}`);
         } else {
           danh_sach_doc.push("Có đơn mới rồi");
-          danh_sach_toast.push("Vừa có đơn hàng mới!");
+          danh_sach_toast.push(`Vừa có đơn mới!\n${spClean}`);
         }
       }
 
-      dong_cuoi_cung = tong_so_dong;
+      last_row1_key_web = curRow1Key;
 
       if (danh_sach_toast.length > 0 && bat_popup_thong_bao) {
         let msg_toast = danh_sach_toast.join("\n");
@@ -3494,16 +3628,21 @@ async function quet_don_dinh_ky() {
           msg_toast = msg_toast.slice(0, 147) + "...";
         }
         hien_thi_popup_goc_man_hinh(t().newOrderPopupTitle, msg_toast);
+      } else {
+        trigger_confetti_burst();
       }
 
       if (danh_sach_doc.length > 0 && bat_thong_bao_gtts) {
         const loi_doc_tong = danh_sach_doc.join(". ");
         doc_am_thanh(loi_doc_tong, false);
       }
+
+      tai_va_cap_nhat_theo_ngay();
     }
   } catch (e) {}
 }
 
+let last_row1_key_web = null;
 // ==============================================================
 // KHỞI TẠO SỰ KIỆN GIAO DIỆN
 // ==============================================================
@@ -3869,7 +4008,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Modal Chi Tiết Đơn Hàng (v8.6.60)
+  // Modal Chi Tiết Đơn Hàng (v8.6.62)
   const odSearchInput = document.getElementById("odSearchInput");
   const odClearBtn = document.getElementById("btnClearOdSearch");
 
