@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.36 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.38 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.36";
+const APP_FRONTEND_VERSION = "8.6.38";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -210,9 +210,16 @@ function show_auth_lock_screen() {
   const pwdInput = document.getElementById("authPasswordInput");
   const errMsg = document.getElementById("authErrorMessage");
   const appContainer = document.getElementById("appContainer");
+  const eyeOpen = document.getElementById("eyeIconOpen");
+  const eyeClosed = document.getElementById("eyeIconClosed");
   if (appContainer) appContainer.classList.add("hidden");
   if (errMsg) errMsg.classList.add("hidden");
-  if (pwdInput) pwdInput.value = "";
+  if (pwdInput) {
+    pwdInput.value = "";
+    pwdInput.type = "password";
+  }
+  if (eyeOpen) eyeOpen.classList.remove("hidden");
+  if (eyeClosed) eyeClosed.classList.add("hidden");
   if (lockScreen) {
     lockScreen.classList.remove("hidden");
     setTimeout(() => {
@@ -302,6 +309,7 @@ const I18N = {
     toLabel: "Đến:",
     btnRefresh: "Tải Lại",
     btnHeaderUpdate: "Cập nhật",
+    btnLogout: "Đăng xuất",
     btnSettings: "Cài đặt",
     companySummaryTitle: "🏢 TỔNG CÔNG TY",
     totalOrdersUnit: "tổng đơn",
@@ -384,6 +392,7 @@ const I18N = {
     toLabel: "至:",
     btnRefresh: "刷新",
     btnHeaderUpdate: "更新",
+    btnLogout: "退出登录",
     btnSettings: "设置",
     companySummaryTitle: "🏢 公司总计",
     totalOrdersUnit: "总订单",
@@ -466,6 +475,7 @@ const I18N = {
     toLabel: "To:",
     btnRefresh: "Refresh",
     btnHeaderUpdate: "Update",
+    btnLogout: "Sign Out",
     btnSettings: "Settings",
     companySummaryTitle: "🏢 COMPANY TOTAL",
     totalOrdersUnit: "total orders",
@@ -994,6 +1004,7 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("lblToDate", dict.toLabel);
   setText("btnRefreshText", dict.btnRefresh);
   setText("btnHeaderUpdateText", dict.btnHeaderUpdate);
+  setText("btnLogoutText", dict.btnLogout);
   setText("btnSettingsText", dict.btnSettings);
   setText("btnBackMktText", dict.btnBack);
   setText("headerSpText", dict.top5SpHeader);
@@ -3563,11 +3574,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     .getElementById("settingsPopup")
     ?.addEventListener("click", (e) => e.stopPropagation());
 
-  // Nút khóa ứng dụng trong cài đặt
-  document.getElementById("btnLockApp")?.addEventListener("click", () => {
+  // Nút khóa ứng dụng & Đăng xuất cạnh Số đơn & Doanh số (Header) + Cài đặt
+  const thuc_hien_dang_xuat = () => {
     hide_all_popups();
     lock_app();
-  });
+  };
+  document.getElementById("btnLogoutHeader")?.addEventListener("click", thuc_hien_dang_xuat);
+  document.getElementById("btnLockApp")?.addEventListener("click", thuc_hien_dang_xuat);
 
   // Xử lý đăng nhập mật khẩu bảo mật
   const authForm = document.getElementById("authLoginForm");
@@ -3604,7 +3617,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("btnToggleAuthPassword")?.addEventListener("click", () => {
     if (!pwdInput) return;
-    pwdInput.type = pwdInput.type === "password" ? "text" : "password";
+    const isPass = pwdInput.type === "password";
+    pwdInput.type = isPass ? "text" : "password";
+    const eyeOpen = document.getElementById("eyeIconOpen");
+    const eyeClosed = document.getElementById("eyeIconClosed");
+    if (eyeOpen && eyeClosed) {
+      eyeOpen.classList.toggle("hidden", isPass);
+      eyeClosed.classList.toggle("hidden", !isPass);
+    }
   });
 
   window.addEventListener("click", () => {
