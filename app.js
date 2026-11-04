@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.28 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.32 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.31";
+const APP_FRONTEND_VERSION = "8.6.32";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2516,8 +2516,31 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     }
 
     mkt_hien_thi.sort((a, b) => {
-      if (b.don !== a.don) return b.don - a.don;
-      return b.doanh_so - a.doanh_so;
+      // 1. Ai Doanh số (DS) cao hơn thì xếp cao hơn
+      if (b.doanh_so !== a.doanh_so) {
+        return b.doanh_so - a.doanh_so;
+      }
+
+      // 2. Nếu bằng Doanh số: Ai CP/DS thấp hơn thì xếp cao hơn
+      if (a.doanh_so > 0) {
+        const ratioA = a.tien / a.doanh_so;
+        const ratioB = b.tien / b.doanh_so;
+        if (Math.abs(ratioA - ratioB) > 0.000001) {
+          return ratioA - ratioB;
+        }
+      } else {
+        if (a.tien !== b.tien) {
+          return a.tien - b.tien;
+        }
+      }
+
+      // 3. Nếu tỉ lệ CP/DS cũng bằng nhau: Ai nhiều đơn hơn thì xếp cao hơn
+      if (b.don !== a.don) {
+        return b.don - a.don;
+      }
+
+      // 4. Nếu bằng nhau toàn bộ: xếp theo thứ tự bảng chữ cái
+      return a.mkt.localeCompare(b.mkt);
     });
 
     if (mkt_hien_thi.length === 0) {
@@ -2556,7 +2579,27 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
 
     const tat_ca_ma = Array.from(
       new Set([...Object.keys(chi_tiet_fb), ...Object.keys(don_cua_mkt)])
-    ).sort();
+    ).sort((maA, maB) => {
+      const dsA = dt_cua_mkt[maA] || 0.0;
+      const dsB = dt_cua_mkt[maB] || 0.0;
+      if (dsB !== dsA) return dsB - dsA;
+
+      const cpA = chi_tiet_fb[maA] || 0.0;
+      const cpB = chi_tiet_fb[maB] || 0.0;
+      if (dsA > 0) {
+        const rA = cpA / dsA;
+        const rB = cpB / dsB;
+        if (Math.abs(rA - rB) > 0.000001) return rA - rB;
+      } else {
+        if (cpA !== cpB) return cpA - cpB;
+      }
+
+      const donA = don_cua_mkt[maA] || 0;
+      const donB = don_cua_mkt[maB] || 0;
+      if (donB !== donA) return donB - donA;
+
+      return maA.localeCompare(maB);
+    });
 
     if (tat_ca_ma.length === 0) {
       const empty = document.createElement("div");
