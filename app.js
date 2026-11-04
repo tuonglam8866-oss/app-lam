@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.35 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.36 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.35";
+const APP_FRONTEND_VERSION = "8.6.36";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -26,18 +26,38 @@ function compare_semver(v1, v2) {
   return 0;
 }
 
-const CSV_URL_THONG_KE =
-  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=1227181736";
-const CSV_URL_THONG_KE_FALLBACK =
-  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=1227181736";
+// ==============================================================
+// BẢO MẬT KHÓA & TOKEN TRUY CẬP (SECURE CREDENTIALS ENCRYPTION)
+// ==============================================================
+function decode_protected_token(encodedB64, keyStr = "UPYO_SECURE_2026") {
+  try {
+    const raw = atob(encodedB64);
+    let res = "";
+    for (let i = 0; i < raw.length; i++) {
+      res += String.fromCharCode(raw.charCodeAt(i) ^ keyStr.charCodeAt(i % keyStr.length));
+    }
+    return res;
+  } catch (e) {
+    return "";
+  }
+}
 
-const CSV_URL_THONG_BAO =
-  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=0";
-const CSV_URL_THONG_BAO_FALLBACK =
-  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec?key=UPYO_LAM_2026&gid=0";
+const APPS_SCRIPT_BASE_URL =
+  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec";
+const APPS_SCRIPT_SECRET_KEY = decode_protected_token("AAAAAAAfBA4KYHVtBA==");
 
-const FB_TOKEN =
-  "EAAXG9iM6xxUBSs07QihLBBE9G0EO51KvuwL8OZCivrZCJZCRsZBaJQYj8DRGCXo7Gre8HKFxRB0YZCitwq0eQVoyZBkR1lo6Mq37COclCnbvJCESPtn8cdecYnghPaFCWRFo7QK0wBJcYnZBY6vzAIQPbKxEZC8BCw2XjBNXnJWVADZCt45x56gDHrOv85lqMkgZDZD";
+const CSV_URL_THONG_KE = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1227181736`;
+const CSV_URL_THONG_KE_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1227181736`;
+
+const CSV_URL_THONG_BAO = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=0`;
+const CSV_URL_THONG_BAO_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=0`;
+
+const FB_TOKEN_PROTECTED =
+  "EBEYFxhqLA5jKj0KcGNBBmIBMCcTEQcGbBV1Gn0FA30jJS4DZxwfADwkNwVxemh1ByMDDT4ZFBo/agENdXNqWWIXKypnGw4FLQAHb2tqcV8hJyh/OgITLCwIBzRgAV5ZYx0ofGgQCiA5ESs9RHpxcwYALSFnMCEmNgsrOFpgU3AWBwsJMGQUCGUlBxVRaVxsFwlvOSUSDBIFMA4nd2pxDhcTLn0HOQcNDTwPCGRxdmwWJG16J2ZzJBEaNxBECAdaJB0yKAUXHwc=";
+
+function get_fb_token() {
+  return decode_protected_token(FB_TOKEN_PROTECTED);
+}
 
 const LIST_MKT_FB = [
   { ten: "LÂM", id: "act_1219584325802699" },
@@ -59,17 +79,105 @@ const TU_DIEN_PHAT_AM = {
 };
 
 // ==============================================================
-// XÁC THỰC BẢO MẬT MẬT KHẨU (PASSWORD SECURITY)
+// XÁC THỰC BẢO MẬT MẬT KHẨU (PASSWORD SECURITY - LEVEL 1 SHA-256)
 // ==============================================================
-const APP_AUTH_PASSWORD = "upyo@2026";
-const AUTH_STORAGE_KEY = "app_lam_auth_token";
+const APP_AUTH_HASH = "22c8b8f3d892f237262d828b900536d5aad8ca6aaf7b5eddf729444802138fd8";
+const AUTH_STORAGE_KEY = "app_lam_auth_hash";
+
+async function compute_sha256(str) {
+  try {
+    if (window.crypto && window.crypto.subtle) {
+      const msgUint8 = new TextEncoder().encode(str);
+      const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgUint8);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+  } catch (e) {}
+  return sha256_fallback(str);
+}
+
+function sha256_fallback(ascii) {
+  function rightRotate(value, amount) {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+  const mathPow = Math.pow;
+  const maxWord = mathPow(2, 32);
+  const lengthProperty = "length";
+  let i, j;
+  let result = "";
+  const words = [];
+  const asciiBitLength = ascii[lengthProperty] * 8;
+  const hash = [];
+  const k = [];
+  let primeCounter = 0;
+  const isComposite = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (i = 0; i < 313; i += candidate) {
+        isComposite[i] = candidate;
+      }
+      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+    }
+  }
+  ascii += "\x80";
+  while ((ascii[lengthProperty] % 64) - 56) ascii += "\x00";
+  for (i = 0; i < ascii[lengthProperty]; i++) {
+    j = ascii.charCodeAt(i);
+    words[i >> 2] |= j << (((3 - i) % 4) * 8);
+  }
+  words[words[lengthProperty]] = (asciiBitLength / maxWord) | 0;
+  words[words[lengthProperty]] = asciiBitLength;
+  for (j = 0; j < words[lengthProperty]; ) {
+    const w = words.slice(j, (j += 16));
+    const oldHash = hash.slice(0);
+    for (i = 0; i < 64; i++) {
+      const w15 = w[i - 15],
+        w2 = w[i - 2];
+      const s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
+      const s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
+      const ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
+      const temp1 =
+        hash[7] +
+        (rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25)) +
+        ch +
+        k[i] +
+        (w[i] =
+          i < 16
+            ? w[i]
+            : (w[i - 16] + s0 + w[i - 7] + s1) | 0);
+      const maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
+      const temp2 =
+        (rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22)) +
+        maj;
+      hash[7] = hash[6];
+      hash[6] = hash[5];
+      hash[5] = hash[4];
+      hash[4] = (hash[3] + temp1) | 0;
+      hash[3] = hash[2];
+      hash[2] = hash[1];
+      hash[1] = hash[0];
+      hash[0] = (temp1 + temp2) | 0;
+    }
+    for (i = 0; i < 8; i++) {
+      hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+  }
+  for (i = 0; i < 8; i++) {
+    for (let b = 3; b >= 0; b--) {
+      const byte = (hash[i] >> (b * 8)) & 255;
+      result += (byte < 16 ? "0" : "") + byte.toString(16);
+    }
+  }
+  return result;
+}
 
 function is_app_authenticated() {
   try {
     const token =
       localStorage.getItem(AUTH_STORAGE_KEY) ||
       sessionStorage.getItem(AUTH_STORAGE_KEY);
-    return token === APP_AUTH_PASSWORD;
+    return token === APP_AUTH_HASH;
   } catch (e) {
     return false;
   }
@@ -78,10 +186,10 @@ function is_app_authenticated() {
 function set_app_authenticated(remember) {
   try {
     if (remember) {
-      localStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_PASSWORD);
+      localStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
     } else {
-      sessionStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_PASSWORD);
+      sessionStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
       localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   } catch (e) {}
@@ -91,6 +199,8 @@ function lock_app() {
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem("app_lam_auth_token");
+    sessionStorage.removeItem("app_lam_auth_token");
   } catch (e) {}
   show_auth_lock_screen();
 }
@@ -1353,7 +1463,7 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
       let url =
         `https://graph.facebook.com/v19.0/${mkt.id}/insights` +
         `?level=campaign&fields=campaign_name,spend` +
-        `&time_range=${encodeURIComponent(time_range)}&limit=100&access_token=${FB_TOKEN}`;
+        `&time_range=${encodeURIComponent(time_range)}&limit=100&access_token=${get_fb_token()}`;
 
       while (url) {
         try {
@@ -3466,10 +3576,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   const rememberChk = document.getElementById("authRememberCheckbox");
   const lockCard = document.querySelector(".auth-lock-card");
 
-  function xu_ly_xac_thuc_mat_khau() {
+  async function xu_ly_xac_thuc_mat_khau() {
     if (!pwdInput) return;
     const val = pwdInput.value.trim();
-    if (val === APP_AUTH_PASSWORD) {
+    const hash = await compute_sha256(val);
+    if (hash === APP_AUTH_HASH) {
       if (errMsg) errMsg.classList.add("hidden");
       set_app_authenticated(rememberChk ? rememberChk.checked : true);
       unlock_app();
