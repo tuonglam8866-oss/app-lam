@@ -1,8 +1,8 @@
 // ==============================================================
-// APP LÂM v8.6.38 - Upgraded Web & Desktop Hybrid Application Logic
+// APP LÂM v8.6.39 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.38";
+const APP_FRONTEND_VERSION = "8.6.39";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1184,6 +1184,16 @@ function format_tien_vnd(val) {
   return intVal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " đ";
 }
 
+function escape_html(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function chuan_hoa_tieng_anh(text) {
   let text_lower = String(text || "").toLowerCase();
   for (const [tu_goc, phat_am] of Object.entries(TU_DIEN_PHAT_AM)) {
@@ -1534,7 +1544,7 @@ function format_ymd_date(dt) {
   return `${y}-${m}-${d}`;
 }
 
-function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
+function tao_cac_dang_ngay_khop(start_str, end_str) {
   let start_date = parse_ymd_date(start_str);
   let end_date = parse_ymd_date(end_str);
   if (start_date > end_date) {
@@ -1560,7 +1570,11 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
     curr.setDate(curr.getDate() + 1);
   }
 
-  const patternsArr = Array.from(date_patterns);
+  return Array.from(date_patterns);
+}
+
+function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
+  const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
 
   const stats_mkt_don = {};
   const stats_mkt_dt = {};
@@ -1655,6 +1669,91 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
     stats_mkt_sp_don,
     stats_mkt_sp_dt,
   };
+}
+
+// Lấy danh sách các đơn hàng thực tế đã được đếm (khớp ngày, MKT, SP và trạng thái hợp lệ)
+function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp) {
+  if (!Array.isArray(data_hien_tai) || data_hien_tai.length === 0) return [];
+  const start_str = current_start_date || "";
+  const end_str = current_end_date || "";
+  const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
+
+  const ket_qua = [];
+  for (const r of data_hien_tai) {
+    if (r.length <= 13) continue;
+
+    const tg = String(r[0] || "").trim();
+    const is_matched_date = patternsArr.some((p) => tg.includes(p));
+    if (!is_matched_date) continue;
+
+    const trang_thai = String(r[13] || "").trim().toUpperCase();
+    if (
+      !trang_thai.includes("ĐÃ LÊN ĐƠN") &&
+      !trang_thai.includes("CHỐT CHƯA CÓ HÀNG") &&
+      !trang_thai.includes("ĐƠN TEST")
+    ) {
+      continue;
+    }
+
+    const mkt = String(r[12] || "").trim().toUpperCase();
+    let mkt_norm = "KHÁC";
+    if (mkt && !["MKT", "MARKETER", "TÊN MKT", "SALE", "KHÁC", "KHAC"].includes(mkt)) {
+      if (mkt.includes("THANH") || mkt.includes("TH.LÂM")) {
+        mkt_norm = "TH.LÂM";
+      } else if (mkt.includes("LÂM")) {
+        mkt_norm = "LÂM";
+      } else if (mkt.includes("PHÚC")) {
+        mkt_norm = "PHÚC";
+      } else if (mkt.includes("TÂM")) {
+        mkt_norm = "TÂM";
+      } else if (mkt.includes("SAN")) {
+        mkt_norm = "SAN";
+      } else {
+        mkt_norm = mkt;
+      }
+    }
+
+    if (mkt_norm === "KHÁC") continue;
+    if (ten_mkt && mkt_norm !== ten_mkt) continue;
+
+    const raw_sp_text = r.length > 5 ? String(r[5] || "").trim() : "";
+    let ten_mau = "";
+    if (
+      raw_sp_text &&
+      !["DÒNG SP", "TÊN SP", "SẢN PHẨM", "MÃ SP", "MÃ"].includes(
+        raw_sp_text.toUpperCase()
+      )
+    ) {
+      ten_mau = trich_xuat_ten_mau_thong_minh(raw_sp_text);
+    }
+    if (!ten_mau) continue;
+    if (ten_sp && ten_mau !== ten_sp) continue;
+
+    let sdt = String(r[3] || "").trim();
+    if (sdt.length === 9 && !sdt.startsWith("0")) {
+      sdt = "0" + sdt;
+    }
+
+    ket_qua.push({
+      thoi_gian: String(r[0] || "").trim(),
+      ma_van_don: String(r[1] || "").trim(),
+      ho_ten: String(r[2] || "").trim(),
+      sdt: sdt,
+      dia_chi: String(r[4] || "").trim(),
+      dong_sp: String(r[5] || "").trim(),
+      mau_sac: String(r[6] || "").trim(),
+      size: String(r[7] || "").trim(),
+      gia_ban: parse_gia_tien(r[8]),
+      phi_ship: parse_gia_tien(r[9]),
+      nen_tang: String(r[10] || "").trim(),
+      sale: String(r[11] || "").trim(),
+      mkt: mkt_norm,
+      trang_thai: String(r[13] || "").trim(),
+      ghi_chu: r.length > 14 ? String(r[14] || "").trim() : "",
+    });
+  }
+
+  return ket_qua;
 }
 
 function parse_datetime_vn(raw) {
@@ -2553,17 +2652,146 @@ function create_mkt_table_card(
   return card;
 }
 
+// ==============================================================
+// MODAL CHI TIẾT ĐƠN HÀNG CỦA SẢN PHẨM / MKT (v8.6.39)
+// ==============================================================
+let current_od_raw_list = [];
+
+function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
+  const modal = document.getElementById("orderDetailModal");
+  if (!modal) return;
+
+  hide_all_popups();
+
+  const orders = lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp);
+  current_od_raw_list = orders;
+
+  const mktBadge = document.getElementById("odMktBadge");
+  const spBadge = document.getElementById("odSpBadge");
+  const countBadge = document.getElementById("odCountBadge");
+  const titleText = document.getElementById("odTitleText");
+  const dateRangeText = document.getElementById("odDateRangeText");
+  const revenueText = document.getElementById("odRevenueText");
+  const searchInput = document.getElementById("odSearchInput");
+  const clearBtn = document.getElementById("btnClearOdSearch");
+
+  if (mktBadge) {
+    if (ten_mkt) {
+      mktBadge.textContent = `MKT: ${ten_mkt}`;
+      mktBadge.classList.remove("hidden");
+    } else {
+      mktBadge.textContent = `TỔNG CÔNG TY`;
+    }
+  }
+
+  if (spBadge) {
+    spBadge.textContent = `SẢN PHẨM: ${ten_sp}`;
+  }
+
+  const tong_ds = orders.reduce((sum, o) => sum + (o.gia_ban || 0), 0);
+
+  if (countBadge) {
+    countBadge.textContent = `${orders.length} đơn đã đếm`;
+  }
+
+  if (titleText) {
+    titleText.textContent = ten_mkt
+      ? `CHI TIẾT ĐƠN HÀNG: ${ten_mkt} - ${ten_sp}`
+      : `CHI TIẾT ĐƠN HÀNG: ${ten_sp}`;
+  }
+
+  if (dateRangeText) {
+    const s = current_start_date || "";
+    const e = current_end_date || "";
+    dateRangeText.textContent = s === e ? `Ngày ${s}` : `Từ ${s} đến ${e}`;
+  }
+
+  if (revenueText) {
+    revenueText.textContent = `Tổng DS: ${format_tien_vnd(tong_ds)}`;
+  }
+
+  if (searchInput) {
+    searchInput.value = "";
+  }
+  if (clearBtn) {
+    clearBtn.classList.add("hidden");
+  }
+
+  render_order_detail_table(orders);
+
+  modal.classList.remove("hidden");
+  setTimeout(() => {
+    if (searchInput) searchInput.focus();
+  }, 100);
+}
+
+function dong_bang_don_hang_chi_tiet() {
+  const modal = document.getElementById("orderDetailModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function render_order_detail_table(ordersToRender) {
+  const tbody = document.getElementById("odTableBody");
+  const emptyState = document.getElementById("odEmptyState");
+  const footerSummary = document.getElementById("odFooterSummary");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  if (!ordersToRender || ordersToRender.length === 0) {
+    if (emptyState) emptyState.classList.remove("hidden");
+    if (footerSummary) footerSummary.textContent = "Không có đơn hàng nào khớp";
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add("hidden");
+
+  const tong_ds = ordersToRender.reduce((sum, o) => sum + (o.gia_ban || 0), 0);
+  if (footerSummary) {
+    footerSummary.textContent = `Hiển thị ${ordersToRender.length} / ${current_od_raw_list.length} đơn hàng • Tổng doanh số: ${format_tien_vnd(tong_ds)}`;
+  }
+
+  ordersToRender.forEach((order, idx) => {
+    const tr = document.createElement("tr");
+
+    let platformCls = "pill-other";
+    const ntUpper = (order.nen_tang || "").toUpperCase();
+    if (ntUpper.includes("LAND")) platformCls = "pill-landing";
+    else if (ntUpper.includes("PAN")) platformCls = "pill-pancake";
+
+    tr.innerHTML = `
+      <td class="col-stt">${idx + 1}</td>
+      <td class="col-time">${escape_html(order.thoi_gian)}</td>
+      <td class="col-mvd">${escape_html(order.ma_van_don || "—")}</td>
+      <td class="col-hoten">${escape_html(order.ho_ten || "—")}</td>
+      <td class="col-sdt">${escape_html(order.sdt || "—")}</td>
+      <td class="col-diachi" title="${escape_html(order.dia_chi)}">${escape_html(order.dia_chi || "—")}</td>
+      <td class="col-dongsp">${escape_html(order.dong_sp || "—")}</td>
+      <td class="col-mausac">${escape_html(order.mau_sac || "—")}</td>
+      <td class="col-size">${escape_html(order.size || "—")}</td>
+      <td class="col-giaban">${format_tien_vnd(order.gia_ban)}</td>
+      <td class="col-phiship">${format_tien_vnd(order.phi_ship)}</td>
+      <td class="col-nentang"><span class="pill-platform ${platformCls}">${escape_html(order.nen_tang || "Khác")}</span></td>
+      <td class="col-sale">${escape_html(order.sale || "—")}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   const dict = t();
   const card = document.createElement("div");
   card.className = "cozy-card";
   card.style.setProperty("--card-index", String(idx));
+  card.style.cursor = "pointer";
+  card.title = `Nhấn để xem ${count} đơn hàng chi tiết của ${ma_str}`;
 
   const topRow = document.createElement("div");
   topRow.className = "card-top-row";
   topRow.innerHTML = `
     <div class="card-title-group">
       <span class="card-name">👟 ${ma_str}</span>
+      <span class="card-view-orders-hint">Xem ${count} đơn →</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: var(--color-highlight)">0</span>
@@ -2591,6 +2819,11 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
+  // Click vào card để hiện bảng thông tin đơn hàng chi tiết
+  card.addEventListener("click", () => {
+    hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str);
+  });
+
   attach_right_click_copy(card, spend);
   return card;
 }
@@ -2602,6 +2835,8 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
   const card = document.createElement("div");
   card.className = `cozy-card ${cls}`;
   card.style.setProperty("--card-index", String(rank));
+  card.style.cursor = "pointer";
+  card.title = `Nhấn để xem ${count} đơn hàng chi tiết của ${name_str}`;
 
   const topRow = document.createElement("div");
   topRow.className = "card-top-row";
@@ -2609,6 +2844,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
     <div class="card-title-group">
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
+      <span class="card-view-orders-hint">Xem ${count} đơn →</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -2635,6 +2871,11 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
 
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
+
+  // Click vào top SP để hiện bảng thông tin đơn hàng chi tiết toàn công ty
+  card.addEventListener("click", () => {
+    hien_thi_bang_don_hang_chi_tiet(null, name_str);
+  });
 
   attach_right_click_copy(card, spend);
   return card;
@@ -3627,12 +3868,73 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // Modal Chi Tiết Đơn Hàng (v8.6.39)
+  const odSearchInput = document.getElementById("odSearchInput");
+  const odClearBtn = document.getElementById("btnClearOdSearch");
+
+  odSearchInput?.addEventListener("input", () => {
+    const q = odSearchInput.value.trim().toLowerCase();
+    if (odClearBtn) odClearBtn.classList.toggle("hidden", !q);
+
+    if (!q) {
+      render_order_detail_table(current_od_raw_list);
+      return;
+    }
+
+    const filtered = current_od_raw_list.filter((o) => {
+      return (
+        (o.ho_ten || "").toLowerCase().includes(q) ||
+        (o.sdt || "").toLowerCase().includes(q) ||
+        (o.ma_van_don || "").toLowerCase().includes(q) ||
+        (o.dia_chi || "").toLowerCase().includes(q) ||
+        (o.dong_sp || "").toLowerCase().includes(q) ||
+        (o.mau_sac || "").toLowerCase().includes(q) ||
+        (o.size || "").toLowerCase().includes(q) ||
+        (o.nen_tang || "").toLowerCase().includes(q) ||
+        (o.sale || "").toLowerCase().includes(q)
+      );
+    });
+
+    render_order_detail_table(filtered);
+  });
+
+  odClearBtn?.addEventListener("click", () => {
+    if (odSearchInput) {
+      odSearchInput.value = "";
+      odClearBtn.classList.add("hidden");
+      render_order_detail_table(current_od_raw_list);
+      odSearchInput.focus();
+    }
+  });
+
+  document.getElementById("btnCloseOrderDetail")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dong_bang_don_hang_chi_tiet();
+  });
+  document.getElementById("btnDismissOrderDetail")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dong_bang_don_hang_chi_tiet();
+  });
+
+  document.getElementById("orderDetailModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "orderDetailModal") {
+      dong_bang_don_hang_chi_tiet();
+    }
+  });
+
+  document.querySelector(".order-detail-card")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
   window.addEventListener("click", () => {
     hide_all_popups();
   });
 
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") hide_all_popups();
+    if (e.key === "Escape") {
+      hide_all_popups();
+      dong_bang_don_hang_chi_tiet();
+    }
   });
 
   // Kiểm tra trạng thái đăng nhập khi mở app

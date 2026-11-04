@@ -7,7 +7,7 @@
   <meta name="microsoft" content="notranslate" />
   <meta name="translate" content="no" />
   <meta http-equiv="Content-Language" content="vi" />
-  <title>APP LÂM v8.6.38</title>
+  <title>APP LÂM v8.6.39</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="shortcut icon" href="/favicon.ico" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233D2314'/%3E%3Crect x='2.5' y='2.5' width='59' height='59' rx='10' fill='none' stroke='%23FAF5ED' stroke-width='2.5'/%3E%3Ctext x='32' y='45' font-family='Arial, sans-serif' font-size='38' font-weight='bold' fill='%23FAF5ED' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E" />
@@ -28,7 +28,7 @@
     <!-- Top Header Row -->
     <header class="header-top-frame">
       <div class="cozy-header-card main-title-card">
-        <div class="app-logo-badge" title="APP LÂM v8.6.38 - Đang trực chiến">
+        <div class="app-logo-badge" title="APP LÂM v8.6.39 - Đang trực chiến">
           <span class="logo-letter">L</span>
           <span class="live-dot" id="livePollIndicator" title="Đang trực chiến quét đơn mới mỗi 3 giây"></span>
         </div>
@@ -149,7 +149,7 @@
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-choco btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon" id="headerUpdateIcon">↻</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.38</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.39</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -337,6 +337,75 @@
   <!-- Cursor Copy Toast -->
   <div id="cursorToast" class="cursor-toast hidden" role="status" aria-live="polite"></div>
 
+  <!-- Modal Chi Tiết Đơn Hàng Của Sản Phẩm / MKT (v8.6.39) -->
+  <div id="orderDetailModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Chi tiết đơn hàng đã đếm">
+    <div class="order-detail-card">
+      <div class="od-header">
+        <div class="od-header-info">
+          <div class="od-tag-row">
+            <span class="od-tag-pill" id="odMktBadge">MKT</span>
+            <span class="od-tag-sp" id="odSpBadge">SẢN PHẨM</span>
+            <span class="od-tag-count" id="odCountBadge">0 đơn đã đếm</span>
+          </div>
+          <h2 class="od-title" id="odTitleText">DANH SÁCH ĐƠN HÀNG ĐÃ ĐẾM</h2>
+          <div class="od-meta-row">
+            <span class="od-meta-item" id="odDateRangeText">Ngày ...</span>
+            <span class="od-meta-divider">•</span>
+            <span class="od-meta-item" id="odRevenueText">Tổng DS: 0 đ</span>
+          </div>
+        </div>
+        <div class="od-header-actions">
+          <div class="od-search-box">
+            <input type="text" id="odSearchInput" class="od-search-input" placeholder="🔍 Tìm tên, SĐT, mã vận đơn, địa chỉ..." autocomplete="off" />
+            <button type="button" id="btnClearOdSearch" class="od-search-clear hidden" title="Xóa tìm kiếm">✕</button>
+          </div>
+          <button type="button" id="btnCloseOrderDetail" class="od-close-btn" aria-label="Đóng" title="Đóng (Esc)">✕</button>
+        </div>
+      </div>
+
+      <div class="od-table-wrapper" id="odTableWrapper">
+        <table class="od-table" id="odTable">
+          <thead>
+            <tr>
+              <th class="col-stt">STT</th>
+              <th class="col-time">Thời gian</th>
+              <th class="col-mvd">Mã vận đơn</th>
+              <th class="col-hoten">Họ tên</th>
+              <th class="col-sdt">Số điện thoại</th>
+              <th class="col-diachi">Địa chỉ</th>
+              <th class="col-dongsp">Dòng SP</th>
+              <th class="col-mausac">Màu sắc</th>
+              <th class="col-size">Size</th>
+              <th class="col-giaban">Giá bán</th>
+              <th class="col-phiship">Phí Ship</th>
+              <th class="col-nentang">Nền tảng</th>
+              <th class="col-sale">Sale</th>
+            </tr>
+          </thead>
+          <tbody id="odTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+        <div id="odEmptyState" class="od-empty-state hidden">
+          <div class="od-empty-icon">📦</div>
+          <div class="od-empty-title">Không tìm thấy đơn hàng nào</div>
+          <div class="od-empty-desc">Chưa có đơn hàng nào khớp với điều kiện lọc hoặc từ khóa tìm kiếm.</div>
+        </div>
+      </div>
+
+      <div class="od-footer">
+        <div class="od-footer-summary" id="odFooterSummary">
+          Hiển thị 0 đơn hàng
+        </div>
+        <div class="od-footer-actions">
+          <button type="button" id="btnDismissOrderDetail" class="rounded-btn btn-choco" style="padding: 7px 22px; font-weight: 700;">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bottom-Right Corner Order Notification Popup Stack -->
   <div id="cornerPopupContainer" class="corner-popup-container" aria-live="assertive"></div>
 
@@ -357,7 +426,7 @@
     <div class="update-celebration-card">
       <div class="uc-tag">HỆ THỐNG</div>
       <h2 class="uc-title">CẬP NHẬT THÀNH CÔNG</h2>
-      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.38</div>
+      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.39</div>
       <p class="uc-desc">Ứng dụng đã hoàn tất cập nhật lên phiên bản mới nhất.</p>
       <div class="uc-action-row">
         <button type="button" id="btnDismissCelebration" class="uc-btn">
