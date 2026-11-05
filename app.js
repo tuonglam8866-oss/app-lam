@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.63";
+const APP_FRONTEND_VERSION = "8.6.65";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3644,7 +3644,7 @@ async function quet_don_dinh_ky() {
       const danh_sach_doc = [];
       const danh_sach_toast = [];
 
-      for (let i = 1; i < Math.Min(15, rowsTb.length); i++) {
+      for (let i = 1; i < Math.min(15, rowsTb.length); i++) {
         const r = rowsTb[i];
         const tg = String(r[colTg] || "").trim();
         const sdt = String(r[colSdt] || "").trim();
@@ -3656,6 +3656,7 @@ async function quet_don_dinh_ky() {
 
         const mktClean = chuan_hoa_mkt_ten(mkt);
         const spClean = chuan_hoa_sp_ten(sp);
+        if (!mktClean && (spClean === "Sản phẩm" || !spClean)) continue;
 
         if (mktClean) {
           danh_sach_doc.push(`${mktClean} ơi, có đơn rồi`);
