@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.62";
+const APP_FRONTEND_VERSION = "8.6.63";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -59,12 +59,22 @@ function get_fb_token() {
   return decode_protected_token(FB_TOKEN_PROTECTED);
 }
 
+function bo_dau_tieng_viet(str) {
+  if (!str) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u0111]/g, "d")
+    .replace(/[\u0110]/g, "D");
+}
+
 const LIST_MKT_FB = [
   { ten: "LÂM", id: "act_1219584325802699" },
   { ten: "TH.LÂM", id: "act_2795566000842055" },
   { ten: "PHÚC", id: "act_565886575873090" },
   { ten: "TÂM", id: "act_611714185179363" },
   { ten: "SAN", id: "act_1333165132087237" },
+  { ten: "D\u0168NG", id: "act_1333165132087237" },
 ];
 
 const TU_DIEN_PHAT_AM = {
@@ -283,6 +293,8 @@ const TU_KHOA_LOAI_BO = new Set([
   "PHÚC",
   "PHUC",
   "SAN",
+  "D\u0168NG",
+  "DUNG",
   "TH.LÂM",
   "TH.LAM",
   "THANH LÂM",
@@ -1478,13 +1490,24 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
 
   const time_range = JSON.stringify({ since: start_str, until: end_str });
 
+  const uniqueAccounts = [];
+  const seenActs = new Set();
+  for (const m of LIST_MKT_FB) {
+    if (!seenActs.has(m.id)) {
+      seenActs.add(m.id);
+      uniqueAccounts.push(m.id);
+    }
+  }
+
   await Promise.all(
-    LIST_MKT_FB.map(async (mkt) => {
-      const mkt_ten = mkt.ten;
+    uniqueAccounts.map(async (actId) => {
       let url =
-        `https://graph.facebook.com/v19.0/${mkt.id}/insights` +
-        `?level=campaign&fields=campaign_name,spend` +
-        `&time_range=${encodeURIComponent(time_range)}&limit=100&access_token=${get_fb_token()}`;
+        "https://graph.facebook.com/v19.0/" +
+        actId +
+        "/insights?level=campaign&fields=campaign_name,spend&time_range=" +
+        encodeURIComponent(time_range) +
+        "&limit=100&access_token=" +
+        get_fb_token();
 
       while (url) {
         try {
@@ -1505,9 +1528,26 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
             if (!spend || spend <= 0) continue;
 
             const ten_mau = trich_xuat_ten_mau_thong_minh(camp_name);
-            local_chi_tiet[mkt_ten][ten_mau] =
-              (local_chi_tiet[mkt_ten][ten_mau] || 0.0) + spend;
-            local_tong[mkt_ten] += spend;
+            const campUpper = camp_name.toUpperCase();
+            const campNoDau = bo_dau_tieng_viet(camp_name).toUpperCase();
+
+            let targetMkt = null;
+            if (actId === "act_1333165132087237") {
+              if (campNoDau.includes("DUNG")) {
+                targetMkt = "D\u0168NG";
+              } else if (campUpper.includes("LS")) {
+                targetMkt = "SAN";
+              }
+            } else {
+              const found = LIST_MKT_FB.find((m) => m.id === actId);
+              if (found) targetMkt = found.ten;
+            }
+
+            if (targetMkt && local_chi_tiet[targetMkt]) {
+              local_chi_tiet[targetMkt][ten_mau] =
+                (local_chi_tiet[targetMkt][ten_mau] || 0.0) + spend;
+              local_tong[targetMkt] += spend;
+            }
           }
 
           if (res.paging && res.paging.next) {
@@ -1608,6 +1648,8 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
               mkt_norm = "TÂM";
             } else if (mkt.includes("SAN")) {
               mkt_norm = "SAN";
+            } else if (mkt.includes("D\u0168NG") || mkt.includes("DUNG")) {
+              mkt_norm = "D\u0168NG";
             } else {
               mkt_norm = mkt;
             }
@@ -1708,6 +1750,8 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp) {
         mkt_norm = "TÂM";
       } else if (mkt.includes("SAN")) {
         mkt_norm = "SAN";
+      } else if (mkt.includes("D\u0168NG") || mkt.includes("DUNG")) {
+        mkt_norm = "D\u0168NG";
       } else {
         mkt_norm = mkt;
       }
@@ -1905,6 +1949,8 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
             mkt_norm = "TÂM";
           } else if (mkt.includes("SAN")) {
             mkt_norm = "SAN";
+          } else if (mkt.includes("D\u0168NG") || mkt.includes("DUNG")) {
+            mkt_norm = "D\u0168NG";
           } else {
             mkt_norm = mkt;
           }
