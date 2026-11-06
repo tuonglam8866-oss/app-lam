@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg-main: #FAF5ED;
   --choco-dark: #3D2314;
   --choco-muted: #7A5E4C;
@@ -2851,4 +2851,78 @@ input::-ms-clear {
 [data-theme="dark"] .cozy-card:hover .card-view-orders-hint {
   background: rgba(245, 176, 65, 0.18);
   color: #F5B041;
+}
+
+/* Nút xem chi tiết đơn trên thẻ MKT */
+.card-view-orders-hint.clickable-hint {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(180, 83, 9, 0.1);
+  color: #B45309;
+  border: 1px solid rgba(180, 83, 9, 0.25);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.card-view-orders-hint.clickable-hint:hover {
+  background: #B45309;
+  color: #FFFFFF !important;
+  border-color: #B45309;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.3);
+}
+[data-theme="dark"] .card-view-orders-hint.clickable-hint {
+  background: rgba(245, 176, 65, 0.15);
+  color: #F5B041;
+  border-color: rgba(245, 176, 65, 0.3);
+}
+[data-theme="dark"] .card-view-orders-hint.clickable-hint:hover {
+  background: #F5B041;
+  color: #1A120B !important;
+  border-color: #F5B041;
+}
+
+/* Banner nút xem tất cả đơn trong trang chi tiết MKT */
+.mkt-view-all-banner {
+  margin-bottom: 12px;
+  width: 100%;
+}
+.btn-mkt-view-all-orders {
+  width: 100%;
+  background: linear-gradient(135deg, #FAF5ED 0%, #F5EBE1 100%);
+  border: 1.5px dashed rgba(180, 83, 9, 0.4);
+  color: #B45309;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+.btn-mkt-view-all-orders:hover {
+  background: #B45309;
+  color: #FFFFFF;
+  border-style: solid;
+  border-color: #B45309;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(180, 83, 9, 0.2);
+}
+[data-theme="dark"] .btn-mkt-view-all-orders {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(245, 176, 65, 0.35);
+  color: #F5B041;
+}
+[data-theme="dark"] .btn-mkt-view-all-orders:hover {
+  background: #F5B041;
+  color: #1A120B;
+  border-color: #F5B041;
 }

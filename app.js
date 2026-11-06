@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.68";
+const APP_FRONTEND_VERSION = "8.6.70";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -69,10 +69,10 @@ function bo_dau_tieng_viet(str) {
 }
 
 const LIST_MKT_FB = [
-  { ten: "LÂM", id: "act_1219584325802699" },
-  { ten: "TH.LÂM", id: "act_2795566000842055" },
-  { ten: "PHÚC", id: "act_565886575873090" },
-  { ten: "TÂM", id: "act_611714185179363" },
+  { ten: "L\u00c2M", id: "act_1219584325802699" },
+  { ten: "TH.L\u00c2M", id: "act_2795566000842055" },
+  { ten: "PH\u00daC", id: "act_565886575873090" },
+  { ten: "T\u00c2M", id: "act_611714185179363" },
   { ten: "SAN", id: "act_1333165132087237" },
   { ten: "D\u0168NG", id: "act_1333165132087237" },
 ];
@@ -1490,7 +1490,7 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
 
   const time_range = JSON.stringify({ since: start_str, until: end_str });
 
-  const uniqueAccounts = [];
+    const uniqueAccounts = [];
   const seenActs = new Set();
   for (const m of LIST_MKT_FB) {
     if (!seenActs.has(m.id)) {
@@ -1758,7 +1758,11 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp) {
     }
 
     if (mkt_norm === "KHÁC") continue;
-    if (ten_mkt && mkt_norm !== ten_mkt) continue;
+    if (ten_mkt) {
+      const matchMkt = (mkt_norm === ten_mkt) ||
+                       (bo_dau_tieng_viet(mkt_norm).toUpperCase() === bo_dau_tieng_viet(ten_mkt).toUpperCase());
+      if (!matchMkt) continue;
+    }
 
     const raw_sp_text = r.length > 5 ? String(r[5] || "").trim() : "";
     let ten_mau = "";
@@ -1770,8 +1774,11 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp) {
     ) {
       ten_mau = trich_xuat_ten_mau_thong_minh(raw_sp_text);
     }
-    if (!ten_mau) continue;
-    if (ten_sp && ten_mau !== ten_sp) continue;
+    if (ten_sp) {
+      if (!ten_mau || ten_mau !== ten_sp) continue;
+    } else {
+      if (!ten_mau) ten_mau = raw_sp_text || "Ch\u01b0a r\u00f5";
+    }
 
     let sdt = String(r[3] || "").trim();
     if (sdt.length === 9 && !sdt.startsWith("0")) {
@@ -2665,9 +2672,9 @@ function create_mkt_table_card(
     <div class="card-title-group">
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
-      <span class="card-click-hint">${dict.viewDetailHint}</span>
+      <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="B\u1ea5m \u0111\u1ec3 xem chi ti\u1ebft t\u1ea5t c\u1ea3 ${count} \u0111\u01a1n c\u1ee7a ${name_str}">\ud83d\udccb Xem ${count} \u0111\u01a1n \u2192</span>
     </div>
-    <div class="card-count-group">
+    <div class="card-count-group js-count-group" title="B\u1ea5m \u0111\u1ec3 xem chi ti\u1ebft t\u1ea5t c\u1ea3 ${count} \u0111\u01a1n c\u1ee7a ${name_str}" style="cursor: pointer;">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
       <span class="card-count-unit">${dict.ordersUnit}</span>
     </div>
@@ -2692,6 +2699,22 @@ function create_mkt_table_card(
 
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
+
+  const btnViewOrders = topRow.querySelector(".js-btn-view-mkt-orders");
+  if (btnViewOrders) {
+    btnViewOrders.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_don_hang_chi_tiet(name_str, null);
+    });
+  }
+
+  const countGroup = topRow.querySelector(".js-count-group");
+  if (countGroup) {
+    countGroup.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_don_hang_chi_tiet(name_str, null);
+    });
+  }
 
   card.addEventListener("click", () => onClick(name_str));
   attach_right_click_copy(card, spend);
@@ -2731,19 +2754,31 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   }
 
   if (spBadge) {
-    spBadge.textContent = `SẢN PHẨM: ${ten_sp}`;
+    if (ten_sp) {
+      spBadge.textContent = `S\u1ea2N PH\u1ea8M: ${ten_sp}`;
+      spBadge.classList.remove("hidden");
+    } else if (ten_mkt) {
+      spBadge.textContent = `T\u1ea4T C\u1ea2 M\u00c3 SP`;
+      spBadge.classList.remove("hidden");
+    } else {
+      spBadge.classList.add("hidden");
+    }
   }
 
   const tong_ds = orders.reduce((sum, o) => sum + (o.gia_ban || 0), 0);
 
   if (countBadge) {
-    countBadge.textContent = `${orders.length} đơn đã đếm`;
+    countBadge.textContent = `${orders.length} \u0111\u01a1n \u0111\u00e3 \u0111\u1ebfm`;
   }
 
   if (titleText) {
-    titleText.textContent = ten_mkt
-      ? `CHI TIẾT ĐƠN HÀNG: ${ten_mkt} - ${ten_sp}`
-      : `CHI TIẾT ĐƠN HÀNG: ${ten_sp}`;
+    if (ten_mkt && ten_sp) {
+      titleText.textContent = `CHI TI\u1ebeT \u0110\u01a0N H\u00c0NG: ${ten_mkt} - ${ten_sp}`;
+    } else if (ten_mkt) {
+      titleText.textContent = `CHI TI\u1ebeT \u0110\u01a0N H\u00c0NG MKT: ${ten_mkt} (T\u1ea4T C\u1ea2 M\u00c3 SP)`;
+    } else {
+      titleText.textContent = `CHI TI\u1ebeT \u0110\u01a0N H\u00c0NG: ${ten_sp}`;
+    }
   }
 
   if (dateRangeText) {
@@ -3046,6 +3081,19 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     if (headerMktIcon) headerMktIcon.textContent = "📊";
     headerMktText.textContent = dict.mktDetailHeader(ten_mkt);
     containerMkt.innerHTML = "";
+
+    const tong_don_mkt = stats_mkt_don[ten_mkt] || 0;
+    const banner = document.createElement("div");
+    banner.className = "mkt-view-all-banner";
+    banner.innerHTML = `
+      <button class="btn-mkt-view-all-orders" type="button" title="Xem danh s\u00e1ch t\u1ea5t c\u1ea3 \u0111\u01a1n c\u1ee7a ${ten_mkt}">
+        \ud83d\udccb Xem chi ti\u1ebft t\u1ea5t c\u1ea3 ${tong_don_mkt} \u0111\u01a1n c\u1ee7a ${ten_mkt} (T\u1ea5t c\u1ea3 m\u00e3 SP) \u2192
+      </button>
+    `;
+    banner.querySelector("button").addEventListener("click", () => {
+      hien_thi_bang_don_hang_chi_tiet(ten_mkt, null);
+    });
+    containerMkt.appendChild(banner);
 
     const chi_tiet_fb = fb_chi_tiet_map[ten_mkt] || {};
     const don_cua_mkt = stats_mkt_sp_don[ten_mkt] || {};
@@ -3644,7 +3692,7 @@ async function quet_don_dinh_ky() {
       const danh_sach_doc = [];
       const danh_sach_toast = [];
 
-      for (let i = 1; i < Math.min(15, rowsTb.length); i++) {
+      for (let i = 1; i < Math.Min(15, rowsTb.length); i++) {
         const r = rowsTb[i];
         const tg = String(r[colTg] || "").trim();
         const sdt = String(r[colSdt] || "").trim();
@@ -3656,7 +3704,7 @@ async function quet_don_dinh_ky() {
 
         const mktClean = chuan_hoa_mkt_ten(mkt);
         const spClean = chuan_hoa_sp_ten(sp);
-        if (!mktClean && (spClean === "Sản phẩm" || !spClean)) continue;
+        if (!mktClean && (spClean === "Sản phẩm" || spClean === "Sn phcm" || !spClean)) continue;
 
         if (mktClean) {
           danh_sach_doc.push(`${mktClean} ơi, có đơn rồi`);
