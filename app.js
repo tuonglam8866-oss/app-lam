@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.70";
+const APP_FRONTEND_VERSION = "8.6.80";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -66,6 +66,22 @@ function bo_dau_tieng_viet(str) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[\u0111]/g, "d")
     .replace(/[\u0110]/g, "D");
+}
+
+function la_don_hop_le_de_dem(trang_thai_raw) {
+  if (!trang_thai_raw) return false;
+  const s = String(trang_thai_raw).trim().toUpperCase();
+  const noDau = bo_dau_tieng_viet(s).toUpperCase();
+  return (
+    s.includes("\u0110\u00c3 L\u00caN \u0110\u01a0N") ||
+    noDau.includes("DA LEN DON") ||
+    s.includes("CH\u1ed0T CH\u01afA C\u00d3 H\u00c0NG") ||
+    noDau.includes("CHOT CHUA CO HANG") ||
+    s.includes("\u0110\u01a0N TEST") ||
+    noDau.includes("DON TEST") ||
+    s.includes("GIAO TH\u00c0NH C\u00d4NG") ||
+    noDau.includes("GIAO THANH CONG")
+  );
 }
 
 const LIST_MKT_FB = [
@@ -1629,12 +1645,7 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
       const is_matched_date = patternsArr.some((p) => tg.includes(p));
 
       if (is_matched_date) {
-        const trang_thai = String(r[13] || "").trim().toUpperCase();
-        if (
-          trang_thai.includes("ĐÃ LÊN ĐƠN") ||
-          trang_thai.includes("CHỐT CHƯA CÓ HÀNG") ||
-          trang_thai.includes("ĐƠN TEST")
-        ) {
+        if (la_don_hop_le_de_dem(r[13])) {
           const mkt = String(r[12] || "").trim().toUpperCase();
           let mkt_norm = "KHÁC";
           if (mkt && !["MKT", "MARKETER", "TÊN MKT", "SALE", "KHÁC", "KHAC"].includes(mkt)) {
@@ -1728,14 +1739,7 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp) {
     const is_matched_date = patternsArr.some((p) => tg.includes(p));
     if (!is_matched_date) continue;
 
-    const trang_thai = String(r[13] || "").trim().toUpperCase();
-    if (
-      !trang_thai.includes("ĐÃ LÊN ĐƠN") &&
-      !trang_thai.includes("CHỐT CHƯA CÓ HÀNG") &&
-      !trang_thai.includes("ĐƠN TEST")
-    ) {
-      continue;
-    }
+    if (!la_don_hop_le_de_dem(r[13])) continue;
 
     const mkt = String(r[12] || "").trim().toUpperCase();
     let mkt_norm = "KHÁC";
