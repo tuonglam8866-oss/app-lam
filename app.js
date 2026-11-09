@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.90";
+const APP_FRONTEND_VERSION = "8.6.91";
 let last_notified_update_version = (function () {
   try {
     return (
