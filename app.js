@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.88";
+const APP_FRONTEND_VERSION = "8.6.90";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2028,7 +2028,7 @@ function show_update_toast_notification(msg) {
     toast.style.pointerEvents = "none";
     document.body.appendChild(toast);
   }
-  toast.textContent = msg;
+  toast.textContent = String(msg || "").replace(/\s*\(v?\d+\.\d+\.\d+\)/gi, "").trim();
   toast.style.opacity = "1";
   toast.style.transform = "translateX(-50%) translateY(0)";
   setTimeout(() => {
@@ -3358,38 +3358,61 @@ let cal_pick_step = 0; // 0: sẵn sàng chọn ngày đầu, 1: đã chọn ng�
 let cal_temp_start = null;
 let cal_hover_date = null;
 
+function format_cal_month_text(m) {
+  return current_lang === "en" ? `Month ${m}` : current_lang === "zh" ? `${m}月` : `Tháng ${m}`;
+}
+
+function close_cal_custom_dropdowns() {
+  document.getElementById("calMonthMenu")?.classList.add("hidden");
+  document.getElementById("calYearMenu")?.classList.add("hidden");
+  document.getElementById("calMonthBtn")?.classList.remove("open");
+  document.getElementById("calYearBtn")?.classList.remove("open");
+}
+
 function sync_cal_dropdowns(year, month) {
-  const mSelect = document.getElementById("calMonthSelect");
-  const ySelect = document.getElementById("calYearSelect");
-  if (mSelect) {
-    if (mSelect.options.length === 0) {
-      for (let m = 1; m <= 12; m++) {
-        const opt = document.createElement("option");
-        opt.value = String(m);
-        opt.textContent = current_lang === "en" ? `Month ${m}` : current_lang === "zh" ? `${m}月` : `Tháng ${m}`;
-        mSelect.appendChild(opt);
-      }
-    } else {
-      for (let i = 0; i < mSelect.options.length; i++) {
-        const m = i + 1;
-        mSelect.options[i].textContent = current_lang === "en" ? `Month ${m}` : current_lang === "zh" ? `${m}月` : `Tháng ${m}`;
-      }
+  const mBtnText = document.getElementById("calMonthBtnText");
+  const yBtnText = document.getElementById("calYearBtnText");
+  const mMenu = document.getElementById("calMonthMenu");
+  const yMenu = document.getElementById("calYearMenu");
+
+  if (mBtnText) mBtnText.textContent = format_cal_month_text(month);
+  if (yBtnText) yBtnText.textContent = String(year);
+
+  if (mMenu) {
+    mMenu.innerHTML = "";
+    for (let m = 1; m <= 12; m++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cal-dd-opt" + (m === month ? " active" : "");
+      btn.textContent = format_cal_month_text(m);
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        current_cal_month = m;
+        close_cal_custom_dropdowns();
+        render_calendar_grid(current_cal_year, current_cal_month);
+      });
+      mMenu.appendChild(btn);
     }
-    mSelect.value = String(month);
   }
-  if (ySelect) {
+
+  if (yMenu) {
+    yMenu.innerHTML = "";
     const curY = new Date().getFullYear();
     const minY = Math.min(2023, year - 2);
     const maxY = Math.max(curY + 2, year + 2);
-    if (ySelect.options.length === 0) {
-      for (let y = minY; y <= maxY; y++) {
-        const opt = document.createElement("option");
-        opt.value = String(y);
-        opt.textContent = String(y);
-        ySelect.appendChild(opt);
-      }
+    for (let y = minY; y <= maxY; y++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cal-dd-opt" + (y === year ? " active" : "");
+      btn.textContent = String(y);
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        current_cal_year = y;
+        close_cal_custom_dropdowns();
+        render_calendar_grid(current_cal_year, current_cal_month);
+      });
+      yMenu.appendChild(btn);
     }
-    ySelect.value = String(year);
   }
 }
 
@@ -3434,7 +3457,7 @@ function update_cal_range_highlight() {
       hintEl.classList.add("picking");
     } else {
       const rangeStr = current_start_date === current_end_date ? current_start_date : `${current_start_date} → ${current_end_date}`;
-      hintEl.innerHTML = `<span class="cal-hint-icon">📅</span><span>${rangeStr}</span>`;
+      hintEl.innerHTML = `<span class="cal-hint-dot ready"></span><span>${rangeStr}</span>`;
       hintEl.classList.remove("picking");
     }
   }
@@ -3492,6 +3515,7 @@ function render_calendar_grid(year, month) {
 
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
+      close_cal_custom_dropdowns();
       if (cal_pick_step === 0) {
         // Click lần 1: Chọn mốc ngày bắt đầu
         cal_pick_step = 1;
@@ -3524,9 +3548,11 @@ function toggle_calendar_popup(targetType, anchorBtn) {
   document.getElementById("allCodesPopup")?.classList.add("hidden");
   document.getElementById("closingRatePopup")?.classList.add("hidden");
   settingsPopup?.classList.add("hidden");
+  close_cal_custom_dropdowns();
 
   if (!calPopup.classList.contains("hidden")) {
     calPopup.classList.add("hidden");
+    anchorBtn.classList.remove("is-open");
     current_cal_target = null;
     cal_pick_step = 0;
     cal_temp_start = null;
@@ -3546,8 +3572,9 @@ function toggle_calendar_popup(targetType, anchorBtn) {
   render_calendar_grid(current_cal_year, current_cal_month);
 
   calPopup.classList.remove("hidden");
+  anchorBtn.classList.add("is-open");
   const rect = anchorBtn.getBoundingClientRect();
-  const popupWidth = 304;
+  const popupWidth = 316;
   let left = rect.left;
   if (left + popupWidth > window.innerWidth - 12) {
     left = window.innerWidth - popupWidth - 12;
@@ -3587,6 +3614,8 @@ function hide_all_popups() {
   const settingsPopup = document.getElementById("settingsPopup");
   const ctxMenu = document.getElementById("contextMenu");
   if (calPopup) calPopup.classList.add("hidden");
+  document.getElementById("btnStartDate")?.classList.remove("is-open");
+  if (typeof close_cal_custom_dropdowns === "function") close_cal_custom_dropdowns();
   if (settingsPopup) settingsPopup.classList.add("hidden");
   if (ctxMenu) ctxMenu.classList.add("hidden");
   document.getElementById("allCodesPopup")?.classList.add("hidden");
@@ -4001,6 +4030,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("calNextBtn")?.addEventListener("click", (e) => {
     e.stopPropagation();
+    close_cal_custom_dropdowns();
     current_cal_month += 1;
     if (current_cal_month > 12) {
       current_cal_month = 1;
@@ -4009,21 +4039,33 @@ window.addEventListener("DOMContentLoaded", async () => {
     render_calendar_grid(current_cal_year, current_cal_month);
   });
 
-  document.getElementById("calMonthSelect")?.addEventListener("change", (e) => {
+  document.getElementById("calMonthBtn")?.addEventListener("click", (e) => {
     e.stopPropagation();
-    const val = parseInt(e.target.value, 10);
-    if (val >= 1 && val <= 12) {
-      current_cal_month = val;
-      render_calendar_grid(current_cal_year, current_cal_month);
+    const mMenu = document.getElementById("calMonthMenu");
+    const yMenu = document.getElementById("calYearMenu");
+    const mBtn = document.getElementById("calMonthBtn");
+    const yBtn = document.getElementById("calYearBtn");
+    yMenu?.classList.add("hidden");
+    yBtn?.classList.remove("open");
+    if (mMenu) {
+      const willOpen = mMenu.classList.contains("hidden");
+      mMenu.classList.toggle("hidden", !willOpen);
+      mBtn?.classList.toggle("open", willOpen);
     }
   });
 
-  document.getElementById("calYearSelect")?.addEventListener("change", (e) => {
+  document.getElementById("calYearBtn")?.addEventListener("click", (e) => {
     e.stopPropagation();
-    const val = parseInt(e.target.value, 10);
-    if (val >= 2000 && val <= 2100) {
-      current_cal_year = val;
-      render_calendar_grid(current_cal_year, current_cal_month);
+    const mMenu = document.getElementById("calMonthMenu");
+    const yMenu = document.getElementById("calYearMenu");
+    const mBtn = document.getElementById("calMonthBtn");
+    const yBtn = document.getElementById("calYearBtn");
+    mMenu?.classList.add("hidden");
+    mBtn?.classList.remove("open");
+    if (yMenu) {
+      const willOpen = yMenu.classList.contains("hidden");
+      yMenu.classList.toggle("hidden", !willOpen);
+      yBtn?.classList.toggle("open", willOpen);
     }
   });
 
@@ -4192,10 +4234,10 @@ window.addEventListener("DOMContentLoaded", async () => {
           hien_thi_bang_chuc_mung_cap_nhat(data.version || APP_FRONTEND_VERSION);
           return;
         } else {
-          show_update_toast_notification("Bạn đang dùng phiên bản mới nhất (v" + APP_FRONTEND_VERSION + ")");
+          show_update_toast_notification("Bạn đang dùng phiên bản mới nhất");
         }
       } else {
-        show_update_toast_notification("Bạn đang dùng phiên bản mới nhất (v" + APP_FRONTEND_VERSION + ")");
+        show_update_toast_notification("Bạn đang dùng phiên bản mới nhất");
       }
     } catch (e) {
     } finally {
@@ -4218,7 +4260,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document
     .getElementById("calendarPopup")
-    ?.addEventListener("click", (e) => e.stopPropagation());
+    ?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      close_cal_custom_dropdowns();
+    });
   document
     .getElementById("settingsPopup")
     ?.addEventListener("click", (e) => e.stopPropagation());
