@@ -3430,10 +3430,11 @@ function update_cal_range_highlight() {
   const hintEl = document.getElementById("calRangeHint");
   if (hintEl) {
     if (cal_pick_step === 1 && cal_temp_start) {
-      hintEl.textContent = `${rStart} → ${rEnd} (Nhấp chọn ngày kết thúc)`;
+      hintEl.innerHTML = `<span class="cal-hint-dot"></span><span>${rStart} → ${rEnd}</span><span class="cal-hint-sub">Chọn ngày cuối</span>`;
       hintEl.classList.add("picking");
     } else {
-      hintEl.textContent = `${current_start_date} → ${current_end_date}`;
+      const rangeStr = current_start_date === current_end_date ? current_start_date : `${current_start_date} → ${current_end_date}`;
+      hintEl.innerHTML = `<span class="cal-hint-icon">📅</span><span>${rangeStr}</span>`;
       hintEl.classList.remove("picking");
     }
   }
@@ -3450,6 +3451,8 @@ function render_calendar_grid(year, month) {
   sync_cal_dropdowns(year, month);
 
   grid.innerHTML = "";
+
+  const todayStr = format_ymd_date(new Date());
 
   // Chủ nhật (CN) là cột đầu tiên (index 0 .. Thứ Bảy index 6), giống chuẩn lịch Facebook Ads
   const sundayBasedOffset = new Date(year, month - 1, 1).getDay();
@@ -3472,10 +3475,12 @@ function render_calendar_grid(year, month) {
     cell.setAttribute("data-date", d_str);
     if (colIdx === 0 || day === 1) cell.classList.add("row-start");
     if (colIdx === 6 || day === daysInMonth) cell.classList.add("row-end");
+    if (colIdx === 0 || colIdx === 6) cell.classList.add("is-weekend");
 
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "cal-day-btn";
+    if (d_str === todayStr) btn.classList.add("is-today");
     btn.textContent = String(day);
 
     cell.addEventListener("mouseenter", () => {

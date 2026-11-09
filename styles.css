@@ -2927,19 +2927,39 @@ input::-ms-clear {
   border-color: #F5B041;
 }
 
-/* === FACEBOOK ADS SINGLE CALENDAR RANGE PICKER (v8.6.88) === */
+/* === COZY ESPRESSO-LATTE SINGLE CALENDAR RANGE PICKER (v8.6.89) === */
 .btn-date-range-unified {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 13px;
-  font-weight: 700;
+  gap: 7px;
+  padding: 6px 14px;
+  font-weight: 800;
+  background: linear-gradient(180deg, #FFFDF9 0%, #F6ECE0 100%);
+  border: 1.5px solid #C8B098;
+  color: var(--choco-dark);
+  box-shadow: 0 2px 6px rgba(61, 35, 20, 0.06), inset 0 1px 0 #FFFFFF;
+}
+
+.btn-date-range-unified:hover:not(:disabled) {
+  background: linear-gradient(180deg, #FAF2E6 0%, #EFE1D0 100%);
+  border-color: #9E7B5F;
+}
+
+[data-theme="dark"] .btn-date-range-unified {
+  background: linear-gradient(180deg, #35271E 0%, #2A1E17 100%);
+  border-color: #5C4435;
+  color: #F3E9DC;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 240, 225, 0.06);
 }
 
 .date-range-sep {
-  color: var(--choco-muted);
-  font-weight: 600;
+  color: #B45309;
+  font-weight: 800;
   margin: 0 2px;
+}
+
+[data-theme="dark"] .date-range-sep {
+  color: #F5B041;
 }
 
 .date-range-caret {
@@ -2948,121 +2968,187 @@ input::-ms-clear {
   margin-left: 2px;
 }
 
+/* Khung bảng lịch Tone Kem Cozy & Viền Cà Phê Ấm */
 .calendar-popup {
-  padding: 16px 18px 14px;
-  width: 304px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+  padding: 14px 16px 14px;
+  width: 316px;
+  background: linear-gradient(165deg, #FFFDF9 0%, #FAF1E4 100%);
+  border: 2px solid #C6AD94;
+  border-radius: 16px;
+  box-shadow:
+    0 18px 42px rgba(61, 35, 20, 0.22),
+    0 4px 12px rgba(61, 35, 20, 0.08),
+    inset 0 1px 0 #FFFFFF;
 }
 
 [data-theme="dark"] .calendar-popup {
-  background: #242526;
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(165deg, #2D211A 0%, #221913 100%);
+  border-color: #5C4435;
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 240, 225, 0.08);
 }
 
+/* Thanh điều hướng Tháng / Năm dạng khay Kem Latte nổi */
 .cal-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   gap: 6px;
+  padding: 5px 6px;
+  background: linear-gradient(180deg, #F4EAE0 0%, #EBDDD0 100%);
+  border: 1.5px solid #D6C1AC;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+[data-theme="dark"] .cal-nav {
+  background: linear-gradient(180deg, #382920 0%, #2C2018 100%);
+  border-color: #523D2F;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 225, 0.05);
 }
 
 .cal-nav-btn {
-  background: transparent;
-  color: #1C2B33;
-  border: none;
-  border-radius: 6px;
-  width: 28px;
-  height: 28px;
+  background: linear-gradient(180deg, #FFFDF9 0%, #F5ECE0 100%);
+  color: #4A3020;
+  border: 1px solid #CBB49E;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
   cursor: pointer;
-  transition: background 0.15s ease;
+  box-shadow: 0 2px 4px rgba(61, 35, 20, 0.06);
+  transition: all 0.16s ease;
 }
 
 .cal-nav-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
-  transform: none;
+  background: linear-gradient(135deg, #765742 0%, #543C2C 100%);
+  color: #FAF5ED;
+  border-color: #4D3627;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(61, 35, 20, 0.18);
+}
+
+.cal-nav-btn:active {
+  transform: translateY(0);
 }
 
 [data-theme="dark"] .cal-nav-btn {
-  color: #E4E6EB;
+  background: linear-gradient(180deg, #433126 0%, #34251C 100%);
+  color: #F3E9DC;
+  border-color: #5E4636;
 }
 
 [data-theme="dark"] .cal-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #9C7154 0%, #75523B 100%);
+  color: #FFFDF9;
+  border-color: #B38668;
 }
 
 .cal-selects-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .cal-select {
   appearance: none;
   -webkit-appearance: none;
-  background-color: transparent;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath fill='%231C2B33' d='M0 0l5 6 5-6z'/%3e%3c/svg%3e");
+  background-color: #FFFDF9;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath fill='%23543C2C' d='M0 0l5 6 5-6z'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
-  background-position: right 6px center;
+  background-position: right 8px center;
   background-size: 9px 5px;
-  border: none;
-  border-radius: 6px;
-  padding: 4px 20px 4px 8px;
+  border: 1px solid #CBB49E;
+  border-radius: 8px;
+  padding: 5px 22px 5px 10px;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1C2B33;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #3D2314;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  box-shadow: 0 1px 3px rgba(61, 35, 20, 0.05);
+  transition: all 0.15s ease;
 }
 
 .cal-select:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: #FAF3E8;
+  border-color: #9E7B5F;
 }
 
 .cal-select:focus {
   outline: none;
-  background-color: rgba(0, 0, 0, 0.07);
+  border-color: #765742;
+  box-shadow: 0 0 0 2px rgba(118, 87, 66, 0.18);
+}
+
+.cal-select option {
+  background: #FFFDF9;
+  color: #3D2314;
+  font-weight: 700;
 }
 
 [data-theme="dark"] .cal-select {
-  color: #E4E6EB;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath fill='%23E4E6EB' d='M0 0l5 6 5-6z'/%3e%3c/svg%3e");
+  color: #F3E9DC;
+  background-color: #2A1E17;
+  border-color: #5E4636;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath fill='%23E6D2BE' d='M0 0l5 6 5-6z'/%3e%3c/svg%3e");
+}
+
+[data-theme="dark"] .cal-select:hover {
+  background-color: #36271E;
+  border-color: #8C654B;
 }
 
 [data-theme="dark"] .cal-select option {
-  background: #242526;
-  color: #E4E6EB;
+  background: #281E18;
+  color: #F3E9DC;
 }
 
+/* Hàng Thứ trong tuần (CN -> T7) */
 .cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
   margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(122, 94, 76, 0.22);
+}
+
+[data-theme="dark"] .cal-weekdays {
+  border-bottom-color: rgba(184, 160, 140, 0.18);
 }
 
 .cal-weekdays span {
-  font-size: 12px;
-  font-weight: 500;
-  color: #65676B;
-  padding: 4px 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #7A5E4C;
+  padding: 3px 0;
+  letter-spacing: 0.3px;
+}
+
+.cal-weekdays span:first-child,
+.cal-weekdays span:last-child {
+  color: #B45309;
 }
 
 [data-theme="dark"] .cal-weekdays span {
-  color: #B0B3B8;
+  color: #B8A08C;
 }
 
+[data-theme="dark"] .cal-weekdays span:first-child,
+[data-theme="dark"] .cal-weekdays span:last-child {
+  color: #F5B041;
+}
+
+/* Lưới ngày 7 cột liền mạch */
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -3072,120 +3158,196 @@ input::-ms-clear {
 
 .cal-cell {
   position: relative;
-  height: 34px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Dải nền màu xanh nhạt kết nối liền mạch giữa ngày bắt đầu và ngày kết thúc (Facebook Ads style) */
+/* Dải nền màu Kem Caramel / Latte kết nối liền mạch giữa ngày đầu & ngày cuối */
 .cal-cell.in-range {
-  background-color: #D2E7FF;
+  background-color: #EAD8C3;
 }
 
 .cal-cell.in-band.is-start:not(.is-single) {
-  background: linear-gradient(to right, transparent 50%, #D2E7FF 50%);
+  background: linear-gradient(to right, transparent 50%, #EAD8C3 50%);
 }
 
 .cal-cell.in-band.is-end:not(.is-single) {
-  background: linear-gradient(to left, transparent 50%, #D2E7FF 50%);
+  background: linear-gradient(to left, transparent 50%, #EAD8C3 50%);
 }
 
 .cal-cell.in-range.row-start,
 .cal-cell.in-band.is-end.row-start:not(.is-single) {
-  border-top-left-radius: 7px;
-  border-bottom-left-radius: 7px;
+  border-top-left-radius: 9px;
+  border-bottom-left-radius: 9px;
 }
 
 .cal-cell.in-range.row-end,
 .cal-cell.in-band.is-start.row-end:not(.is-single) {
-  border-top-right-radius: 7px;
-  border-bottom-right-radius: 7px;
+  border-top-right-radius: 9px;
+  border-bottom-right-radius: 9px;
 }
 
 [data-theme="dark"] .cal-cell.in-range {
-  background-color: rgba(45, 136, 255, 0.24);
+  background-color: rgba(156, 113, 84, 0.30);
 }
 
 [data-theme="dark"] .cal-cell.in-band.is-start:not(.is-single) {
-  background: linear-gradient(to right, transparent 50%, rgba(45, 136, 255, 0.24) 50%);
+  background: linear-gradient(to right, transparent 50%, rgba(156, 113, 84, 0.30) 50%);
 }
 
 [data-theme="dark"] .cal-cell.in-band.is-end:not(.is-single) {
-  background: linear-gradient(to left, transparent 50%, rgba(45, 136, 255, 0.24) 50%);
+  background: linear-gradient(to left, transparent 50%, rgba(156, 113, 84, 0.30) 50%);
 }
 
 .cal-day-btn {
   width: 100%;
   height: 34px;
-  border: none;
-  border-radius: 7px;
+  border: 1.5px solid transparent;
+  border-radius: 9px;
   background: transparent;
-  color: #1C2B33;
+  color: #3D2314;
   font-family: inherit;
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   position: relative;
   z-index: 1;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition: all 0.14s ease;
+}
+
+.cal-cell.is-weekend .cal-day-btn {
+  color: #92400E;
 }
 
 .cal-day-btn:hover {
-  background-color: rgba(10, 104, 255, 0.12);
+  background-color: #EFE2D2;
+  border-color: #CBB49E;
+  color: #3D2314;
   transform: none;
 }
 
-.cal-cell.in-range .cal-day-btn {
-  color: #1C2B33;
-  font-weight: 500;
+/* Đánh dấu ngày Hôm nay bằng viền Caramel ấm */
+.cal-day-btn.is-today:not(.selected) {
+  border: 1.5px dashed #C87D32;
+  background-color: rgba(245, 158, 11, 0.08);
+  color: #B45309;
+  font-weight: 800;
 }
 
-/* Nút ngày đầu & ngày cuối màu xanh đậm chuẩn Facebook Ads */
+.cal-cell.in-range .cal-day-btn {
+  color: #3D2314;
+  font-weight: 800;
+}
+
+/* Nút ngày đầu & ngày cuối Tone Nâu Choco Espresso ấm đồng bộ với App */
 .cal-day-btn.selected,
 .cal-cell.is-start .cal-day-btn,
 .cal-cell.is-end .cal-day-btn {
-  background: #0866FF !important;
-  color: #FFFFFF !important;
-  font-weight: 700;
-  border-radius: 7px;
-  box-shadow: 0 2px 6px rgba(8, 102, 255, 0.28);
+  background: linear-gradient(135deg, #7A563E 0%, #4E3423 100%) !important;
+  color: #FFFDF9 !important;
+  border: 1.5px solid #3D2618 !important;
+  font-weight: 800;
+  border-radius: 9px;
+  box-shadow:
+    0 4px 10px rgba(78, 52, 35, 0.32),
+    inset 0 1px 0 rgba(255, 245, 230, 0.26);
 }
 
 [data-theme="dark"] .cal-day-btn {
-  color: #E4E6EB;
+  color: #F3E9DC;
+}
+
+[data-theme="dark"] .cal-cell.is-weekend .cal-day-btn {
+  color: #F5B041;
+}
+
+[data-theme="dark"] .cal-day-btn:hover {
+  background-color: #3D2D22;
+  border-color: #6E523F;
+  color: #FFFDF9;
+}
+
+[data-theme="dark"] .cal-day-btn.is-today:not(.selected) {
+  border-color: #F5B041;
+  background-color: rgba(245, 176, 65, 0.12);
+  color: #F5B041;
 }
 
 [data-theme="dark"] .cal-cell.in-range .cal-day-btn {
-  color: #FFFFFF;
+  color: #FFFDF9;
 }
 
 [data-theme="dark"] .cal-day-btn.selected,
 [data-theme="dark"] .cal-cell.is-start .cal-day-btn,
 [data-theme="dark"] .cal-cell.is-end .cal-day-btn {
-  background: #2D88FF !important;
-  color: #FFFFFF !important;
+  background: linear-gradient(135deg, #B5835E 0%, #855A3B 100%) !important;
+  color: #FFFDF9 !important;
+  border-color: #CFA07C !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
+/* Thẻ tóm tắt khoảng ngày ở chân lịch */
 .cal-range-hint {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.07);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #65676B;
-  text-align: center;
+  margin-top: 11px;
+  padding: 7px 12px;
+  background: linear-gradient(180deg, #F5ECE0 0%, #EBDDD0 100%);
+  border: 1px solid #D6C1AC;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4E3423;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.cal-hint-icon {
+  font-size: 12.5px;
+}
+
+.cal-hint-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #D97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.22);
+}
+
+.cal-hint-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400E;
+  background: rgba(217, 119, 6, 0.14);
+  padding: 1px 7px;
+  border-radius: 999px;
 }
 
 .cal-range-hint.picking {
-  color: #0866FF;
+  background: linear-gradient(135deg, #FFF8EB 0%, #FDECC8 100%);
+  border-color: #E2B870;
+  color: #92400E;
 }
 
 [data-theme="dark"] .cal-range-hint {
-  border-top-color: rgba(255, 255, 255, 0.1);
-  color: #B0B3B8;
+  background: linear-gradient(180deg, #35271E 0%, #2A1E17 100%);
+  border-color: #523D2F;
+  color: #E6D2BE;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .cal-range-hint.picking {
-  color: #4599FF;
+  background: linear-gradient(135deg, #3D2C1A 0%, #2F2113 100%);
+  border-color: #8C6530;
+  color: #F5B041;
+}
+
+[data-theme="dark"] .cal-hint-sub {
+  color: #F5B041;
+  background: rgba(245, 176, 65, 0.16);
 }
