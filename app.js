@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.83";
+const APP_FRONTEND_VERSION = "8.6.86";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -354,7 +354,7 @@ const I18N = {
     mktReportHeader: "BÁO CÁO MKT (Chuột phải Copy CP)",
     mktDetailHeader: (m) => `CHI TIẾT: ${m} (Chuột phải Copy CP)`,
     btnBack: "← Quay lại",
-    top5SpHeader: "TOP 5 MÃ TỔNG CÔNG TY",
+    top5SpHeader: "TOP 10 MÃ TỔNG CÔNG TY",
     emptyMktList: "Chưa có đơn và chưa có CP",
     emptyMktDetail: (m) => `${m} chưa có CP Ads và chưa có đơn.`,
     emptySpList: "Chưa ghi nhận mẫu nào",
@@ -520,7 +520,7 @@ const I18N = {
     mktReportHeader: "MARKETER REPORT (Right-click to Copy Spend)",
     mktDetailHeader: (m) => `DETAIL: ${m} (Right-click to Copy Spend)`,
     btnBack: "← Back",
-    top5SpHeader: "TOP 5 PRODUCTS",
+    top5SpHeader: "TOP 10 PRODUCTS",
     emptyMktList: "No orders or ad spend recorded",
     emptyMktDetail: (m) => `${m} has no ad spend or orders yet.`,
     emptySpList: "No product models recorded",
@@ -3213,15 +3213,15 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     return a.sp.localeCompare(b.sp);
   });
 
-  const top_5_sp = sp_hien_thi.slice(0, 5);
-  if (top_5_sp.length === 0) {
+  const top_10_sp = sp_hien_thi.slice(0, 10);
+  if (top_10_sp.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state-msg";
     empty.textContent = dict.emptySpList;
     listSp.appendChild(empty);
   } else {
-    const maxSpCount = Math.max(...top_5_sp.map((x) => x.don), 1);
-    top_5_sp.forEach((item, idx) => {
+    const maxSpCount = Math.max(...top_10_sp.map((x) => x.don), 1);
+    top_10_sp.forEach((item, idx) => {
       const card = create_top_sp_card(
         idx + 1,
         item.sp,
