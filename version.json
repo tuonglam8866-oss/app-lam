@@ -1,9 +1,9 @@
 {
-  "version": "8.6.91",
+  "version": "8.6.93",
   "update_exe": true,
   "exe_url": "https://raw.githubusercontent.com/tuonglam8866-oss/app-lam/main/APPLAM.exe",
-  "exe_sha256": "0a94d7b39f735e43cc6b4e65920cc404a4168850f88166f4076fec0ceb66512e",
-  "app_js_sha256": "635cb19adf07156803b689da9160bf3776d72b9d1ac851910a9a91d62f614fe7",
-  "index_html_sha256": "8c0545725212a35339901be01488c6700d4dc6db4a40ea81acdf9a805254f452",
+  "exe_sha256": "2982ddad6bda3cdbe406fa956490b7b2239c276f0a7ab6849b44f1250402aada",
+  "app_js_sha256": "58e33fc78558a15d0bfaa973e40e9433156af8e02244b87a79e41a68c5b084ce",
+  "index_html_sha256": "002ecdbbf4e19aac5f51f96e8f67212e327107d43d8541649fcdb883847822ea",
   "styles_css_sha256": "d39fbcc7d72c7b2ca4529afced69cfd3d188576ab1f57842493d8c8c62ca56ca"
 }
