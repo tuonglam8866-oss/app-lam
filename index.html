@@ -123,19 +123,15 @@
 
         <!-- Date Range Selectors -->
         <div class="date-range-group">
-          <span class="date-label" id="lblFromDate">Từ:</span>
           <div class="popover-anchor">
-            <button type="button" id="btnStartDate" class="rounded-btn btn-date-picker" aria-haspopup="dialog">
+            <button type="button" id="btnStartDate" class="rounded-btn btn-date-picker btn-date-range-unified" aria-haspopup="dialog" title="Chọn khoảng thời gian">
               <span class="cal-icon">📅</span>
-              <span id="startDateText">2026-10-30</span>
-            </button>
-          </div>
-
-          <span class="date-label" id="lblToDate">Đến:</span>
-          <div class="popover-anchor">
-            <button type="button" id="btnEndDate" class="rounded-btn btn-date-picker" aria-haspopup="dialog">
-              <span class="cal-icon">📅</span>
-              <span id="endDateText">2026-10-30</span>
+              <span class="date-label hidden" id="lblFromDate">Từ:</span>
+              <span id="startDateText">2026-11-01</span>
+              <span class="date-range-sep">→</span>
+              <span class="date-label hidden" id="lblToDate">Đến:</span>
+              <span id="endDateText">2026-11-09</span>
+              <span class="date-range-caret">▾</span>
             </button>
           </div>
         </div>
@@ -149,7 +145,7 @@
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-choco btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon" id="headerUpdateIcon">↻</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.87</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.88</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -202,16 +198,21 @@
   </div>
 
   <!-- Calendar Popup -->
-  <div id="calendarPopup" class="popup-panel calendar-popup hidden" role="dialog" aria-label="Chọn ngày">
+  <div id="calendarPopup" class="popup-panel calendar-popup hidden" role="dialog" aria-label="Chọn khoảng ngày">
     <div class="cal-nav">
-      <button type="button" id="calPrevBtn" class="cal-nav-btn" aria-label="Tháng trước">◀</button>
-      <span id="calMonthYearLabel" class="cal-month-label">Tháng 10 / 2026</span>
-      <button type="button" id="calNextBtn" class="cal-nav-btn" aria-label="Tháng sau">▶</button>
+      <button type="button" id="calPrevBtn" class="cal-nav-btn" aria-label="Tháng trước">‹</button>
+      <div class="cal-selects-group">
+        <select id="calMonthSelect" class="cal-select" aria-label="Chọn tháng"></select>
+        <select id="calYearSelect" class="cal-select" aria-label="Chọn năm"></select>
+      </div>
+      <span id="calMonthYearLabel" class="cal-month-label hidden">Tháng 11 / 2026</span>
+      <button type="button" id="calNextBtn" class="cal-nav-btn" aria-label="Tháng sau">›</button>
     </div>
     <div class="cal-weekdays" id="calWeekdaysRow">
-      <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+      <span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span>
     </div>
     <div id="calGrid" class="cal-grid"></div>
+    <div id="calRangeHint" class="cal-range-hint"></div>
   </div>
 
   <!-- Settings Popup -->
@@ -337,7 +338,7 @@
   <!-- Cursor Copy Toast -->
   <div id="cursorToast" class="cursor-toast hidden" role="status" aria-live="polite"></div>
 
-  <!-- Modal Chi Tiết Đơn Hàng Của Sản Phẩm / MKT (v8.6.87) -->
+  <!-- Modal Chi Tiết Đơn Hàng Của Sản Phẩm / MKT (v8.6.88) -->
   <div id="orderDetailModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Chi tiết đơn hàng đã đếm">
     <div class="order-detail-card">
       <div class="od-header">
@@ -427,7 +428,7 @@
     <div class="update-celebration-card">
       <div class="uc-tag">HỆ THỐNG</div>
       <h2 class="uc-title">CẬP NHẬT THÀNH CÔNG</h2>
-      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.87</div>
+      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.88</div>
       <p class="uc-desc">Ứng dụng đã hoàn tất cập nhật lên phiên bản mới nhất.</p>
       <div class="uc-action-row">
         <button type="button" id="btnDismissCelebration" class="uc-btn">

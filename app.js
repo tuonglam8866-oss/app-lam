@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.87";
+const APP_FRONTEND_VERSION = "8.6.88";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -359,7 +359,7 @@ const I18N = {
     emptyMktDetail: (m) => `${m} chưa có CP Ads và chưa có đơn.`,
     emptySpList: "Chưa ghi nhận mẫu nào",
     calMonthYearFmt: (m, y) => `Tháng ${m} / ${y}`,
-    weekdays: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
+    weekdays: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
     settingsTitle: "⚙ CÀI ĐẶT HỆ THỐNG",
     lblVoice: "1. Âm thanh (Chị Google):",
     lblPopup: "2. Popup Góc Màn Hình:",
@@ -442,7 +442,7 @@ const I18N = {
     emptyMktDetail: (m) => `${m} 暂无广告花费与订单。`,
     emptySpList: "暂无款式记录",
     calMonthYearFmt: (m, y) => `${y}年 ${m}月`,
-    weekdays: ["一", "二", "三", "四", "五", "六", "日"],
+    weekdays: ["日", "一", "二", "三", "四", "五", "六"],
     settingsTitle: "⚙ 系统设置",
     lblVoice: "1. 语音播报 (Google 语音):",
     lblPopup: "2. 屏幕右下角弹窗:",
@@ -525,7 +525,7 @@ const I18N = {
     emptyMktDetail: (m) => `${m} has no ad spend or orders yet.`,
     emptySpList: "No product models recorded",
     calMonthYearFmt: (m, y) => `Month ${m} / ${y}`,
-    weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     settingsTitle: "⚙ SYSTEM SETTINGS",
     lblVoice: "1. Voice Alert (Google TTS):",
     lblPopup: "2. Corner Popup Alert:",
@@ -3354,24 +3354,110 @@ function set_and_refresh(st, en) {
 // ==============================================================
 // LỊCH POPUP (CALENDAR PICKER) & CÀI ĐẶT POPUP
 // ==============================================================
+let cal_pick_step = 0; // 0: sẵn sàng chọn ngày đầu, 1: đã chọn ngày đầu & đang chọn ngày cuối
+let cal_temp_start = null;
+let cal_hover_date = null;
+
+function sync_cal_dropdowns(year, month) {
+  const mSelect = document.getElementById("calMonthSelect");
+  const ySelect = document.getElementById("calYearSelect");
+  if (mSelect) {
+    if (mSelect.options.length === 0) {
+      for (let m = 1; m <= 12; m++) {
+        const opt = document.createElement("option");
+        opt.value = String(m);
+        opt.textContent = current_lang === "en" ? `Month ${m}` : current_lang === "zh" ? `${m}月` : `Tháng ${m}`;
+        mSelect.appendChild(opt);
+      }
+    } else {
+      for (let i = 0; i < mSelect.options.length; i++) {
+        const m = i + 1;
+        mSelect.options[i].textContent = current_lang === "en" ? `Month ${m}` : current_lang === "zh" ? `${m}月` : `Tháng ${m}`;
+      }
+    }
+    mSelect.value = String(month);
+  }
+  if (ySelect) {
+    const curY = new Date().getFullYear();
+    const minY = Math.min(2023, year - 2);
+    const maxY = Math.max(curY + 2, year + 2);
+    if (ySelect.options.length === 0) {
+      for (let y = minY; y <= maxY; y++) {
+        const opt = document.createElement("option");
+        opt.value = String(y);
+        opt.textContent = String(y);
+        ySelect.appendChild(opt);
+      }
+    }
+    ySelect.value = String(year);
+  }
+}
+
+function update_cal_range_highlight() {
+  const grid = document.getElementById("calGrid");
+  if (!grid) return;
+
+  let rStart = current_start_date;
+  let rEnd = current_end_date;
+
+  if (cal_pick_step === 1 && cal_temp_start) {
+    const h = cal_hover_date || cal_temp_start;
+    rStart = cal_temp_start <= h ? cal_temp_start : h;
+    rEnd = cal_temp_start <= h ? h : cal_temp_start;
+  }
+
+  const isSingleDay = rStart === rEnd;
+  const cells = grid.querySelectorAll(".cal-cell[data-date]");
+  cells.forEach((cell) => {
+    const d = cell.getAttribute("data-date");
+    const isStart = d === rStart;
+    const isEnd = d === rEnd;
+    const inBetween = d > rStart && d < rEnd;
+    const inBand = !isSingleDay && d >= rStart && d <= rEnd;
+
+    cell.classList.toggle("is-start", isStart);
+    cell.classList.toggle("is-end", isEnd);
+    cell.classList.toggle("is-single", isStart && isEnd);
+    cell.classList.toggle("in-range", inBetween);
+    cell.classList.toggle("in-band", inBand);
+
+    const btn = cell.querySelector(".cal-day-btn");
+    if (btn) {
+      btn.classList.toggle("selected", isStart || isEnd);
+    }
+  });
+
+  const hintEl = document.getElementById("calRangeHint");
+  if (hintEl) {
+    if (cal_pick_step === 1 && cal_temp_start) {
+      hintEl.textContent = `${rStart} → ${rEnd} (Nhấp chọn ngày kết thúc)`;
+      hintEl.classList.add("picking");
+    } else {
+      hintEl.textContent = `${current_start_date} → ${current_end_date}`;
+      hintEl.classList.remove("picking");
+    }
+  }
+}
+
 function render_calendar_grid(year, month) {
   const label = document.getElementById("calMonthYearLabel");
   const grid = document.getElementById("calGrid");
-  if (!label || !grid) return;
+  if (!grid) return;
 
-  label.textContent = t().calMonthYearFmt(month, year);
+  if (label) {
+    label.textContent = t().calMonthYearFmt(month, year);
+  }
+  sync_cal_dropdowns(year, month);
+
   grid.innerHTML = "";
 
-  const firstDayJs = new Date(year, month - 1, 1).getDay();
-  const mondayBasedOffset = (firstDayJs + 6) % 7;
+  // Chủ nhật (CN) là cột đầu tiên (index 0 .. Thứ Bảy index 6), giống chuẩn lịch Facebook Ads
+  const sundayBasedOffset = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
 
-  const targetVal =
-    current_cal_target === "start" ? current_start_date : current_end_date;
-
-  for (let i = 0; i < mondayBasedOffset; i++) {
+  for (let i = 0; i < sundayBasedOffset; i++) {
     const empty = document.createElement("div");
-    empty.className = "cal-day-empty";
+    empty.className = "cal-cell cal-day-empty";
     grid.appendChild(empty);
   }
 
@@ -3379,27 +3465,50 @@ function render_calendar_grid(year, month) {
     const d_str = `${year}-${String(month).padStart(2, "0")}-${String(
       day
     ).padStart(2, "0")}`;
+    const colIdx = (sundayBasedOffset + day - 1) % 7;
+
+    const cell = document.createElement("div");
+    cell.className = "cal-cell";
+    cell.setAttribute("data-date", d_str);
+    if (colIdx === 0 || day === 1) cell.classList.add("row-start");
+    if (colIdx === 6 || day === daysInMonth) cell.classList.add("row-end");
+
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className =
-      "cal-day-btn" + (d_str === targetVal ? " selected" : "");
+    btn.className = "cal-day-btn";
     btn.textContent = String(day);
-    btn.addEventListener("click", () => {
-      if (current_cal_target === "start") {
-        current_start_date = d_str;
-      } else if (current_cal_target === "end") {
-        current_end_date = d_str;
+
+    cell.addEventListener("mouseenter", () => {
+      if (cal_pick_step === 1 && cal_hover_date !== d_str) {
+        cal_hover_date = d_str;
+        update_cal_range_highlight();
       }
-      try {
-        sessionStorage.setItem("applam_start_date", current_start_date);
-        sessionStorage.setItem("applam_end_date", current_end_date);
-      } catch (e) {}
-      update_date_buttons_text();
-      hide_all_popups();
-      tai_va_cap_nhat_theo_ngay();
     });
-    grid.appendChild(btn);
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (cal_pick_step === 0) {
+        // Click lần 1: Chọn mốc ngày bắt đầu
+        cal_pick_step = 1;
+        cal_temp_start = d_str;
+        cal_hover_date = d_str;
+        update_cal_range_highlight();
+      } else {
+        // Click lần 2: Chốt khoảng ngày và tải dữ liệu
+        const st = d_str < cal_temp_start ? d_str : cal_temp_start;
+        const en = d_str < cal_temp_start ? cal_temp_start : d_str;
+        cal_pick_step = 0;
+        cal_temp_start = null;
+        cal_hover_date = null;
+        set_and_refresh(st, en);
+      }
+    });
+
+    cell.appendChild(btn);
+    grid.appendChild(cell);
   }
+
+  update_cal_range_highlight();
 }
 
 function toggle_calendar_popup(targetType, anchorBtn) {
@@ -3409,21 +3518,23 @@ function toggle_calendar_popup(targetType, anchorBtn) {
 
   document.getElementById("allCodesPopup")?.classList.add("hidden");
   document.getElementById("closingRatePopup")?.classList.add("hidden");
-  settingsPopup.classList.add("hidden");
+  settingsPopup?.classList.add("hidden");
 
-  if (
-    !calPopup.classList.contains("hidden") &&
-    current_cal_target === targetType
-  ) {
+  if (!calPopup.classList.contains("hidden")) {
     calPopup.classList.add("hidden");
     current_cal_target = null;
+    cal_pick_step = 0;
+    cal_temp_start = null;
+    cal_hover_date = null;
     return;
   }
 
-  current_cal_target = targetType;
-  const curStr =
-    targetType === "start" ? current_start_date : current_end_date;
-  const dt = parse_ymd_date(curStr);
+  current_cal_target = "range";
+  cal_pick_step = 0;
+  cal_temp_start = null;
+  cal_hover_date = null;
+
+  const dt = parse_ymd_date(current_end_date || current_start_date);
   current_cal_year = dt.getFullYear();
   current_cal_month = dt.getMonth() + 1;
 
@@ -3431,8 +3542,8 @@ function toggle_calendar_popup(targetType, anchorBtn) {
 
   calPopup.classList.remove("hidden");
   const rect = anchorBtn.getBoundingClientRect();
-  const popupWidth = 288;
-  let left = rect.left - 50;
+  const popupWidth = 304;
+  let left = rect.left;
   if (left + popupWidth > window.innerWidth - 12) {
     left = window.innerWidth - popupWidth - 12;
   }
@@ -3891,6 +4002,24 @@ window.addEventListener("DOMContentLoaded", async () => {
       current_cal_year += 1;
     }
     render_calendar_grid(current_cal_year, current_cal_month);
+  });
+
+  document.getElementById("calMonthSelect")?.addEventListener("change", (e) => {
+    e.stopPropagation();
+    const val = parseInt(e.target.value, 10);
+    if (val >= 1 && val <= 12) {
+      current_cal_month = val;
+      render_calendar_grid(current_cal_year, current_cal_month);
+    }
+  });
+
+  document.getElementById("calYearSelect")?.addEventListener("change", (e) => {
+    e.stopPropagation();
+    const val = parseInt(e.target.value, 10);
+    if (val >= 2000 && val <= 2100) {
+      current_cal_year = val;
+      render_calendar_grid(current_cal_year, current_cal_month);
+    }
   });
 
   document

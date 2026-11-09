@@ -2926,3 +2926,266 @@ input::-ms-clear {
   color: #1A120B;
   border-color: #F5B041;
 }
+
+/* === FACEBOOK ADS SINGLE CALENDAR RANGE PICKER (v8.6.88) === */
+.btn-date-range-unified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  font-weight: 700;
+}
+
+.date-range-sep {
+  color: var(--choco-muted);
+  font-weight: 600;
+  margin: 0 2px;
+}
+
+.date-range-caret {
+  font-size: 11px;
+  color: var(--choco-muted);
+  margin-left: 2px;
+}
+
+.calendar-popup {
+  padding: 16px 18px 14px;
+  width: 304px;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .calendar-popup {
+  background: #242526;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 6px;
+}
+
+.cal-nav-btn {
+  background: transparent;
+  color: #1C2B33;
+  border: none;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cal-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  transform: none;
+}
+
+[data-theme="dark"] .cal-nav-btn {
+  color: #E4E6EB;
+}
+
+[data-theme="dark"] .cal-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cal-selects-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath fill='%231C2B33' d='M0 0l5 6 5-6z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 9px 5px;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 20px 4px 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1C2B33;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.cal-select:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cal-select:focus {
+  outline: none;
+  background-color: rgba(0, 0, 0, 0.07);
+}
+
+[data-theme="dark"] .cal-select {
+  color: #E4E6EB;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath fill='%23E4E6EB' d='M0 0l5 6 5-6z'/%3e%3c/svg%3e");
+}
+
+[data-theme="dark"] .cal-select option {
+  background: #242526;
+  color: #E4E6EB;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.cal-weekdays span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #65676B;
+  padding: 4px 0;
+}
+
+[data-theme="dark"] .cal-weekdays span {
+  color: #B0B3B8;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  column-gap: 0;
+  row-gap: 4px;
+}
+
+.cal-cell {
+  position: relative;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dải nền màu xanh nhạt kết nối liền mạch giữa ngày bắt đầu và ngày kết thúc (Facebook Ads style) */
+.cal-cell.in-range {
+  background-color: #D2E7FF;
+}
+
+.cal-cell.in-band.is-start:not(.is-single) {
+  background: linear-gradient(to right, transparent 50%, #D2E7FF 50%);
+}
+
+.cal-cell.in-band.is-end:not(.is-single) {
+  background: linear-gradient(to left, transparent 50%, #D2E7FF 50%);
+}
+
+.cal-cell.in-range.row-start,
+.cal-cell.in-band.is-end.row-start:not(.is-single) {
+  border-top-left-radius: 7px;
+  border-bottom-left-radius: 7px;
+}
+
+.cal-cell.in-range.row-end,
+.cal-cell.in-band.is-start.row-end:not(.is-single) {
+  border-top-right-radius: 7px;
+  border-bottom-right-radius: 7px;
+}
+
+[data-theme="dark"] .cal-cell.in-range {
+  background-color: rgba(45, 136, 255, 0.24);
+}
+
+[data-theme="dark"] .cal-cell.in-band.is-start:not(.is-single) {
+  background: linear-gradient(to right, transparent 50%, rgba(45, 136, 255, 0.24) 50%);
+}
+
+[data-theme="dark"] .cal-cell.in-band.is-end:not(.is-single) {
+  background: linear-gradient(to left, transparent 50%, rgba(45, 136, 255, 0.24) 50%);
+}
+
+.cal-day-btn {
+  width: 100%;
+  height: 34px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #1C2B33;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.cal-day-btn:hover {
+  background-color: rgba(10, 104, 255, 0.12);
+  transform: none;
+}
+
+.cal-cell.in-range .cal-day-btn {
+  color: #1C2B33;
+  font-weight: 500;
+}
+
+/* Nút ngày đầu & ngày cuối màu xanh đậm chuẩn Facebook Ads */
+.cal-day-btn.selected,
+.cal-cell.is-start .cal-day-btn,
+.cal-cell.is-end .cal-day-btn {
+  background: #0866FF !important;
+  color: #FFFFFF !important;
+  font-weight: 700;
+  border-radius: 7px;
+  box-shadow: 0 2px 6px rgba(8, 102, 255, 0.28);
+}
+
+[data-theme="dark"] .cal-day-btn {
+  color: #E4E6EB;
+}
+
+[data-theme="dark"] .cal-cell.in-range .cal-day-btn {
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .cal-day-btn.selected,
+[data-theme="dark"] .cal-cell.is-start .cal-day-btn,
+[data-theme="dark"] .cal-cell.is-end .cal-day-btn {
+  background: #2D88FF !important;
+  color: #FFFFFF !important;
+}
+
+.cal-range-hint {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #65676B;
+  text-align: center;
+}
+
+.cal-range-hint.picking {
+  color: #0866FF;
+}
+
+[data-theme="dark"] .cal-range-hint {
+  border-top-color: rgba(255, 255, 255, 0.1);
+  color: #B0B3B8;
+}
+
+[data-theme="dark"] .cal-range-hint.picking {
+  color: #4599FF;
+}
