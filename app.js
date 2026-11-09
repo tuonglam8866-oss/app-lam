@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.86";
+const APP_FRONTEND_VERSION = "8.6.87";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3688,9 +3688,6 @@ async function quet_don_dinh_ky() {
             }
             if (ev.toast || ev.newOrder) {
               trigger_confetti_burst();
-              try {
-                tai_va_cap_nhat_theo_ngay();
-              } catch (e) {}
             }
             if (ev.voice && !ev.voiceHandled && bat_thong_bao_gtts) {
               doc_am_thanh(ev.voice);
@@ -3775,8 +3772,6 @@ async function quet_don_dinh_ky() {
         const loi_doc_tong = danh_sach_doc.join(". ");
         doc_am_thanh(loi_doc_tong, false);
       }
-
-      tai_va_cap_nhat_theo_ngay();
     }
   } catch (e) {}
 }
