@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.80";
+const APP_FRONTEND_VERSION = "8.6.83";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3171,23 +3171,63 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   last_dash_data = { don: stats_sp_don, dt: stats_sp_dt, cp: global_sp_spend };
   render_all_codes_table();
 
-  const top_5_sp = Object.entries(stats_sp_don).slice(0, 5);
+  const tat_ca_sp = new Set([
+    ...Object.keys(stats_sp_don),
+    ...Object.keys(global_sp_spend),
+  ]);
+
+  const sp_hien_thi = [];
+  for (const sp of tat_ca_sp) {
+    const don = stats_sp_don[sp] || 0;
+    const tien = global_sp_spend[sp] || 0.0;
+    const doanh_so = stats_sp_dt[sp] || 0.0;
+    if (don > 0 || tien > 0 || doanh_so > 0) {
+      sp_hien_thi.push({ sp, don, tien, doanh_so });
+    }
+  }
+
+  sp_hien_thi.sort((a, b) => {
+    // 1. Ai Lợi nhuận (Doanh số - Chi phí) cao hơn thì xếp cao hơn
+    const loiNhuanA = a.doanh_so - a.tien;
+    const loiNhuanB = b.doanh_so - b.tien;
+    if (Math.abs(loiNhuanB - loiNhuanA) > 0.001) {
+      return loiNhuanB - loiNhuanA;
+    }
+
+    // 2. Nếu bằng Lợi nhuận: Ai Doanh số cao hơn thì xếp cao hơn
+    if (b.doanh_so !== a.doanh_so) {
+      return b.doanh_so - a.doanh_so;
+    }
+
+    // 3. Nếu bằng Doanh số: Ai Chi phí thấp hơn thì xếp cao hơn
+    if (a.tien !== b.tien) {
+      return a.tien - b.tien;
+    }
+
+    // 4. Nếu bằng nhau: Ai nhiều đơn hơn thì xếp cao hơn
+    if (b.don !== a.don) {
+      return b.don - a.don;
+    }
+
+    // 5. Nếu bằng nhau toàn bộ: xếp theo thứ tự bảng chữ cái
+    return a.sp.localeCompare(b.sp);
+  });
+
+  const top_5_sp = sp_hien_thi.slice(0, 5);
   if (top_5_sp.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state-msg";
     empty.textContent = dict.emptySpList;
     listSp.appendChild(empty);
   } else {
-    const maxSpCount = Math.max(...top_5_sp.map(([, c]) => c), 1);
-    top_5_sp.forEach(([sp_name, sp_count], idx) => {
-      const sp_ds = stats_sp_dt[sp_name] || 0.0;
-      const sp_cp = global_sp_spend[sp_name] || 0.0;
+    const maxSpCount = Math.max(...top_5_sp.map((x) => x.don), 1);
+    top_5_sp.forEach((item, idx) => {
       const card = create_top_sp_card(
         idx + 1,
-        sp_name,
-        sp_count,
-        sp_cp,
-        sp_ds,
+        item.sp,
+        item.don,
+        item.tien,
+        item.doanh_so,
         maxSpCount
       );
       listSp.appendChild(card);
