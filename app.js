@@ -1131,7 +1131,7 @@ async function dong_bo_cau_hinh_tu_server_neu_co() {
       if (upRes.ok) {
         const upData = await upRes.json();
         if (headerVerEl) {
-          const rawVer = String(upData.version || "").replace(/^v/i, "");
+          const rawVer = String(upData.version || "").replace(/^v/i, "").replace(/^(\d+\.\d+\.\d+)\.\d+$/, "$1");
           const displayVer = (rawVer && compare_semver(rawVer, APP_FRONTEND_VERSION) > 0) ? rawVer : APP_FRONTEND_VERSION;
           headerVerEl.textContent = `v${displayVer}`;
         }
@@ -4226,12 +4226,12 @@ window.addEventListener("DOMContentLoaded", async () => {
           statusEl.textContent = data.status.replace(/8\.6\.18/g, APP_FRONTEND_VERSION);
         }
         if (headerVerEl) {
-          const rawVer = String(data.version || "").replace(/^v/i, "");
+          const rawVer = String(data.version || "").replace(/^v/i, "").replace(/^(\d+\.\d+\.\d+)\.\d+$/, "$1");
           const displayVer = (rawVer && compare_semver(rawVer, APP_FRONTEND_VERSION) > 0) ? rawVer : APP_FRONTEND_VERSION;
           headerVerEl.textContent = `v${displayVer}`;
         }
         if (data.updated) {
-          hien_thi_bang_chuc_mung_cap_nhat(data.version || APP_FRONTEND_VERSION);
+          hien_thi_bang_chuc_mung_cap_nhat(String(data.version || APP_FRONTEND_VERSION).replace(/^v/i, "").replace(/^(\d+\.\d+\.\d+)\.\d+$/, "$1"));
           return;
         } else {
           show_update_toast_notification("Bạn đang dùng phiên bản mới nhất");
