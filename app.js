@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.98";
+const APP_FRONTEND_VERSION = "8.6.100";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1504,9 +1504,11 @@ async function tai_du_lieu_google_sheets() {
     CSV_URL_THONG_KE_FALLBACK,
     "thong_ke"
   );
-  if (rowsThongKe) {
+  if (rowsThongKe && rowsThongKe.length > 0) {
     data_hien_tai = rowsThongKe;
+    return true;
   }
+  return false;
 }
 
 // ==============================================================
@@ -3254,16 +3256,23 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
 // ==============================================================
 // TẢI VÀ CẬP NHẬT DỮ LIỆU THEO NGÀY
 // ==============================================================
-async function tai_va_cap_nhat_theo_ngay() {
+let initial_load_success = false;
+let auto_retry_count = 0;
+let auto_retry_timer = null;
+
+async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
   const btnRefresh = document.getElementById("btnRefresh");
   const refreshIcon = document.getElementById("refreshIcon");
   const loadingOverlay = document.getElementById("loadingOverlay");
 
   hide_all_popups();
 
+  // Chỉ hiện màn hình xoay mờ khi người dùng tự bấm tải lại hoặc lần đầu tải có mạng, tránh chặn màn hình khi máy vừa mở đang chờ Wi-Fi
+  if (!isAutoRetry || initial_load_success) {
+    if (loadingOverlay) loadingOverlay.classList.remove("hidden");
+  }
   if (btnRefresh) btnRefresh.disabled = true;
   if (refreshIcon) refreshIcon.classList.add("spinning");
-  if (loadingOverlay) loadingOverlay.classList.remove("hidden");
 
   if (current_start_date > current_end_date) {
     const tmp = current_start_date;
@@ -3272,11 +3281,13 @@ async function tai_va_cap_nhat_theo_ngay() {
     update_date_buttons_text();
   }
 
+  let gsSuccess = false;
   try {
-    const [_, fbResult] = await Promise.all([
+    const [gsResult, fbResult] = await Promise.all([
       tai_du_lieu_google_sheets(),
       quet_chi_phi_facebook_helper(current_start_date, current_end_date),
     ]);
+    gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
     cached_fb_chi_tiet = fbResult.local_chi_tiet;
     cached_fb_tong = fbResult.local_tong;
 
@@ -3295,7 +3306,17 @@ async function tai_va_cap_nhat_theo_ngay() {
 
     const lastSyncEl = document.getElementById("lastSyncText");
     if (lastSyncEl) {
-      lastSyncEl.textContent = `${t().lastSyncPrefix}${last_sync_time_str}`;
+      if (gsSuccess) {
+        lastSyncEl.textContent = `${t().lastSyncPrefix}${last_sync_time_str}`;
+        initial_load_success = true;
+        auto_retry_count = 0;
+        if (auto_retry_timer) {
+          clearTimeout(auto_retry_timer);
+          auto_retry_timer = null;
+        }
+      } else {
+        lastSyncEl.textContent = "Đang chờ kết nối Wi-Fi...";
+      }
     }
   } catch (e) {
     console.error("Lỗi khi tải dữ liệu:", e);
@@ -3303,6 +3324,20 @@ async function tai_va_cap_nhat_theo_ngay() {
     if (loadingOverlay) loadingOverlay.classList.add("hidden");
     if (btnRefresh) btnRefresh.disabled = false;
     if (refreshIcon) refreshIcon.classList.remove("spinning");
+  }
+
+  // TỰ ĐỘNG THỬ LẠI NẾU MÁY TÍNH VỪA KHỞI ĐỘNG CHƯA KỊP CÓ MẠNG (Tối đa 8 lần thử lại)
+  if (!gsSuccess && !initial_load_success && auto_retry_count < 8) {
+    auto_retry_count++;
+    const retryDelay = Math.min(3000 * auto_retry_count, 12000); // 3s, 6s, 9s, 12s...
+    const lastSyncEl = document.getElementById("lastSyncText");
+    if (lastSyncEl) {
+      lastSyncEl.textContent = `Chờ Wi-Fi... tự tải lại sau ${Math.round(retryDelay / 1000)}s`;
+    }
+    if (auto_retry_timer) clearTimeout(auto_retry_timer);
+    auto_retry_timer = setTimeout(() => {
+      tai_va_cap_nhat_theo_ngay(true);
+    }, retryDelay);
   }
 }
 
@@ -4422,6 +4457,16 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.querySelector(".order-detail-card")?.addEventListener("click", (e) => {
     e.stopPropagation();
+  });
+
+  // TỰ ĐỘNG CẬP NHẬT TỨC THÌ KHI MÁY TÍNH BẮT ĐƯỢC SÓNG WI-FI / INTERNET
+  window.addEventListener("online", () => {
+    console.log("Phát hiện Windows vừa kết nối Internet thành công!");
+    if (auto_retry_timer) {
+      clearTimeout(auto_retry_timer);
+      auto_retry_timer = null;
+    }
+    tai_va_cap_nhat_theo_ngay(true);
   });
 
   window.addEventListener("click", () => {

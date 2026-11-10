@@ -1464,16 +1464,16 @@ html, body {
   height: 32px;
 }
 
-/* Settings Popup (Roomy, High Legibility & Floating v8.6.98) */
+/* Settings Popup (Roomy, High Legibility & Comfort v8.6.100) */
 .settings-popup {
-  width: 356px;
+  width: 446px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
-  padding: 13px 15px 12px 15px;
-  border-radius: 16px;
+  padding: 16px 20px 15px 20px;
+  border-radius: 18px;
   box-shadow:
-    0 18px 40px rgba(61, 35, 20, 0.24),
-    0 4px 14px rgba(61, 35, 20, 0.1),
+    0 22px 52px rgba(61, 35, 20, 0.28),
+    0 4px 16px rgba(61, 35, 20, 0.12),
     inset 0 1px 0 #FFFFFF;
 }
 
@@ -1481,23 +1481,23 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 7px;
-  margin-bottom: 8px;
+  padding-bottom: 9px;
+  margin-bottom: 10px;
   border-bottom: 1.5px solid var(--border-soft);
 }
 
 .settings-title {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 16.5px;
+  font-weight: 850;
   color: var(--choco-dark);
   margin: 0;
-  letter-spacing: 0.25px;
+  letter-spacing: 0.35px;
 }
 
 .settings-body-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7.5px;
 }
 
 .settings-section {
@@ -1507,10 +1507,10 @@ html, body {
 }
 
 .settings-card-block {
-  background: rgba(242, 230, 214, 0.4);
-  border: 1px solid var(--border-soft);
-  border-radius: 11px;
-  padding: 6px 10px 7px 10px;
+  background: rgba(242, 230, 214, 0.44);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 13px;
+  padding: 8px 12px 9px 12px;
 }
 
 [data-theme="dark"] .settings-card-block {
@@ -1519,8 +1519,8 @@ html, body {
 
 .settings-pair-row {
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  gap: 7px;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
   align-items: center;
 }
 
@@ -1528,11 +1528,11 @@ html, body {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  background: rgba(242, 230, 214, 0.4);
-  border: 1px solid var(--border-soft);
-  border-radius: 11px;
-  padding: 6px 10px;
+  gap: 12px;
+  background: rgba(242, 230, 214, 0.44);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 13px;
+  padding: 7px 12px;
 }
 
 [data-theme="dark"] .settings-inline-row {
@@ -1547,14 +1547,14 @@ html, body {
 .settings-dual-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 7px;
+  gap: 9px;
 }
 
 .settings-mini-card {
-  background: rgba(242, 230, 214, 0.4);
-  border: 1px solid var(--border-soft);
-  border-radius: 11px;
-  padding: 5.5px 8px 6.5px 8px;
+  background: rgba(242, 230, 214, 0.44);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 13px;
+  padding: 7px 10px 8px 10px;
 }
 
 [data-theme="dark"] .settings-mini-card {
@@ -1562,70 +1562,70 @@ html, body {
 }
 
 .settings-label {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 800;
   color: var(--choco-dark);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   line-height: 1.25;
 }
 
 .settings-toggle-btn {
   width: 100%;
-  height: 31px;
+  height: 34px;
   margin-bottom: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.25px;
-  padding: 0 8px;
+  letter-spacing: 0.3px;
+  padding: 0 10px;
 }
 
 .settings-pill-btn {
   width: auto;
-  min-width: 104px;
-  height: 30px;
-  padding: 0 14px;
-  font-size: 12.5px;
+  min-width: 118px;
+  height: 33px;
+  padding: 0 16px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.25px;
+  letter-spacing: 0.3px;
   flex-shrink: 0;
 }
 
 .settings-theme-pill {
   width: auto;
-  min-width: 140px;
-  height: 30px;
-  padding: 0 10px;
-  font-size: 12px;
+  min-width: 156px;
+  height: 33px;
+  padding: 0 12px;
+  font-size: 13px;
   font-weight: 800;
   flex-shrink: 0;
 }
 
 .settings-sub-btn {
   width: 100%;
-  height: 31px;
-  font-size: 12px;
+  height: 34px;
+  font-size: 13px;
   font-weight: 750;
-  padding: 0 6px;
+  padding: 0 8px;
 }
 
 /* Font Size & UI Scale Stepper Controls in Settings */
 .scale-control-group {
   display: grid;
   grid-template-columns: 1fr 1.25fr 1fr;
-  gap: 4px;
+  gap: 5px;
 }
 
 .scale-step-btn {
-  height: 29px;
-  padding: 0 4px;
-  font-size: 12.5px;
+  height: 32px;
+  padding: 0 6px;
+  font-size: 13.5px;
   font-weight: 800;
 }
 
 .scale-val-badge {
-  height: 29px;
-  padding: 0 4px;
-  font-size: 12px;
+  height: 32px;
+  padding: 0 6px;
+  font-size: 13px;
   font-weight: 800;
   background: var(--card-fill);
   color: var(--color-highlight);
@@ -1636,13 +1636,14 @@ html, body {
 .lang-switch-group {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 7px;
 }
 
 .lang-btn {
-  height: 30px;
-  padding: 0 6px;
-  font-size: 12.5px;
+  height: 33px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .lang-btn.active-lang {
@@ -1662,25 +1663,25 @@ html, body {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-top: 7px;
+  margin-top: 9px;
   margin-bottom: 0;
-  padding-top: 7px;
+  padding-top: 9px;
   border-top: 1.5px dashed var(--border-soft);
-  gap: 6px;
+  gap: 8px;
 }
 
 .scanner-status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
+  gap: 7px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--choco-muted);
 }
 
 .status-dot-online {
-  width: 7.5px;
-  height: 7.5px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: var(--color-green);
   flex-shrink: 0;
@@ -1688,11 +1689,11 @@ html, body {
 }
 
 .known-codes-info {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--choco-muted);
   font-weight: 800;
-  background: rgba(122, 94, 76, 0.11);
-  padding: 2px 8px;
+  background: rgba(122, 94, 76, 0.12);
+  padding: 3px 10px;
   border-radius: 999px;
   white-space: nowrap;
 }
