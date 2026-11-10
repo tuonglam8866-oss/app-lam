@@ -153,7 +153,7 @@
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-choco btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon" id="headerUpdateIcon">↻</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.96</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.98</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -237,83 +237,91 @@
 
   <!-- Settings Popup -->
   <div id="settingsPopup" class="popup-panel settings-popup hidden" role="dialog" aria-label="Cài đặt hệ thống">
-    <h2 class="settings-title" id="settingsTitleText">⚙ CÀI ĐẶT HỆ THỐNG</h2>
-
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingVoice">1. Âm thanh (Chị Google):</label>
-      <button type="button" id="btnToggleVoice" class="rounded-btn btn-green settings-toggle-btn">
-        ĐANG BẬT
-      </button>
-      <button type="button" id="btnTestVoice" class="rounded-btn btn-default settings-sub-btn">
-        🔊 Nghe thử
-      </button>
+    <div class="settings-header-bar">
+      <h2 class="settings-title" id="settingsTitleText">⚙ CÀI ĐẶT HỆ THỐNG</h2>
     </div>
 
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingPopup">2. Popup Góc Màn Hình:</label>
-      <button type="button" id="btnTogglePopup" class="rounded-btn btn-green settings-toggle-btn">
-        ĐANG BẬT
-      </button>
-      <button type="button" id="btnTestPopup" class="rounded-btn btn-default settings-sub-btn">
-        🎉 Xem thử Popup
-      </button>
-    </div>
-
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingFireworks">3. Hiệu ứng Pháo Hoa:</label>
-      <button type="button" id="btnToggleFireworks" class="rounded-btn btn-green settings-toggle-btn">
-        ĐANG BẬT
-      </button>
-    </div>
-
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingFontSize">4. Cỡ chữ (Font Size):</label>
-      <div class="scale-control-group">
-        <button type="button" id="btnFontDec" class="rounded-btn btn-default scale-step-btn" title="Giảm cỡ chữ">A−</button>
-        <button type="button" id="fontScaleVal" class="rounded-btn btn-default scale-val-badge" title="Nhấn để đặt lại 100%">100%</button>
-        <button type="button" id="btnFontInc" class="rounded-btn btn-default scale-step-btn" title="Tăng cỡ chữ">A+</button>
+    <div class="settings-body-list">
+      <div class="settings-section settings-card-block">
+        <label class="settings-label" id="lblSettingVoice">1. Âm thanh (Chị Google):</label>
+        <div class="settings-pair-row">
+          <button type="button" id="btnToggleVoice" class="rounded-btn btn-green settings-toggle-btn">
+            ĐANG BẬT
+          </button>
+          <button type="button" id="btnTestVoice" class="rounded-btn btn-default settings-sub-btn">
+            🔊 Nghe thử
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingUiScale">5. Kích thước giao diện:</label>
-      <div class="scale-control-group">
-        <button type="button" id="btnUiDec" class="rounded-btn btn-default scale-step-btn" title="Thu nhỏ giao diện">−</button>
-        <button type="button" id="uiScaleVal" class="rounded-btn btn-default scale-val-badge" title="Nhấn để đặt lại 100%">100%</button>
-        <button type="button" id="btnUiInc" class="rounded-btn btn-default scale-step-btn" title="Phóng to giao diện">+</button>
+      <div class="settings-section settings-card-block">
+        <label class="settings-label" id="lblSettingPopup">2. Popup Góc Màn Hình:</label>
+        <div class="settings-pair-row">
+          <button type="button" id="btnTogglePopup" class="rounded-btn btn-green settings-toggle-btn">
+            ĐANG BẬT
+          </button>
+          <button type="button" id="btnTestPopup" class="rounded-btn btn-default settings-sub-btn">
+            🎉 Xem thử Popup
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingTheme">6. Giao diện (Dark Mode):</label>
-      <button type="button" id="btnToggleTheme" class="rounded-btn btn-default settings-toggle-btn">
-        ☀️ Sáng (Kem Cozy)
-      </button>
-    </div>
-
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingLang">7. Ngôn ngữ (Language):</label>
-      <div class="lang-switch-group" role="group" aria-label="Language selection">
-        <button type="button" class="rounded-btn btn-default lang-btn active-lang" data-lang="vi">
-          Tiếng Việt
-        </button>
-        <button type="button" class="rounded-btn btn-default lang-btn" data-lang="zh">
-          中文
-        </button>
-        <button type="button" class="rounded-btn btn-default lang-btn" data-lang="en">
-          English
+      <div class="settings-section settings-inline-row">
+        <label class="settings-label" id="lblSettingFireworks">3. Hiệu ứng Pháo Hoa:</label>
+        <button type="button" id="btnToggleFireworks" class="rounded-btn btn-green settings-toggle-btn settings-pill-btn">
+          ĐANG BẬT
         </button>
       </div>
+
+      <div class="settings-dual-grid">
+        <div class="settings-section settings-mini-card">
+          <label class="settings-label" id="lblSettingFontSize">4. Cỡ chữ:</label>
+          <div class="scale-control-group">
+            <button type="button" id="btnFontDec" class="rounded-btn btn-default scale-step-btn" title="Giảm cỡ chữ">A−</button>
+            <button type="button" id="fontScaleVal" class="rounded-btn btn-default scale-val-badge" title="Nhấn để đặt lại 100%">100%</button>
+            <button type="button" id="btnFontInc" class="rounded-btn btn-default scale-step-btn" title="Tăng cỡ chữ">A+</button>
+          </div>
+        </div>
+
+        <div class="settings-section settings-mini-card">
+          <label class="settings-label" id="lblSettingUiScale">5. Kích thước UI:</label>
+          <div class="scale-control-group">
+            <button type="button" id="btnUiDec" class="rounded-btn btn-default scale-step-btn" title="Thu nhỏ giao diện">−</button>
+            <button type="button" id="uiScaleVal" class="rounded-btn btn-default scale-val-badge" title="Nhấn để đặt lại 100%">100%</button>
+            <button type="button" id="btnUiInc" class="rounded-btn btn-default scale-step-btn" title="Phóng to giao diện">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section settings-inline-row">
+        <label class="settings-label" id="lblSettingTheme">6. Giao diện (Dark Mode):</label>
+        <button type="button" id="btnToggleTheme" class="rounded-btn btn-default settings-toggle-btn settings-theme-pill">
+          ☀️ Sáng (Kem Cozy)
+        </button>
+      </div>
+
+      <div class="settings-section settings-card-block">
+        <label class="settings-label" id="lblSettingLang">7. Ngôn ngữ (Language):</label>
+        <div class="lang-switch-group" role="group" aria-label="Language selection">
+          <button type="button" class="rounded-btn btn-default lang-btn active-lang" data-lang="vi">
+            Tiếng Việt
+          </button>
+          <button type="button" class="rounded-btn btn-default lang-btn" data-lang="zh">
+            中文
+          </button>
+          <button type="button" class="rounded-btn btn-default lang-btn" data-lang="en">
+            English
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-section settings-inline-row">
+        <label class="settings-label" id="lblSettingAutoStart">8. Khởi động cùng Windows:</label>
+        <button type="button" id="btnToggleAutoStart" class="rounded-btn btn-green settings-toggle-btn settings-pill-btn">
+          ĐANG BẬT
+        </button>
+      </div>
     </div>
-
-    <div class="settings-section">
-      <label class="settings-label" id="lblSettingAutoStart">8. Khởi động cùng Windows:</label>
-      <button type="button" id="btnToggleAutoStart" class="rounded-btn btn-green settings-toggle-btn">
-        ĐANG BẬT
-      </button>
-    </div>
-
-
 
     <div class="settings-section settings-status-row">
       <div class="scanner-status">

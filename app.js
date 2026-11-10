@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.96";
+const APP_FRONTEND_VERSION = "8.6.98";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -364,8 +364,8 @@ const I18N = {
     lblVoice: "1. Âm thanh (Chị Google):",
     lblPopup: "2. Popup Góc Màn Hình:",
     lblFireworks: "3. Hiệu ứng Pháo Hoa:",
-    lblFontSize: "4. Cỡ chữ (Font Size):",
-    lblUiScale: "5. Kích thước giao diện:",
+    lblFontSize: "4. Cỡ chữ:",
+    lblUiScale: "5. Kích thước UI:",
     lblTheme: "6. Giao diện (Dark Mode):",
     lblLang: "7. Ngôn ngữ (Language):",
     lblAutoStart: "8. Khởi động cùng Windows:",
@@ -448,10 +448,11 @@ const I18N = {
     lblVoice: "1. 语音播报 (Google 语音):",
     lblPopup: "2. 屏幕右下角弹窗:",
     lblFireworks: "3. 烟花庆祝特效:",
-    lblFontSize: "4. 字体大小 (Font Size):",
-    lblUiScale: "5. 界面缩放 (UI Scale):",
+    lblFontSize: "4. 字体大小:",
+    lblUiScale: "5. 界面缩放:",
     lblTheme: "6. 界面主题 (深色模式):",
     lblLang: "7. 语言选择 (Language):",
+    lblAutoStart: "8. 开机自动启动:",
     lblUpdate: "8. 自动更新 (GitHub):",
     btnSaveUpdateUrl: "💾 保存并更新",
     btnCheckUpdateNow: "🔄 立即检查",
@@ -532,7 +533,7 @@ const I18N = {
     lblPopup: "2. Corner Popup Alert:",
     lblFireworks: "3. Fireworks Celebration:",
     lblFontSize: "4. Font Size:",
-    lblUiScale: "5. Interface Scale:",
+    lblUiScale: "5. UI Scale:",
     lblTheme: "6. Appearance (Dark Mode):",
     lblLang: "7. Language:",
     lblAutoStart: "8. Start with Windows:",
