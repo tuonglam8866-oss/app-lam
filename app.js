@@ -368,6 +368,7 @@ const I18N = {
     lblUiScale: "5. Kích thước giao diện:",
     lblTheme: "6. Giao diện (Dark Mode):",
     lblLang: "7. Ngôn ngữ (Language):",
+    lblAutoStart: "8. Khởi động cùng Windows:",
     lblUpdate: "8. Tự động cập nhật (GitHub):",
     btnSaveUpdateUrl: "💾 Lưu & Cập nhật",
     btnCheckUpdateNow: "🔄 Kiểm tra ngay",
@@ -534,6 +535,7 @@ const I18N = {
     lblUiScale: "5. Interface Scale:",
     lblTheme: "6. Appearance (Dark Mode):",
     lblLang: "7. Language:",
+    lblAutoStart: "8. Start with Windows:",
     lblUpdate: "8. Auto-Update (GitHub):",
     btnSaveUpdateUrl: "💾 Save & Update",
     btnCheckUpdateNow: "🔄 Check Now",
@@ -581,6 +583,8 @@ const STORAGE_KEY_FONT_SCALE = "applam_font_scale_v8618";
 const STORAGE_KEY_UI_SCALE = "applam_ui_scale_v8618";
 const STORAGE_KEY_THEME = "applam_theme_v8618";
 const STORAGE_KEY_LANG = "applam_lang_v8618";
+const STORAGE_KEY_AUTOSTART = "applam_autostart_v8696";
+let bat_khoi_dong_cung_win = true;
 
 let KNOWN_CODES = [...KNOWN_CODES_DEFAULT];
 let bat_thong_bao_gtts = true;
@@ -879,6 +883,9 @@ function doc_cau_hinh_tu_storage() {
       current_theme = savedTheme;
     }
 
+    const savedAutoStart = localStorage.getItem(STORAGE_KEY_AUTOSTART);
+    if (savedAutoStart !== null) bat_khoi_dong_cung_win = savedAutoStart === "true";
+
     const savedLang = localStorage.getItem(STORAGE_KEY_LANG);
     if (savedLang && I18N[savedLang]) {
       current_lang = savedLang;
@@ -896,7 +903,7 @@ function doc_cau_hinh_tu_storage() {
     KNOWN_CODES = [...KNOWN_CODES_DEFAULT];
   }
   apply_theme_ui();
-  apply_scale_ui();
+apply_scale_ui();
   cap_nhat_so_luong_ma_sp_ui();
 }
 
@@ -1045,6 +1052,7 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("lblSettingUiScale", dict.lblUiScale);
   setText("lblSettingTheme", dict.lblTheme);
   setText("lblSettingLang", dict.lblLang);
+  setText("lblSettingAutoStart", dict.lblAutoStart);
 
   setText("btnTestVoice", dict.btnTestVoice);
   setText("btnTestPopup", dict.btnTestPopup);
@@ -1122,6 +1130,12 @@ async function dong_bo_cau_hinh_tu_server_neu_co() {
       localStorage.setItem(STORAGE_KEY_FIREWORKS, String(bat_phao_hoa));
     }
 
+    if (typeof data.autostart === "boolean") {
+      bat_khoi_dong_cung_win = data.autostart;
+      localStorage.setItem(STORAGE_KEY_AUTOSTART, String(bat_khoi_dong_cung_win));
+      cap_nhat_giao_dien_toggle_init();
+    }
+
     // Đồng bộ thông tin tự động cập nhật từ Server C#
     try {
       const headerVerEl = document.getElementById("headerVersionBadge");
@@ -1149,6 +1163,7 @@ function dong_bo_settings_len_server() {
       voice: bat_thong_bao_gtts,
       popup: bat_popup_thong_bao,
       fireworks: bat_phao_hoa,
+      autostart: bat_khoi_dong_cung_win,
     }),
   }).catch(() => {});
 }
@@ -3662,6 +3677,13 @@ function cap_nhat_giao_dien_toggle_init() {
     btnFireworks.classList.toggle("btn-red", !bat_phao_hoa);
   }
 
+  const btnAutoStart = document.getElementById("btnToggleAutoStart");
+  if (btnAutoStart) {
+    btnAutoStart.textContent = bat_khoi_dong_cung_win ? dict.stateOn : dict.stateOff;
+    btnAutoStart.classList.toggle("btn-green", bat_khoi_dong_cung_win);
+    btnAutoStart.classList.toggle("btn-red", !bat_khoi_dong_cung_win);
+  }
+
   apply_scale_ui();
 }
 
@@ -4112,6 +4134,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     .getElementById("closingRatePopup")
     ?.addEventListener("click", (e) => e.stopPropagation());
 
+  document.getElementById("btnToggleAutoStart")?.addEventListener("click", () => {
+    bat_khoi_dong_cung_win = !bat_khoi_dong_cung_win;
+    localStorage.setItem(STORAGE_KEY_AUTOSTART, String(bat_khoi_dong_cung_win));
+    cap_nhat_giao_dien_toggle_init();
+    dong_bo_settings_len_server();
+  });
+
   document.getElementById("btnToggleVoice")?.addEventListener("click", () => {
     bat_thong_bao_gtts = !bat_thong_bao_gtts;
     localStorage.setItem(STORAGE_KEY_VOICE, String(bat_thong_bao_gtts));
@@ -4157,34 +4186,34 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btnFontDec")?.addEventListener("click", () => {
     font_scale = Math.max(80, font_scale - 5);
     localStorage.setItem(STORAGE_KEY_FONT_SCALE, String(font_scale));
-    apply_scale_ui();
+  apply_scale_ui();
   });
   document.getElementById("btnFontInc")?.addEventListener("click", () => {
     font_scale = Math.min(140, font_scale + 5);
     localStorage.setItem(STORAGE_KEY_FONT_SCALE, String(font_scale));
-    apply_scale_ui();
+  apply_scale_ui();
   });
   document.getElementById("fontScaleVal")?.addEventListener("click", () => {
     font_scale = 100;
     localStorage.setItem(STORAGE_KEY_FONT_SCALE, "100");
-    apply_scale_ui();
+  apply_scale_ui();
   });
 
   // Kích thước giao diện (UI Scale: 80% -> 130%)
   document.getElementById("btnUiDec")?.addEventListener("click", () => {
     ui_scale = Math.max(80, ui_scale - 5);
     localStorage.setItem(STORAGE_KEY_UI_SCALE, String(ui_scale));
-    apply_scale_ui();
+  apply_scale_ui();
   });
   document.getElementById("btnUiInc")?.addEventListener("click", () => {
     ui_scale = Math.min(130, ui_scale + 5);
     localStorage.setItem(STORAGE_KEY_UI_SCALE, String(ui_scale));
-    apply_scale_ui();
+  apply_scale_ui();
   });
   document.getElementById("uiScaleVal")?.addEventListener("click", () => {
     ui_scale = 100;
     localStorage.setItem(STORAGE_KEY_UI_SCALE, "100");
-    apply_scale_ui();
+  apply_scale_ui();
   });
 
   // Nút bật/tắt Dark Mode (Tone nâu be cozy)
