@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.100";
+const APP_FRONTEND_VERSION = "8.6.101";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3264,13 +3264,13 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
   const btnRefresh = document.getElementById("btnRefresh");
   const refreshIcon = document.getElementById("refreshIcon");
   const loadingOverlay = document.getElementById("loadingOverlay");
+  const loadingMainText = document.getElementById("loadingMainText");
+  const loadingSubText = document.getElementById("loadingSubText");
 
   hide_all_popups();
 
-  // Chỉ hiện màn hình xoay mờ khi người dùng tự bấm tải lại hoặc lần đầu tải có mạng, tránh chặn màn hình khi máy vừa mở đang chờ Wi-Fi
-  if (!isAutoRetry || initial_load_success) {
-    if (loadingOverlay) loadingOverlay.classList.remove("hidden");
-  }
+  // LUÔN LUÔN HIỂN THỊ MÀN HÌNH BLUR MỜ XOAY XOAY KHI ĐANG TẢI HOẶC CHỜ WI-FI
+  if (loadingOverlay) loadingOverlay.classList.remove("hidden");
   if (btnRefresh) btnRefresh.disabled = true;
   if (refreshIcon) refreshIcon.classList.add("spinning");
 
@@ -3283,6 +3283,9 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
 
   let gsSuccess = false;
   try {
+    if (loadingMainText) loadingMainText.textContent = "⏳ Đang tải dữ liệu...";
+    if (loadingSubText) loadingSubText.textContent = "Đang đồng bộ Google Sheets & Facebook Ads...";
+
     const [gsResult, fbResult] = await Promise.all([
       tai_du_lieu_google_sheets(),
       quet_chi_phi_facebook_helper(current_start_date, current_end_date),
@@ -3308,12 +3311,6 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
     if (lastSyncEl) {
       if (gsSuccess) {
         lastSyncEl.textContent = `${t().lastSyncPrefix}${last_sync_time_str}`;
-        initial_load_success = true;
-        auto_retry_count = 0;
-        if (auto_retry_timer) {
-          clearTimeout(auto_retry_timer);
-          auto_retry_timer = null;
-        }
       } else {
         lastSyncEl.textContent = "Đang chờ kết nối Wi-Fi...";
       }
@@ -3321,23 +3318,51 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
   } catch (e) {
     console.error("Lỗi khi tải dữ liệu:", e);
   } finally {
-    if (loadingOverlay) loadingOverlay.classList.add("hidden");
-    if (btnRefresh) btnRefresh.disabled = false;
-    if (refreshIcon) refreshIcon.classList.remove("spinning");
+    // CHỈ ẨN MÀN HÌNH BLUR XOAY XOAY KHI VÀ CHỈ KHI ĐÃ TẢI DỮ LIỆU THÀNH CÔNG!
+    if (gsSuccess) {
+      initial_load_success = true;
+      auto_retry_count = 0;
+      if (auto_retry_timer) {
+        clearInterval(auto_retry_timer);
+        auto_retry_timer = null;
+      }
+      if (loadingOverlay) loadingOverlay.classList.add("hidden");
+      if (btnRefresh) btnRefresh.disabled = false;
+      if (refreshIcon) refreshIcon.classList.remove("spinning");
+    }
   }
 
-  // TỰ ĐỘNG THỬ LẠI NẾU MÁY TÍNH VỪA KHỞI ĐỘNG CHƯA KỊP CÓ MẠNG (Tối đa 8 lần thử lại)
-  if (!gsSuccess && !initial_load_success && auto_retry_count < 8) {
-    auto_retry_count++;
-    const retryDelay = Math.min(3000 * auto_retry_count, 12000); // 3s, 6s, 9s, 12s...
-    const lastSyncEl = document.getElementById("lastSyncText");
-    if (lastSyncEl) {
-      lastSyncEl.textContent = `Chờ Wi-Fi... tự tải lại sau ${Math.round(retryDelay / 1000)}s`;
+  // NẾU CHƯA CÓ MẠNG (Máy tính vừa bật, Wi-Fi chưa kịp kết nối):
+  // TIẾP TỤC GIỮ NGUYÊN MÀN HÌNH BLUR XOAY XOAY VÀ ĐẾM NGƯỢC THỬ LẠI!
+  if (!gsSuccess) {
+    if (auto_retry_count < 10) {
+      auto_retry_count++;
+      let remainingSeconds = Math.min(3 * auto_retry_count, 10);
+
+      if (loadingMainText) loadingMainText.textContent = "⏳ Đang chờ kết nối Wi-Fi...";
+      if (loadingSubText) loadingSubText.textContent = `Máy tính vừa bật, đang chờ mạng (tự thử lại sau ${remainingSeconds}s)...`;
+
+      if (auto_retry_timer) clearInterval(auto_retry_timer);
+      auto_retry_timer = setInterval(() => {
+        remainingSeconds--;
+        if (remainingSeconds > 0) {
+          if (loadingSubText) loadingSubText.textContent = `Máy tính vừa bật, đang chờ mạng (tự thử lại sau ${remainingSeconds}s)...`;
+        } else {
+          clearInterval(auto_retry_timer);
+          auto_retry_timer = null;
+          if (loadingMainText) loadingMainText.textContent = "⏳ Đang kết nối lại...";
+          if (loadingSubText) loadingSubText.textContent = "Đang tải dữ liệu từ Google Sheets & Ads...";
+          tai_va_cap_nhat_theo_ngay(true);
+        }
+      }, 1000);
+    } else {
+      // Sau 10 lần thử (~1 phút) nếu thật sự không có mạng thì mới ẩn blur để người dùng thao tác
+      if (loadingOverlay) loadingOverlay.classList.add("hidden");
+      if (btnRefresh) btnRefresh.disabled = false;
+      if (refreshIcon) refreshIcon.classList.remove("spinning");
+      const lastSyncEl = document.getElementById("lastSyncText");
+      if (lastSyncEl) lastSyncEl.textContent = "Chưa có Internet (Bấm Tải lại khi có mạng)";
     }
-    if (auto_retry_timer) clearTimeout(auto_retry_timer);
-    auto_retry_timer = setTimeout(() => {
-      tai_va_cap_nhat_theo_ngay(true);
-    }, retryDelay);
   }
 }
 
@@ -4463,9 +4488,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("online", () => {
     console.log("Phát hiện Windows vừa kết nối Internet thành công!");
     if (auto_retry_timer) {
-      clearTimeout(auto_retry_timer);
+      clearInterval(auto_retry_timer);
       auto_retry_timer = null;
     }
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const loadingMainText = document.getElementById("loadingMainText");
+    const loadingSubText = document.getElementById("loadingSubText");
+    if (loadingOverlay) loadingOverlay.classList.remove("hidden");
+    if (loadingMainText) loadingMainText.textContent = "⏳ Đã có mạng Wi-Fi!";
+    if (loadingSubText) loadingSubText.textContent = "Đang đồng bộ tức thì Google Sheets & Ads...";
     tai_va_cap_nhat_theo_ngay(true);
   });
 
