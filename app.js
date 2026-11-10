@@ -3617,8 +3617,8 @@ function toggle_settings_popup(anchorBtn) {
 
   settingsPopup.classList.remove("hidden");
   const rect = anchorBtn.getBoundingClientRect();
-  const popupWidth = settingsPopup.offsetWidth || 316;
-  const popupHeight = settingsPopup.offsetHeight || 355;
+  const popupWidth = settingsPopup.offsetWidth || 356;
+  const popupHeight = settingsPopup.offsetHeight || 440;
 
   // Căn mép phải của Popup thẳng hàng với mép phải của nút Cài đặt
   let left = rect.right - popupWidth;
