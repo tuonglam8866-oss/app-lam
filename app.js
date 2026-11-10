@@ -3617,12 +3617,26 @@ function toggle_settings_popup(anchorBtn) {
 
   settingsPopup.classList.remove("hidden");
   const rect = anchorBtn.getBoundingClientRect();
-  const popupWidth = 300;
-  let left = rect.right - popupWidth;
-  if (left < 12) left = 12;
+  const popupWidth = settingsPopup.offsetWidth || 316;
+  const popupHeight = settingsPopup.offsetHeight || 355;
 
-  settingsPopup.style.left = `${left}px`;
-  settingsPopup.style.top = `${rect.bottom + 7}px`;
+  // Căn mép phải của Popup thẳng hàng với mép phải của nút Cài đặt
+  let left = rect.right - popupWidth;
+
+  // Đảm bảo TUYỆT ĐỐI không dính sát viền mép phải hoặc mép trái màn hình (cách tối thiểu 20px)
+  const maxLeft = window.innerWidth - popupWidth - 20;
+  if (left > maxLeft) left = maxLeft;
+  if (left < 20) left = 20;
+
+  // Căn chiều cao: mặc định nằm dưới nút Cài đặt 7px, nhưng nếu chạm đáy màn hình thì kéo lên cách đáy tối thiểu 20px
+  let top = rect.bottom + 7;
+  const maxTop = window.innerHeight - popupHeight - 20;
+  if (top > maxTop) {
+    top = Math.max(20, maxTop);
+  }
+
+  settingsPopup.style.left = `${Math.round(left)}px`;
+  settingsPopup.style.top = `${Math.round(top)}px`;
 }
 
 function hide_all_popups() {
