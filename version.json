@@ -1,12 +1,12 @@
 {
-  "version": "8.6.101",
+  "version": "8.6.102",
   "update_exe": true,
   "exe_url": "https://raw.githubusercontent.com/tuonglam8866-oss/app-lam/main/APPLAM.exe",
-  "exe_sha256": "2e72241a20f215eaef07981705f6d4c372ac317e19c39f78aabcfa7fdf619420",
-  "app.js_sha256": "1bcfcc92055d7794cf99af051eb908f275519824e4643a01e2e2d6b5d44ad7fb",
-  "index.html_sha256": "9ab98f09c36cab33a69cce2d2094f08d272d3b1bb08e8bab140126004461e4d1",
+  "exe_sha256": "56edf538547a3028b94bb378a83f9254566c8e11e57f3bff4448065cfa7f23ee",
+  "app.js_sha256": "eab91ccea3f6b4eff48c744055a0c20ab2ff1f7f85aa854572c2e8c2aed419be",
+  "index.html_sha256": "206c20957966cd5347dc12a05af791f9095b1f422ec1831149db83da1e60cf3b",
   "styles.css_sha256": "a674a9f5aa45fec6c39d5fe4ecd2e88ab41404b1224d89726d4b56e34e858a5f",
-  "app_js_sha256": "1bcfcc92055d7794cf99af051eb908f275519824e4643a01e2e2d6b5d44ad7fb",
-  "index_html_sha256": "9ab98f09c36cab33a69cce2d2094f08d272d3b1bb08e8bab140126004461e4d1",
+  "app_js_sha256": "eab91ccea3f6b4eff48c744055a0c20ab2ff1f7f85aa854572c2e8c2aed419be",
+  "index_html_sha256": "206c20957966cd5347dc12a05af791f9095b1f422ec1831149db83da1e60cf3b",
   "styles_css_sha256": "a674a9f5aa45fec6c39d5fe4ecd2e88ab41404b1224d89726d4b56e34e858a5f"
 }
