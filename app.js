@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.104";
+const APP_FRONTEND_VERSION = "8.6.105";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1748,6 +1748,8 @@ function map_sheet_row_a_to_p(r, rowNum, mktOverride) {
   if (sdt.length === 9 && !sdt.startsWith("0")) {
     sdt = "0" + sdt;
   }
+  const tgRaw = String(r[0] || "").trim();
+  const ngayOnly = tgRaw ? tgRaw.split(/\s+/)[0] : "";
   const giaBan = r.length > 8 ? parse_gia_tien(r[8]) : 0;
   const giaBanRaw = r.length > 8 ? String(r[8] || "").trim() : "";
   const phiShip = r.length > 9 ? parse_gia_tien(r[9]) : 0;
@@ -1761,7 +1763,8 @@ function map_sheet_row_a_to_p(r, rowNum, mktOverride) {
 
   return {
     row_num: rowNum,
-    thoi_gian: String(r[0] || "").trim(),
+    thoi_gian: tgRaw,
+    ngay_only: ngayOnly,
     ma_van_don: String(r[1] || "").trim(),
     ho_ten: String(r[2] || "").trim(),
     sdt: sdt,
@@ -1784,7 +1787,7 @@ function map_sheet_row_a_to_p(r, rowNum, mktOverride) {
   };
 }
 
-// Lấy TOÀN BỘ đơn hàng trong bảng từ cột A đến cột P (hỗ trợ lọc tất cả đơn hoặc theo khoảng ngày)
+// Lấy TOÀN BỘ đơn hàng thực có trong bảng từ cột A đến cột P (Loại bỏ các dòng mẫu trống ở cuối Sheet chỉ có sẵn ngày)
 function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
   if (!Array.isArray(data_hien_tai) || data_hien_tai.length === 0) return [];
   const patternsArr = onlySelectedDateRange
@@ -1801,16 +1804,17 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
     const c2 = bo_dau_tieng_viet(String(r[2] || "").trim()).toUpperCase();
     if (c0 === "THOI GIAN" || c0 === "STT" || c2 === "HO TEN") continue;
 
-    // Bỏ qua dòng trống hoàn toàn từ cột A đến P
-    let hasData = false;
-    const maxCol = Math.min(r.length, 16);
-    for (let c = 0; c < maxCol; c++) {
-      if (String(r[c] || "").trim().length > 0) {
-        hasData = true;
-        break;
-      }
+    // QUAN TRỌNG: Bỏ qua các dòng trống ở cuối bảng Google Sheets (chỉ có sẵn ngày ở cột A nhưng chưa có khách/SP/mã VĐ)
+    const mvd = r.length > 1 ? String(r[1] || "").trim() : "";
+    const hoTen = r.length > 2 ? String(r[2] || "").trim() : "";
+    const sdtRaw = r.length > 3 ? String(r[3] || "").trim() : "";
+    const diaChi = r.length > 4 ? String(r[4] || "").trim() : "";
+    const dongSp = r.length > 5 ? String(r[5] || "").trim() : "";
+    const trangThai = r.length > 13 ? String(r[13] || "").trim() : "";
+
+    if (!mvd && !hoTen && !sdtRaw && !diaChi && !dongSp && !trangThai) {
+      continue;
     }
-    if (!hasData) continue;
 
     if (patternsArr) {
       const tg = String(r[0] || "").trim();
@@ -2822,7 +2826,7 @@ function create_mkt_table_card(
 }
 
 // ==============================================================
-// MODAL CHI TIẾT & LỌC ĐƠN HÀNG TỔNG HỢP CỘT A -> P (v8.6.104)
+// MODAL CHI TIẾT & LỌC ĐƠN HÀNG TỔNG HỢP CỘT A -> P (v8.6.105)
 // ==============================================================
 let current_od_raw_list = [];
 let current_od_filtered_list = [];
@@ -2844,34 +2848,54 @@ function get_status_pill_cls(statusRaw) {
   return "pill-status-default";
 }
 
+function set_od_modal_layout_mode(isAllTableMode) {
+  const cardEl = document.getElementById("orderDetailCard");
+  const filterBar = document.getElementById("odFilterBar");
+  const scopeSwitch = document.getElementById("odScopeSwitch");
+  const sortBtn = document.getElementById("btnOdSortToggle");
+  const qtyBadge = document.getElementById("odQtyBadge");
+  const shipDivider = document.getElementById("odShipDivider");
+  const shipText = document.getElementById("odShipText");
+  const extraCols = document.querySelectorAll(".col-extra-ap");
+
+  if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
+  if (filterBar) filterBar.classList.toggle("hidden", !isAllTableMode);
+  if (scopeSwitch) scopeSwitch.classList.toggle("hidden", !isAllTableMode);
+  if (sortBtn) sortBtn.classList.toggle("hidden", !isAllTableMode);
+  if (qtyBadge) qtyBadge.classList.toggle("hidden", !isAllTableMode);
+  if (shipDivider) shipDivider.classList.toggle("hidden", !isAllTableMode);
+  if (shipText) shipText.classList.toggle("hidden", !isAllTableMode);
+  extraCols.forEach((th) => th.classList.toggle("hidden", !isAllTableMode));
+}
+
 function populate_od_column_filters(orders) {
   const filterEls = document.querySelectorAll(".od-col-filter");
   filterEls.forEach((el) => {
     el.value = "";
-    el.classList.remove("has-active-filter");
+    el.closest(".od-filter-item")?.classList.remove("has-active-filter");
   });
 
-  const selectCols = [
-    "dong_sp",
-    "mau_sac",
-    "size",
-    "gia_ban_str",
-    "phi_ship_str",
-    "nen_tang",
-    "sale",
-    "mkt",
-    "trang_thai",
-    "so_luong",
+  const filterConfigs = [
+    { col: "ngay_only", defaultLabel: "Tất cả ngày", isDate: true },
+    { col: "dong_sp", defaultLabel: "Tất cả SP" },
+    { col: "mau_sac", defaultLabel: "Tất cả màu" },
+    { col: "size", defaultLabel: "Tất cả", isNum: true },
+    { col: "nen_tang", defaultLabel: "Tất cả" },
+    { col: "sale", defaultLabel: "Tất cả Sale" },
+    { col: "mkt", defaultLabel: "Tất cả MKT" },
+    { col: "trang_thai", defaultLabel: "Tất cả trạng thái" },
+    { col: "ma_van_don", defaultLabel: "Tất cả", binaryOnly: true },
+    { col: "ghi_chu", defaultLabel: "Tất cả", binaryOnly: true },
   ];
 
-  selectCols.forEach((colKey) => {
-    const sel = document.querySelector(`select.od-col-filter[data-col="${colKey}"]`);
+  filterConfigs.forEach((cfg) => {
+    const sel = document.querySelector(`select.od-col-filter[data-col="${cfg.col}"]`);
     if (!sel) return;
 
     const counts = new Map();
     let emptyCount = 0;
     for (const o of orders) {
-      const v = String(o[colKey] || "").trim();
+      const v = String(o[cfg.col] || "").trim();
       if (!v) {
         emptyCount++;
       } else {
@@ -2879,48 +2903,46 @@ function populate_od_column_filters(orders) {
       }
     }
 
-    const entries = Array.from(counts.entries());
-    entries.sort((a, b) => {
-      const na = parseFloat(a[0].replace(/[^\d.-]/g, ""));
-      const nb = parseFloat(b[0].replace(/[^\d.-]/g, ""));
-      if (!isNaN(na) && !isNaN(nb) && (colKey === "size" || colKey === "so_luong" || colKey === "gia_ban_str" || colKey === "phi_ship_str")) {
-        return na - nb;
-      }
-      return a[0].localeCompare(b[0], "vi");
-    });
+    const opts = [`<option value="">${cfg.defaultLabel} (${orders.length})</option>`];
+    const nonEmptyCount = orders.length - emptyCount;
 
-    const opts = [`<option value="">Tất cả (${orders.length})</option>`];
-    if (emptyCount > 0) {
-      opts.push(`<option value="__EMPTY__">(Trống) (${emptyCount})</option>`);
-      if (emptyCount < orders.length) {
-        opts.push(`<option value="__NOT_EMPTY__">(Có dữ liệu) (${orders.length - emptyCount})</option>`);
+    if (cfg.binaryOnly) {
+      if (nonEmptyCount > 0) {
+        opts.push(`<option value="__NOT_EMPTY__">Có dữ liệu (${nonEmptyCount})</option>`);
       }
+      if (emptyCount > 0) {
+        opts.push(`<option value="__EMPTY__">Trống (${emptyCount})</option>`);
+      }
+      if (cfg.col === "ghi_chu") {
+        const topNotes = Array.from(counts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 30);
+        for (const [val, cnt] of topNotes) {
+          opts.push(`<option value="${escape_html(val)}">${escape_html(val)} (${cnt})</option>`);
+        }
+      }
+      sel.innerHTML = opts.join("");
+      return;
     }
+
+    if (emptyCount > 0 && nonEmptyCount > 0) {
+      opts.push(`<option value="__EMPTY__">(Chưa điền / Trống) (${emptyCount})</option>`);
+    }
+
+    const entries = Array.from(counts.entries());
+    if (cfg.isDate) {
+      entries.reverse();
+    } else if (cfg.isNum) {
+      entries.sort((a, b) => (parseFloat(a[0]) || 0) - (parseFloat(b[0]) || 0));
+    } else {
+      entries.sort((a, b) => a[0].localeCompare(b[0], "vi"));
+    }
+
     for (const [val, cnt] of entries) {
       opts.push(`<option value="${escape_html(val)}">${escape_html(val)} (${cnt})</option>`);
     }
     sel.innerHTML = opts.join("");
   });
-
-  // Populate Datalist cho cột Thời gian (A)
-  const dlTime = document.getElementById("dlOdTime");
-  if (dlTime) {
-    const dateSet = new Set();
-    for (let i = orders.length - 1; i >= 0; i--) {
-      const tg = String(orders[i].thoi_gian || "").trim();
-      if (tg) {
-        const dateOnly = tg.split(/\s+/)[0];
-        if (dateOnly) dateSet.add(dateOnly);
-        if (dateSet.size >= 60) break;
-      }
-    }
-    const dlOpts = [
-      `<option value="(Có dữ liệu)"></option>`,
-      `<option value="(Trống)"></option>`,
-    ];
-    dateSet.forEach((d) => dlOpts.push(`<option value="${escape_html(d)}"></option>`));
-    dlTime.innerHTML = dlOpts.join("");
-  }
 }
 
 function update_od_scope_buttons_ui() {
@@ -2944,7 +2966,10 @@ function hien_thi_bang_loc_don_tong_hop(scopeMode = "all") {
   current_od_scope = scopeMode;
   current_od_mkt = null;
   current_od_sp = null;
+  od_sort_newest_first = true;
   od_render_limit = 500;
+
+  set_od_modal_layout_mode(true);
 
   const onlySelectedDate = scopeMode === "date";
   const orders = lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDate);
@@ -2958,15 +2983,15 @@ function hien_thi_bang_loc_don_tong_hop(scopeMode = "all") {
   const clearBtn = document.getElementById("btnClearOdSearch");
 
   if (mktBadge) {
-    mktBadge.textContent = "BẢNG TỔNG HỢP A → P";
+    mktBadge.textContent = "LỌC ĐƠN TỔNG HỢP";
     mktBadge.classList.remove("hidden");
   }
   if (spBadge) {
-    spBadge.textContent = onlySelectedDate ? "THEO NGÀY ĐANG CHỌN" : "TOÀN BỘ ĐƠN TRONG BẢNG";
+    spBadge.textContent = onlySelectedDate ? "THEO NGÀY ĐANG CHỌN" : "TẤT CẢ ĐƠN TRONG BẢNG";
     spBadge.classList.remove("hidden");
   }
   if (titleText) {
-    titleText.textContent = "🔎 BẢNG LỌC ĐƠN HÀNG TỔNG HỢP (DỮ LIỆU CỘT A → P)";
+    titleText.textContent = "BẢNG LỌC ĐƠN HÀNG TỔNG HỢP";
   }
   if (dateRangeText) {
     if (onlySelectedDate) {
@@ -2974,11 +2999,14 @@ function hien_thi_bang_loc_don_tong_hop(scopeMode = "all") {
       const e = current_end_date || "";
       dateRangeText.textContent = s === e ? `Ngày ${s}` : `Từ ${s} đến ${e}`;
     } else {
-      dateRangeText.textContent = `Toàn bộ ${orders.length} dòng đơn hàng trong bảng`;
+      dateRangeText.textContent = `Tổng cộng ${orders.length} đơn hàng trong bảng`;
     }
   }
 
-  if (searchInput) searchInput.value = "";
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.placeholder = "🔍 Tìm tên, SĐT, mã vận đơn, địa chỉ, ghi chú...";
+  }
   if (clearBtn) clearBtn.classList.add("hidden");
 
   update_od_scope_buttons_ui();
@@ -3001,7 +3029,10 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   current_od_scope = "date";
   current_od_mkt = ten_mkt;
   current_od_sp = ten_sp;
+  od_sort_newest_first = false;
   od_render_limit = 500;
+
+  set_od_modal_layout_mode(false);
 
   const orders = lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp);
   current_od_raw_list = orders;
@@ -3054,10 +3085,12 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
     dateRangeText.textContent = s === e ? `Ngày ${s}` : `Từ ${s} đến ${e}`;
   }
 
-  if (searchInput) searchInput.value = "";
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.placeholder = "🔍 Tìm tên, SĐT, mã vận đơn, địa chỉ...";
+  }
   if (clearBtn) clearBtn.classList.add("hidden");
 
-  update_od_scope_buttons_ui();
   populate_od_column_filters(orders);
   apply_od_filters_and_render(true);
 
@@ -3080,63 +3113,53 @@ function apply_od_filters_and_render(resetLimit = false) {
   const qNoDau = qRaw ? bo_dau_tieng_viet(qRaw).toLowerCase() : "";
 
   const activeColFilters = [];
-  const filterEls = document.querySelectorAll(".od-col-filter");
-  filterEls.forEach((el) => {
-    const colKey = el.getAttribute("data-col");
-    const val = (el.value || "").trim();
-    const isSelect = el.tagName.toLowerCase() === "select";
-    if (val) {
-      el.classList.add("has-active-filter");
-      activeColFilters.push({
-        colKey,
-        val,
-        valLower: val.toLowerCase(),
-        valNoDau: bo_dau_tieng_viet(val).toLowerCase(),
-        isSelect,
-      });
-    } else {
-      el.classList.remove("has-active-filter");
-    }
-  });
+  if (current_od_mode === "all_table") {
+    const filterEls = document.querySelectorAll(".od-col-filter");
+    filterEls.forEach((el) => {
+      const colKey = el.getAttribute("data-col");
+      const val = (el.value || "").trim();
+      const itemWrap = el.closest(".od-filter-item");
+      if (val) {
+        if (itemWrap) itemWrap.classList.add("has-active-filter");
+        activeColFilters.push({
+          colKey,
+          val,
+          valLower: val.toLowerCase(),
+        });
+      } else {
+        if (itemWrap) itemWrap.classList.remove("has-active-filter");
+      }
+    });
+  }
 
   const btnResetFilters = document.getElementById("btnResetOdColFilters");
   if (btnResetFilters) {
     if (activeColFilters.length > 0) {
-      btnResetFilters.textContent = `↺ Xóa lọc trường (${activeCountStr(activeColFilters.length)})`;
+      btnResetFilters.textContent = `↺ Xóa lọc (${activeColFilters.length})`;
       btnResetFilters.classList.remove("hidden");
     } else {
       btnResetFilters.classList.add("hidden");
     }
   }
 
-  const baseList = od_sort_newest_first
+  const baseList = (current_od_mode === "all_table" && od_sort_newest_first)
     ? current_od_raw_list.slice().reverse()
     : current_od_raw_list;
 
   const filtered = baseList.filter((o) => {
-    // 1. Lọc theo từng cột A -> P
     for (const f of activeColFilters) {
       const cellStr = String(o[f.colKey] || "").trim();
-      if (f.val === "__EMPTY__" || f.valLower === "(trống)") {
+      if (f.val === "__EMPTY__") {
         if (cellStr !== "") return false;
         continue;
       }
-      if (f.val === "__NOT_EMPTY__" || f.valLower === "(có dữ liệu)") {
+      if (f.val === "__NOT_EMPTY__") {
         if (cellStr === "") return false;
         continue;
       }
-      if (f.isSelect) {
-        if (cellStr.toLowerCase() !== f.valLower) return false;
-      } else {
-        const cellLower = cellStr.toLowerCase();
-        const cellNoDau = bo_dau_tieng_viet(cellStr).toLowerCase();
-        if (!cellLower.includes(f.valLower) && !cellNoDau.includes(f.valNoDau)) {
-          return false;
-        }
-      }
+      if (cellStr.toLowerCase() !== f.valLower) return false;
     }
 
-    // 2. Tìm kiếm toàn cục (Global search A -> P)
     if (qRaw) {
       const haystackRaw = [
         o.thoi_gian,
@@ -3170,10 +3193,6 @@ function apply_od_filters_and_render(resetLimit = false) {
   render_order_detail_table(filtered);
 }
 
-function activeCountStr(n) {
-  return `${n} cột`;
-}
-
 function render_order_detail_table(ordersToRender) {
   const tbody = document.getElementById("odTableBody");
   const emptyState = document.getElementById("odEmptyState");
@@ -3187,6 +3206,7 @@ function render_order_detail_table(ordersToRender) {
   const btnLoadAll = document.getElementById("btnOdLoadAll");
   if (!tbody) return;
 
+  const isAllTableMode = current_od_mode === "all_table";
   const totalMatched = Array.isArray(ordersToRender) ? ordersToRender.length : 0;
   let tong_ds = 0;
   let tong_ship = 0;
@@ -3201,13 +3221,15 @@ function render_order_detail_table(ordersToRender) {
   }
 
   if (countBadge) {
-    countBadge.textContent = `${totalMatched} / ${current_od_raw_list.length} đơn`;
+    countBadge.textContent = isAllTableMode
+      ? `${totalMatched} đơn hàng`
+      : `${totalMatched} đơn đã đếm`;
   }
   if (qtyBadge) {
     qtyBadge.textContent = `Tổng SL: ${tong_sl}`;
   }
   if (revenueText) {
-    revenueText.textContent = `Tổng Giá bán: ${format_tien_vnd(tong_ds)}`;
+    revenueText.textContent = `Tổng DS: ${format_tien_vnd(tong_ds)}`;
   }
   if (shipText) {
     shipText.textContent = `Tổng Ship: ${format_tien_vnd(tong_ship)}`;
@@ -3217,7 +3239,7 @@ function render_order_detail_table(ordersToRender) {
     tbody.innerHTML = "";
     if (emptyState) emptyState.classList.remove("hidden");
     if (loadMoreWrap) loadMoreWrap.classList.add("hidden");
-    if (footerSummary) footerSummary.textContent = "Không có đơn hàng nào khớp với bộ lọc";
+    if (footerSummary) footerSummary.textContent = "Không có đơn hàng nào khớp";
     return;
   }
 
@@ -3225,7 +3247,11 @@ function render_order_detail_table(ordersToRender) {
 
   const sliceCount = Math.min(totalMatched, od_render_limit);
   if (footerSummary) {
-    footerSummary.textContent = `Đang hiển thị ${sliceCount} / ${totalMatched} đơn khớp lọc (Tổng bảng: ${current_od_raw_list.length}) • Tổng SL: ${tong_sl} • Tổng Giá bán: ${format_tien_vnd(tong_ds)} • Tổng Ship: ${format_tien_vnd(tong_ship)}`;
+    if (isAllTableMode) {
+      footerSummary.textContent = `Hiển thị ${sliceCount} / ${totalMatched} đơn hàng • Tổng SL: ${tong_sl} • Tổng doanh số: ${format_tien_vnd(tong_ds)} • Tổng Ship: ${format_tien_vnd(tong_ship)}`;
+    } else {
+      footerSummary.textContent = `Hiển thị ${totalMatched} / ${current_od_raw_list.length} đơn hàng • Tổng doanh số: ${format_tien_vnd(tong_ds)}`;
+    }
   }
 
   if (loadMoreWrap) {
@@ -3251,11 +3277,16 @@ function render_order_detail_table(ordersToRender) {
     if (ntUpper.includes("LAND")) platformCls = "pill-landing";
     else if (ntUpper.includes("PAN")) platformCls = "pill-pancake";
 
-    const statusCls = get_status_pill_cls(order.trang_thai);
+    const extraColsHtml = isAllTableMode
+      ? `
+        <td class="col-trangthai">${order.trang_thai ? `<span class="pill-status ${get_status_pill_cls(order.trang_thai)}">${escape_html(order.trang_thai)}</span>` : "—"}</td>
+        <td class="col-soluong">${escape_html(order.so_luong || "—")}</td>
+        <td class="col-ghichu" title="${escape_html(order.ghi_chu)}">${escape_html(order.ghi_chu || "—")}</td>`
+      : "";
 
     rowsHtml[idx] = `
       <tr>
-        <td class="col-stt" title="Dòng #${order.row_num || (idx + 1)} trên Sheet">${idx + 1}</td>
+        <td class="col-stt">${idx + 1}</td>
         <td class="col-time">${escape_html(order.thoi_gian || "—")}</td>
         <td class="col-mvd">${escape_html(order.ma_van_don || "—")}</td>
         <td class="col-hoten">${escape_html(order.ho_ten || "—")}</td>
@@ -3264,14 +3295,11 @@ function render_order_detail_table(ordersToRender) {
         <td class="col-dongsp">${escape_html(order.dong_sp || "—")}</td>
         <td class="col-mausac">${escape_html(order.mau_sac || "—")}</td>
         <td class="col-size">${escape_html(order.size || "—")}</td>
-        <td class="col-giaban">${order.gia_ban > 0 ? format_tien_vnd(order.gia_ban) : escape_html(order.gia_ban_str || "0 đ")}</td>
-        <td class="col-phiship">${order.phi_ship > 0 ? format_tien_vnd(order.phi_ship) : escape_html(order.phi_ship_str || "0 đ")}</td>
-        <td class="col-nentang">${order.nen_tang ? `<span class="pill-platform ${platformCls}">${escape_html(order.nen_tang)}</span>` : "—"}</td>
+        <td class="col-giaban">${format_tien_vnd(order.gia_ban)}</td>
+        <td class="col-phiship">${format_tien_vnd(order.phi_ship)}</td>
+        <td class="col-nentang"><span class="pill-platform ${platformCls}">${escape_html(order.nen_tang || "Khác")}</span></td>
         <td class="col-sale">${escape_html(order.sale || "—")}</td>
-        <td class="col-mkt">${order.mkt ? `<span class="pill-mkt">${escape_html(order.mkt)}</span>` : "—"}</td>
-        <td class="col-trangthai">${order.trang_thai ? `<span class="pill-status ${statusCls}">${escape_html(order.trang_thai)}</span>` : "—"}</td>
-        <td class="col-soluong">${escape_html(order.so_luong || "—")}</td>
-        <td class="col-ghichu" title="${escape_html(order.ghi_chu)}">${escape_html(order.ghi_chu || "—")}</td>
+        <td class="col-mkt"><span class="pill-mkt">${escape_html(order.mkt || "—")}</span></td>${extraColsHtml}
       </tr>`;
   }
   tbody.innerHTML = rowsHtml.join("");
