@@ -3133,8 +3133,9 @@ input::-ms-clear {
 
 /* Khung bảng lịch Tone Kem Cozy & Viền Cà Phê Ấm */
 .calendar-popup {
-  padding: 14px 16px 14px;
-  width: 316px;
+  padding: 14px 16px 14px 14px;
+  width: 432px;
+  max-width: calc(100vw - 24px);
   background: linear-gradient(165deg, #FFFDF9 0%, #FAF1E4 100%);
   border: 2px solid #C6AD94;
   border-radius: 16px;
@@ -3142,6 +3143,98 @@ input::-ms-clear {
     0 18px 42px rgba(61, 35, 20, 0.22),
     0 4px 12px rgba(61, 35, 20, 0.08),
     inset 0 1px 0 #FFFFFF;
+}
+
+.cal-body-layout {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.cal-presets-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 112px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  border-right: 1.5px dashed #DECAB6;
+}
+
+[data-theme="dark"] .cal-presets-sidebar {
+  border-right-color: #4B382C;
+}
+
+.cal-preset-item {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1.5px solid #D8C4B0;
+  background: #F5ECE0;
+  color: #4E3423;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.cal-preset-item:hover {
+  background: #EADCCB;
+  border-color: #9C7154;
+  color: #3D2314;
+}
+
+.cal-preset-item.active-preset {
+  background: linear-gradient(135deg, #6E4F3A 0%, #4E3423 100%);
+  border-color: #3D2618;
+  color: #FFFDF9;
+  box-shadow: 0 3px 8px rgba(78, 52, 35, 0.28);
+}
+
+.cal-preset-item.cal-preset-all {
+  margin-top: auto;
+  border-style: dashed;
+  background: #FFFDF9;
+  color: #92400E;
+  border-color: #E2B870;
+}
+
+.cal-preset-item.cal-preset-all:hover {
+  background: #FEF3C7;
+  border-color: #D97706;
+}
+
+[data-theme="dark"] .cal-preset-item {
+  background: #2D2018;
+  border-color: #4B382C;
+  color: #E6D2BE;
+}
+
+[data-theme="dark"] .cal-preset-item:hover {
+  background: #3B2B20;
+  border-color: #8C654B;
+  color: #FFFDF9;
+}
+
+[data-theme="dark"] .cal-preset-item.active-preset {
+  background: linear-gradient(135deg, #B5835E 0%, #855A3B 100%);
+  border-color: #CFA07C;
+  color: #FFFDF9;
+}
+
+[data-theme="dark"] .cal-preset-item.cal-preset-all {
+  background: #231A14;
+  color: #FBBF24;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.cal-main-pane {
+  flex: 1;
+  min-width: 0;
 }
 
 [data-theme="dark"] .calendar-popup {

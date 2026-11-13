@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.115";
+const APP_FRONTEND_VERSION = "8.6.116";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -4278,12 +4278,13 @@ function toggle_calendar_popup(targetType, anchorBtn) {
   current_cal_month = dt.getMonth() + 1;
 
   render_calendar_grid(current_cal_year, current_cal_month);
+  sync_cal_preset_sidebar_ui();
 
   calPopup.classList.toggle("is-modal-cal", current_cal_target === "od_filter");
   calPopup.classList.remove("hidden");
   anchorBtn.classList.add("is-open");
   const rect = anchorBtn.getBoundingClientRect();
-  const popupWidth = 316;
+  const popupWidth = 432;
   let left = rect.left;
   if (left + popupWidth > window.innerWidth - 12) {
     left = window.innerWidth - popupWidth - 12;
@@ -4292,6 +4293,76 @@ function toggle_calendar_popup(targetType, anchorBtn) {
 
   calPopup.style.left = `${left}px`;
   calPopup.style.top = `${rect.bottom + 7}px`;
+}
+
+function sync_cal_preset_sidebar_ui() {
+  const isOdCal = current_cal_target === "od_filter";
+  const allBtn = document.getElementById("btnCalAllDates");
+  if (allBtn) allBtn.classList.toggle("hidden", !isOdCal);
+
+  const st = isOdCal ? od_date_start : current_start_date;
+  const en = isOdCal ? od_date_end : current_end_date;
+
+  const now = new Date();
+  const todayStr = format_ymd_date(now);
+  const yest = new Date(now);
+  yest.setDate(yest.getDate() - 1);
+  const yestStr = format_ymd_date(yest);
+  const lmStartStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const lmEndStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 0));
+  const tmStartStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 1));
+  const tmEndStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+
+  let activePreset = "";
+  if (isOdCal && (!st || !en)) {
+    activePreset = "all_dates";
+  } else if (st === todayStr && en === todayStr) {
+    activePreset = "today";
+  } else if (st === yestStr && en === yestStr) {
+    activePreset = "yesterday";
+  } else if (st === lmStartStr && en === lmEndStr) {
+    activePreset = "last_month";
+  } else if (st === tmStartStr && en === tmEndStr) {
+    activePreset = "this_month";
+  }
+
+  document.querySelectorAll("#calPresetsSidebar .cal-preset-item").forEach((btn) => {
+    btn.classList.toggle("active-preset", btn.getAttribute("data-preset") === activePreset);
+  });
+}
+
+function apply_cal_preset_choice(preset) {
+  let st = null;
+  let en = null;
+  const now = new Date();
+
+  if (preset === "today") {
+    st = en = format_ymd_date(now);
+  } else if (preset === "yesterday") {
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    st = en = format_ymd_date(yest);
+  } else if (preset === "last_month") {
+    st = format_ymd_date(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    en = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 0));
+  } else if (preset === "this_month") {
+    st = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 1));
+    en = format_ymd_date(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  }
+
+  if (current_cal_target === "od_filter") {
+    od_date_start = st;
+    od_date_end = en;
+    const calPopup = document.getElementById("calendarPopup");
+    calPopup?.classList.add("hidden");
+    calPopup?.classList.remove("is-modal-cal");
+    document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+    current_cal_target = null;
+    update_od_date_btn_ui();
+    apply_od_filters_and_render(true);
+  } else if (st && en) {
+    set_and_refresh(st, en);
+  }
 }
 
 function toggle_settings_popup(anchorBtn) {
@@ -4712,31 +4783,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     btnThemSp.addEventListener("click", xu_ly_them_sp);
   }
 
-  document.getElementById("btnToday")?.addEventListener("click", () => {
-    const now = new Date();
-    const s = format_ymd_date(now);
-    set_and_refresh(s, s);
+  document.getElementById("btnToday")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("today");
   });
 
-  document.getElementById("btnYesterday")?.addEventListener("click", () => {
-    const yest = new Date();
-    yest.setDate(yest.getDate() - 1);
-    const s = format_ymd_date(yest);
-    set_and_refresh(s, s);
+  document.getElementById("btnYesterday")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("yesterday");
   });
 
-  document.getElementById("btnLastMonth")?.addEventListener("click", () => {
-    const now = new Date();
-    const lm_start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lm_end = new Date(now.getFullYear(), now.getMonth(), 0);
-    set_and_refresh(format_ymd_date(lm_start), format_ymd_date(lm_end));
+  document.getElementById("btnLastMonth")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("last_month");
   });
 
-  document.getElementById("btnThisMonth")?.addEventListener("click", () => {
-    const now = new Date();
-    const tm_start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const tm_end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    set_and_refresh(format_ymd_date(tm_start), format_ymd_date(tm_end));
+  document.getElementById("btnThisMonth")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("this_month");
+  });
+
+  document.getElementById("btnCalAllDates")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("all_dates");
   });
 
   const btnStartDate = document.getElementById("btnStartDate");

@@ -114,14 +114,7 @@
         </div>
 
         <!-- Quick Date Buttons -->
-        <div class="quick-date-group">
-          <button type="button" id="btnToday" class="rounded-btn btn-default quick-preset-btn active-preset" data-preset="today">Hôm nay</button>
-          <button type="button" id="btnYesterday" class="rounded-btn btn-default quick-preset-btn" data-preset="yesterday">Hôm qua</button>
-          <button type="button" id="btnLastMonth" class="rounded-btn btn-default quick-preset-btn" data-preset="last_month">Tháng trước</button>
-          <button type="button" id="btnThisMonth" class="rounded-btn btn-default quick-preset-btn" data-preset="this_month">Tháng này</button>
-        </div>
-
-        <!-- Date Range Selectors -->
+        <!-- Date Range Selectors (các nút nhanh Hôm nay/Hôm qua/Tháng này/Tháng trước nằm bên cạnh lịch khi mở) -->
         <div class="date-range-group">
           <div class="popover-anchor">
             <button type="button" id="btnStartDate" class="rounded-btn btn-date-picker btn-date-range-unified" aria-haspopup="dialog" title="Chọn khoảng thời gian">
@@ -212,34 +205,45 @@
     </main>
   </div>
 
-  <!-- Calendar Popup -->
+  <!-- Calendar Popup (v8.6.116: Kèm cột chọn nhanh bên cạnh lịch) -->
   <div id="calendarPopup" class="popup-panel calendar-popup hidden" role="dialog" aria-label="Chọn khoảng ngày">
-    <div class="cal-nav">
-      <button type="button" id="calPrevBtn" class="cal-nav-btn" aria-label="Tháng trước">‹</button>
-      <div class="cal-selects-group">
-        <div class="cal-custom-dd" id="calMonthDd">
-          <button type="button" id="calMonthBtn" class="cal-dd-trigger" aria-haspopup="listbox" aria-label="Chọn tháng">
-            <span id="calMonthBtnText">Tháng 11</span>
-            <span class="cal-dd-caret">▾</span>
-          </button>
-          <div id="calMonthMenu" class="cal-dd-menu cal-month-menu hidden" role="listbox"></div>
-        </div>
-        <div class="cal-custom-dd" id="calYearDd">
-          <button type="button" id="calYearBtn" class="cal-dd-trigger" aria-haspopup="listbox" aria-label="Chọn năm">
-            <span id="calYearBtnText">2026</span>
-            <span class="cal-dd-caret">▾</span>
-          </button>
-          <div id="calYearMenu" class="cal-dd-menu cal-year-menu hidden" role="listbox"></div>
-        </div>
+    <div class="cal-body-layout">
+      <div class="cal-presets-sidebar" id="calPresetsSidebar">
+        <button type="button" id="btnToday" class="cal-preset-item quick-preset-btn active-preset" data-preset="today">Hôm nay</button>
+        <button type="button" id="btnYesterday" class="cal-preset-item quick-preset-btn" data-preset="yesterday">Hôm qua</button>
+        <button type="button" id="btnThisMonth" class="cal-preset-item quick-preset-btn" data-preset="this_month">Tháng này</button>
+        <button type="button" id="btnLastMonth" class="cal-preset-item quick-preset-btn" data-preset="last_month">Tháng trước</button>
+        <button type="button" id="btnCalAllDates" class="cal-preset-item cal-preset-all hidden" data-preset="all_dates">Tất cả ngày</button>
       </div>
-      <span id="calMonthYearLabel" class="cal-month-label hidden">Tháng 11 / 2026</span>
-      <button type="button" id="calNextBtn" class="cal-nav-btn" aria-label="Tháng sau">›</button>
+      <div class="cal-main-pane">
+        <div class="cal-nav">
+          <button type="button" id="calPrevBtn" class="cal-nav-btn" aria-label="Tháng trước">‹</button>
+          <div class="cal-selects-group">
+            <div class="cal-custom-dd" id="calMonthDd">
+              <button type="button" id="calMonthBtn" class="cal-dd-trigger" aria-haspopup="listbox" aria-label="Chọn tháng">
+                <span id="calMonthBtnText">Tháng 11</span>
+                <span class="cal-dd-caret">▾</span>
+              </button>
+              <div id="calMonthMenu" class="cal-dd-menu cal-month-menu hidden" role="listbox"></div>
+            </div>
+            <div class="cal-custom-dd" id="calYearDd">
+              <button type="button" id="calYearBtn" class="cal-dd-trigger" aria-haspopup="listbox" aria-label="Chọn năm">
+                <span id="calYearBtnText">2026</span>
+                <span class="cal-dd-caret">▾</span>
+              </button>
+              <div id="calYearMenu" class="cal-dd-menu cal-year-menu hidden" role="listbox"></div>
+            </div>
+          </div>
+          <span id="calMonthYearLabel" class="cal-month-label hidden">Tháng 11 / 2026</span>
+          <button type="button" id="calNextBtn" class="cal-nav-btn" aria-label="Tháng sau">›</button>
+        </div>
+        <div class="cal-weekdays" id="calWeekdaysRow">
+          <span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span>
+        </div>
+        <div id="calGrid" class="cal-grid"></div>
+        <div id="calRangeHint" class="cal-range-hint"></div>
+      </div>
     </div>
-    <div class="cal-weekdays" id="calWeekdaysRow">
-      <span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span>
-    </div>
-    <div id="calGrid" class="cal-grid"></div>
-    <div id="calRangeHint" class="cal-range-hint"></div>
   </div>
 
   <!-- Settings Popup -->
