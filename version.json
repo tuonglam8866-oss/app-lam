@@ -1,22 +1,22 @@
 {
-    "version":  "8.6.121",
+    "version":  "8.6.122",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "78a476b8d86c9ef10d12938b98d9d22e7929721c3abdaaf3b344d266e474d30c",
-    "index.html_sha256":  "b234134890c98a3ca763a2220505dca14465ce07eb5c4ff59a7fdff3e10ca40a",
+    "exe_sha256":  "361ecd43482a83cc21fe31bd1888085829cc97e7fc6e8c5a8f4af9c0a1a5262c",
+    "index.html_sha256":  "26d6324aa4394498b6bdc525f33fef651515a651509dc90da609136c20e5e89b",
     "styles.css_sha256":  "a13f8e522fc500b762c53998d68889c3cc230bc0ac1dbb9b9cd7bbcca2251a02",
-    "app.js_sha256":  "4f6f5b27a69d901b54e556166d5d5c3869a296ebb63a90ebba396c552210a34d",
+    "app.js_sha256":  "8bc21be55fe703d3898658eef2709b3ec17171f3786aff9e9628ed866790f84c",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "78a476b8d86c9ef10d12938b98d9d22e7929721c3abdaaf3b344d266e474d30c",
-                                     "size":  425472
+                                     "sha256":  "361ecd43482a83cc21fe31bd1888085829cc97e7fc6e8c5a8f4af9c0a1a5262c",
+                                     "size":  425984
                                  },
                   "app.js":  {
-                                 "sha256":  "4f6f5b27a69d901b54e556166d5d5c3869a296ebb63a90ebba396c552210a34d",
+                                 "sha256":  "8bc21be55fe703d3898658eef2709b3ec17171f3786aff9e9628ed866790f84c",
                                  "size":  191735
                              },
                   "index.html":  {
-                                     "sha256":  "b234134890c98a3ca763a2220505dca14465ce07eb5c4ff59a7fdff3e10ca40a",
-                                     "size":  31641
+                                     "sha256":  "26d6324aa4394498b6bdc525f33fef651515a651509dc90da609136c20e5e89b",
+                                     "size":  31991
                                  },
                   "styles.css":  {
                                      "sha256":  "a13f8e522fc500b762c53998d68889c3cc230bc0ac1dbb9b9cd7bbcca2251a02",
