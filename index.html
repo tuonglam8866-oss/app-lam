@@ -380,7 +380,7 @@
   <!-- Cursor Copy Toast -->
   <div id="cursorToast" class="cursor-toast hidden" role="status" aria-live="polite"></div>
 
-  <!-- Modal Chi Tiết & Lọc Đơn Hàng Tổng Hợp Cột A -> P (v8.6.105) -->
+  <!-- Modal Chi Tiết & Lọc Đơn Hàng Tổng Hợp Cột A -> P (v8.6.106) -->
   <div id="orderDetailModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Chi tiết đơn hàng">
     <div class="order-detail-card" id="orderDetailCard">
       <div class="od-header">
@@ -401,10 +401,7 @@
           </div>
         </div>
         <div class="od-header-actions">
-          <div class="od-scope-switch hidden" id="odScopeSwitch" role="group" aria-label="Phạm vi dữ liệu">
-            <button type="button" id="btnOdScopeAll" class="od-scope-btn active" title="Hiển thị toàn bộ đơn hàng trong bảng">📚 Tất cả đơn</button>
-            <button type="button" id="btnOdScopeDate" class="od-scope-btn" title="Chỉ lọc các đơn thuộc khoảng ngày đang chọn trên lịch">📅 Theo ngày chọn</button>
-          </div>
+          <button type="button" id="btnResetOdColFilters" class="od-reset-pill-btn hidden" title="Xóa tất cả điều kiện lọc cột">↺ Xóa lọc</button>
           <button type="button" id="btnOdSortToggle" class="od-tool-btn hidden" title="Đổi thứ tự sắp xếp">⇅ Mới nhất đầu</button>
           <div class="od-search-box">
             <input type="text" id="odSearchInput" class="od-search-input" placeholder="🔍 Tìm tên, SĐT, mã vận đơn, địa chỉ..." autocomplete="off" />
@@ -414,72 +411,27 @@
         </div>
       </div>
 
-      <!-- Thanh Lọc Trường Gọn Đẹp (Chỉ hiện khi bấm nút Kính Lúp Lọc Đơn) -->
-      <div class="od-filter-bar hidden" id="odFilterBar">
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Ngày</label>
-          <select class="od-col-filter" data-col="ngay_only"><option value="">Tất cả ngày</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Dòng SP</label>
-          <select class="od-col-filter" data-col="dong_sp"><option value="">Tất cả SP</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Màu sắc</label>
-          <select class="od-col-filter" data-col="mau_sac"><option value="">Tất cả màu</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Size</label>
-          <select class="od-col-filter" data-col="size"><option value="">Tất cả</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Nền tảng</label>
-          <select class="od-col-filter" data-col="nen_tang"><option value="">Tất cả</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Sale</label>
-          <select class="od-col-filter" data-col="sale"><option value="">Tất cả Sale</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">MKT</label>
-          <select class="od-col-filter" data-col="mkt"><option value="">Tất cả MKT</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Trạng thái</label>
-          <select class="od-col-filter" data-col="trang_thai"><option value="">Tất cả trạng thái</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Mã vận đơn</label>
-          <select class="od-col-filter" data-col="ma_van_don"><option value="">Tất cả</option></select>
-        </div>
-        <div class="od-filter-item">
-          <label class="od-filter-lbl">Ghi chú</label>
-          <select class="od-col-filter" data-col="ghi_chu"><option value="">Tất cả</option></select>
-        </div>
-        <button type="button" id="btnResetOdColFilters" class="od-reset-pill-btn hidden" title="Xóa tất cả điều kiện lọc trường">↺ Xóa lọc</button>
-      </div>
-
       <div class="od-table-wrapper" id="odTableWrapper">
         <table class="od-table" id="odTable">
           <thead>
             <tr>
               <th class="col-stt">STT</th>
-              <th class="col-time">Thời gian</th>
-              <th class="col-mvd">Mã vận đơn</th>
-              <th class="col-hoten">Họ tên</th>
-              <th class="col-sdt">Số điện thoại</th>
-              <th class="col-diachi">Địa chỉ</th>
-              <th class="col-dongsp">Dòng SP</th>
-              <th class="col-mausac">Màu sắc</th>
-              <th class="col-size">Size</th>
-              <th class="col-giaban">Giá bán</th>
-              <th class="col-phiship">Phí Ship</th>
-              <th class="col-nentang">Nền tảng</th>
-              <th class="col-sale">Sale</th>
-              <th class="col-mkt">MKT</th>
-              <th class="col-trangthai col-extra-ap hidden">Trạng thái đơn</th>
-              <th class="col-soluong col-extra-ap hidden">SL</th>
-              <th class="col-ghichu col-extra-ap hidden">Ghi chú</th>
+              <th class="col-time"><div class="od-th-inner"><span class="od-th-label">Thời gian</span><button type="button" class="od-th-filter-btn hidden" data-col="ngay_only" title="Lọc cột Thời gian"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-mvd"><div class="od-th-inner"><span class="od-th-label">Mã vận đơn</span><button type="button" class="od-th-filter-btn hidden" data-col="ma_van_don" title="Lọc cột Mã vận đơn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-hoten"><div class="od-th-inner"><span class="od-th-label">Họ tên</span><button type="button" class="od-th-filter-btn hidden" data-col="ho_ten" title="Lọc cột Họ tên"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-sdt"><div class="od-th-inner"><span class="od-th-label">Số điện thoại</span><button type="button" class="od-th-filter-btn hidden" data-col="sdt" title="Lọc cột Số điện thoại"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-diachi"><div class="od-th-inner"><span class="od-th-label">Địa chỉ</span><button type="button" class="od-th-filter-btn hidden" data-col="dia_chi" title="Lọc cột Địa chỉ"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-dongsp"><div class="od-th-inner"><span class="od-th-label">Dòng SP</span><button type="button" class="od-th-filter-btn hidden" data-col="dong_sp" title="Lọc cột Dòng SP"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-mausac"><div class="od-th-inner"><span class="od-th-label">Màu sắc</span><button type="button" class="od-th-filter-btn hidden" data-col="mau_sac" title="Lọc cột Màu sắc"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-size"><div class="od-th-inner"><span class="od-th-label">Size</span><button type="button" class="od-th-filter-btn hidden" data-col="size" title="Lọc cột Size"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-giaban"><div class="od-th-inner"><span class="od-th-label">Giá bán</span><button type="button" class="od-th-filter-btn hidden" data-col="gia_ban" title="Lọc cột Giá bán"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-phiship"><div class="od-th-inner"><span class="od-th-label">Phí Ship</span><button type="button" class="od-th-filter-btn hidden" data-col="phi_ship" title="Lọc cột Phí Ship"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-nentang"><div class="od-th-inner"><span class="od-th-label">Nền tảng</span><button type="button" class="od-th-filter-btn hidden" data-col="nen_tang" title="Lọc cột Nền tảng"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-sale"><div class="od-th-inner"><span class="od-th-label">Sale</span><button type="button" class="od-th-filter-btn hidden" data-col="sale" title="Lọc cột Sale"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-mkt"><div class="od-th-inner"><span class="od-th-label">MKT</span><button type="button" class="od-th-filter-btn hidden" data-col="mkt" title="Lọc cột MKT"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-trangthai col-extra-ap hidden"><div class="od-th-inner"><span class="od-th-label">Trạng thái đơn</span><button type="button" class="od-th-filter-btn hidden" data-col="trang_thai" title="Lọc cột Trạng thái đơn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-soluong col-extra-ap hidden"><div class="od-th-inner"><span class="od-th-label">SL</span><button type="button" class="od-th-filter-btn hidden" data-col="so_luong" title="Lọc cột Số lượng"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-ghichu col-extra-ap hidden"><div class="od-th-inner"><span class="od-th-label">Ghi chú</span><button type="button" class="od-th-filter-btn hidden" data-col="ghi_chu" title="Lọc cột Ghi chú"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
             </tr>
           </thead>
           <tbody id="odTableBody">
@@ -505,6 +457,35 @@
           <button type="button" id="btnDismissOrderDetail" class="rounded-btn btn-choco" style="padding: 7px 22px; font-weight: 700;">
             Đóng
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Excel-style Column Filter Popover (v8.6.106) -->
+    <div id="odExcelFilterPopover" class="od-xl-popover hidden" role="dialog" aria-label="Bộ lọc cột Excel">
+      <div class="od-xl-head">
+        <span class="od-xl-title" id="odXlTitle">Lọc cột</span>
+        <button type="button" class="od-xl-close" id="btnOdXlClose" title="Đóng">✕</button>
+      </div>
+      <div class="od-xl-sort-row">
+        <button type="button" class="od-xl-sort-btn" id="btnOdXlSortAsc" data-dir="asc">↑ Sắp xếp A → Z</button>
+        <button type="button" class="od-xl-sort-btn" id="btnOdXlSortDesc" data-dir="desc">↓ Sắp xếp Z → A</button>
+      </div>
+      <div class="od-xl-search-wrap">
+        <input type="text" id="odXlSearchInput" class="od-xl-search" placeholder="🔍 Tìm giá trị..." autocomplete="off" />
+      </div>
+      <div class="od-xl-quick-row">
+        <button type="button" class="od-xl-link" id="btnOdXlSelectAll">Chọn tất cả</button>
+        <span class="od-xl-sep">•</span>
+        <button type="button" class="od-xl-link" id="btnOdXlClearAll">Bỏ chọn</button>
+        <span class="od-xl-count-info" id="odXlCountInfo"></span>
+      </div>
+      <div class="od-xl-list" id="odXlList"></div>
+      <div class="od-xl-foot">
+        <button type="button" class="od-xl-btn-clear" id="btnOdXlResetCol">Xóa lọc cột</button>
+        <div class="od-xl-foot-right">
+          <button type="button" class="od-xl-btn-cancel" id="btnOdXlCancel">Hủy</button>
+          <button type="button" class="od-xl-btn-apply" id="btnOdXlApply">Áp dụng</button>
         </div>
       </div>
     </div>
