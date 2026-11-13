@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.111";
+const APP_FRONTEND_VERSION = "8.6.112";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3411,7 +3411,6 @@ function render_order_detail_table(ordersToRender) {
 
     rowsHtml[idx] = `
       <tr>
-        <td class="col-stt">${idx + 1}</td>
         <td class="col-time">${escape_html(order.thoi_gian || "—")}</td>
         <td class="col-mvd">${escape_html(order.ma_van_don || "—")}</td>
         <td class="col-hoten">${escape_html(order.ho_ten || "—")}</td>
@@ -3421,7 +3420,6 @@ function render_order_detail_table(ordersToRender) {
         <td class="col-mausac">${escape_html(order.mau_sac || "—")}</td>
         <td class="col-size">${escape_html(order.size || "—")}</td>
         <td class="col-giaban">${format_tien_vnd(order.gia_ban)}</td>
-        <td class="col-phiship">${format_tien_vnd(order.phi_ship)}</td>
         <td class="col-nentang"><span class="pill-platform ${platformCls}">${escape_html(order.nen_tang || "Khác")}</span></td>
         <td class="col-sale">${escape_html(order.sale || "—")}</td>
         <td class="col-mkt"><span class="pill-mkt">${escape_html(order.mkt || "—")}</span></td>${extraColsHtml}
