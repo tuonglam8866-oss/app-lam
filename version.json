@@ -1,6 +1,6 @@
 {
     "version":  "8.6.116",
-    "released_at":  "2026-11-13T13:50:42+07:00",
+    "released_at":  "2026-11-13T13:57:19+07:00",
     "files":  {
                   "APPLAM.exe":  {
                                      "sha256":  "a7699bee68acfe56d4643d17f31cfcd2d021fcf7a6fe485a57c91fbe06669bc1",
@@ -11,12 +11,12 @@
                                  "size":  192501
                              },
                   "index.html":  {
-                                     "sha256":  "4ad0e92a3eb671aa5b98d71c6fa640fdca4fbf3462425448b29277a1e33f00da",
-                                     "size":  31805
+                                     "sha256":  "f96d0d0f9815c099ebc968573d46f0455e87af797cac9b0a26875a9177335afa",
+                                     "size":  31870
                                  },
                   "styles.css":  {
-                                     "sha256":  "d497d3066bc1750d7a67853c442d27304077e1530815f3178454d53f508a7dd0",
-                                     "size":  94902
+                                     "sha256":  "a37caeeff53046ceee2018b5ceea8b9ee5bd829c6d01e66b41f03ea7acdb2566",
+                                     "size":  94978
                                  }
               }
 }
