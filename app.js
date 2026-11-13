@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.113";
+const APP_FRONTEND_VERSION = "8.6.114";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2915,21 +2915,63 @@ function parse_order_ymd(order) {
   return "";
 }
 
+function get_od_preset_range(preset) {
+  const now = new Date();
+  if (preset === "today") {
+    const s = format_ymd_date(now);
+    return { st: s, en: s };
+  }
+  if (preset === "yesterday") {
+    const y = new Date(now);
+    y.setDate(now.getDate() - 1);
+    const s = format_ymd_date(y);
+    return { st: s, en: s };
+  }
+  if (preset === "this_month") {
+    const st = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 1));
+    const en = format_ymd_date(now);
+    return { st, en };
+  }
+  if (preset === "last_month") {
+    const st = format_ymd_date(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    const en = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 0));
+    return { st, en };
+  }
+  return null;
+}
+
 function update_od_date_btn_ui() {
   const btn = document.getElementById("btnOdDateRange");
-  const txt = document.getElementById("odDateBtnText");
-  if (!btn || !txt) return;
-  if (od_date_start && od_date_end) {
-    txt.textContent = od_date_start === od_date_end ? od_date_start : `${od_date_start} → ${od_date_end}`;
-    btn.classList.add("active");
-  } else {
-    txt.textContent = "Tất cả ngày";
-    btn.classList.remove("active");
+  const startEl = document.getElementById("odDateStartText");
+  const sepEl = document.getElementById("odDateSep");
+  const endEl = document.getElementById("odDateEndText");
+
+  if (btn && startEl && sepEl && endEl) {
+    if (od_date_start && od_date_end) {
+      startEl.textContent = od_date_start;
+      endEl.textContent = od_date_end;
+      sepEl.classList.remove("hidden");
+      endEl.classList.remove("hidden");
+      btn.classList.add("active");
+    } else {
+      startEl.textContent = "Tất cả ngày";
+      sepEl.classList.add("hidden");
+      endEl.classList.add("hidden");
+      btn.classList.remove("active");
+    }
   }
+
+  document.querySelectorAll(".od-preset-btn").forEach((pBtn) => {
+    const preset = pBtn.getAttribute("data-od-preset");
+    const rng = get_od_preset_range(preset);
+    const isActive = Boolean(rng && od_date_start === rng.st && od_date_end === rng.en);
+    pBtn.classList.toggle("active-preset", isActive);
+  });
 }
 
 function set_od_modal_layout_mode(isAllTableMode) {
   const cardEl = document.getElementById("orderDetailCard");
+  const quickDateGroup = document.getElementById("odQuickDateGroup");
   const dateBtn = document.getElementById("btnOdDateRange");
   const sortBtn = document.getElementById("btnOdSortToggle");
   const countBadge = document.getElementById("odCountBadge");
@@ -2941,6 +2983,7 @@ function set_od_modal_layout_mode(isAllTableMode) {
   const thFilterBtns = document.querySelectorAll(".od-th-filter-btn");
 
   if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
+  if (quickDateGroup) quickDateGroup.classList.toggle("hidden", !isAllTableMode);
   if (dateBtn) dateBtn.classList.toggle("hidden", !isAllTableMode);
   if (sortBtn) sortBtn.classList.toggle("hidden", !isAllTableMode);
   if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
@@ -5065,6 +5108,32 @@ window.addEventListener("DOMContentLoaded", async () => {
     od_sort_newest_first = !od_sort_newest_first;
     update_od_sort_button_ui();
     apply_od_filters_and_render(true);
+  });
+
+  document.querySelectorAll(".od-preset-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      close_od_excel_filter();
+      if (current_cal_target === "od_filter") {
+        const calPop = document.getElementById("calendarPopup");
+        calPop?.classList.add("hidden");
+        calPop?.classList.remove("is-modal-cal");
+        document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+        current_cal_target = null;
+      }
+      const preset = btn.getAttribute("data-od-preset");
+      const rng = get_od_preset_range(preset);
+      if (!rng) return;
+      if (od_date_start === rng.st && od_date_end === rng.en) {
+        od_date_start = null;
+        od_date_end = null;
+      } else {
+        od_date_start = rng.st;
+        od_date_end = rng.en;
+      }
+      update_od_date_btn_ui();
+      apply_od_filters_and_render(true);
+    });
   });
 
   document.getElementById("btnOdDateRange")?.addEventListener("click", (e) => {

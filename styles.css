@@ -3697,47 +3697,49 @@ input::-ms-clear {
 }
 
 .od-reset-pill-btn {
-  height: 34px;
-  padding: 0 12px;
+  height: 37px;
+  padding: 0 13px;
   border-radius: 10px;
-  border: 1.5px solid #FCA5A5;
-  background: #FEE2E2;
-  color: #B91C1C;
+  border: 1.5px solid #F5A3A3;
+  background: linear-gradient(180deg, #FFF1F2 0%, #FFE4E6 100%);
+  color: #BE123C;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  box-shadow: 0 2px 5px rgba(190, 18, 60, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.16s ease;
 }
 
 .od-reset-pill-btn:hover {
-  background: #FECACA;
+  background: linear-gradient(180deg, #FFE4E6 0%, #FECDD3 100%);
+  border-color: #E11D48;
   transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(190, 18, 60, 0.14);
 }
 
 [data-theme="dark"] .od-reset-pill-btn {
   background: rgba(220, 38, 38, 0.22);
   color: #FCA5A5;
-  border-color: rgba(248, 113, 113, 0.4);
+  border-color: rgba(248, 113, 113, 0.45);
+  box-shadow: none;
 }
 
-.od-date-btn {
+.od-quick-date-group {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 
-.od-date-btn.active {
-  background: #FEF3C7;
+.od-date-range-btn.active {
+  border-color: #C88A4B;
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="dark"] .od-date-range-btn.active {
   border-color: #D97706;
-  color: #92400E;
-}
-
-[data-theme="dark"] .od-date-btn.active {
-  background: rgba(217, 119, 6, 0.24);
-  border-color: #F59E0B;
-  color: #FBBF24;
 }
 
 #calendarPopup.is-modal-cal {
