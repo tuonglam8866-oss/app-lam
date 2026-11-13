@@ -146,6 +146,13 @@
 
         <!-- Action Buttons -->
         <div class="action-btn-group">
+          <button type="button" id="btnFilterAllOrders" class="rounded-btn btn-filter-orders" title="Tra cứu &amp; Lọc toàn bộ đơn hàng trong bảng (Cột A → P)">
+            <svg class="filter-lens-svg" viewBox="0 0 20 20" width="13.5" height="13.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="8.5" cy="8.5" r="5.3"></circle>
+              <line x1="12.5" y1="12.5" x2="17" y2="17"></line>
+            </svg>
+            <span id="btnFilterAllOrdersText">Lọc đơn</span>
+          </button>
           <button type="button" id="btnRefresh" class="rounded-btn btn-choco">
             <span class="refresh-icon" id="refreshIcon">↻</span>
             <span id="btnRefreshText">Tải Lại</span>
@@ -153,7 +160,7 @@
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-choco btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon" id="headerUpdateIcon">↻</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.103</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.104</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -373,26 +380,35 @@
   <!-- Cursor Copy Toast -->
   <div id="cursorToast" class="cursor-toast hidden" role="status" aria-live="polite"></div>
 
-  <!-- Modal Chi Tiết Đơn Hàng Của Sản Phẩm / MKT (v8.6.96) -->
-  <div id="orderDetailModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Chi tiết đơn hàng đã đếm">
+  <!-- Modal Chi Tiết & Lọc Đơn Hàng Tổng Hợp Cột A -> P (v8.6.104) -->
+  <div id="orderDetailModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Bảng lọc và chi tiết đơn hàng từ cột A đến P">
     <div class="order-detail-card">
       <div class="od-header">
         <div class="od-header-info">
           <div class="od-tag-row">
-            <span class="od-tag-pill" id="odMktBadge">MKT</span>
-            <span class="od-tag-sp" id="odSpBadge">SẢN PHẨM</span>
-            <span class="od-tag-count" id="odCountBadge">0 đơn đã đếm</span>
+            <span class="od-tag-pill" id="odMktBadge">TỔNG HỢP A → P</span>
+            <span class="od-tag-sp" id="odSpBadge">TẤT CẢ ĐƠN HÀNG</span>
+            <span class="od-tag-count" id="odCountBadge">0 đơn hàng</span>
+            <span class="od-tag-qty" id="odQtyBadge">Tổng SL: 0</span>
           </div>
-          <h2 class="od-title" id="odTitleText">DANH SÁCH ĐƠN HÀNG ĐÃ ĐẾM</h2>
+          <h2 class="od-title" id="odTitleText">BẢNG LỌC ĐƠN HÀNG TỔNG HỢP (CỘT A → P)</h2>
           <div class="od-meta-row">
-            <span class="od-meta-item" id="odDateRangeText">Ngày ...</span>
+            <span class="od-meta-item" id="odDateRangeText">Toàn bộ dữ liệu trong bảng</span>
             <span class="od-meta-divider">•</span>
-            <span class="od-meta-item" id="odRevenueText">Tổng DS: 0 đ</span>
+            <span class="od-meta-item" id="odRevenueText">Tổng Giá bán: 0 đ</span>
+            <span class="od-meta-divider">•</span>
+            <span class="od-meta-item" id="odShipText">Tổng Ship: 0 đ</span>
           </div>
         </div>
         <div class="od-header-actions">
+          <div class="od-scope-switch" role="group" aria-label="Phạm vi dữ liệu">
+            <button type="button" id="btnOdScopeAll" class="od-scope-btn active" title="Hiển thị toàn bộ tất cả đơn hàng có trong bảng Google Sheets (Cột A → P)">📚 Tất cả đơn trong bảng</button>
+            <button type="button" id="btnOdScopeDate" class="od-scope-btn" title="Chỉ lọc các đơn thuộc khoảng ngày đang chọn trên lịch">📅 Theo ngày đang chọn</button>
+          </div>
+          <button type="button" id="btnOdSortToggle" class="od-tool-btn" title="Đổi thứ tự sắp xếp (Mới nhất lên đầu / Thứ tự gốc)">⇅ Mới nhất đầu</button>
+          <button type="button" id="btnResetOdColFilters" class="od-tool-btn od-reset-filter-btn hidden" title="Xóa tất cả bộ lọc trường trên các cột A → P">↺ Xóa lọc trường</button>
           <div class="od-search-box">
-            <input type="text" id="odSearchInput" class="od-search-input" placeholder="🔍 Tìm tên, SĐT, mã vận đơn, địa chỉ..." autocomplete="off" />
+            <input type="text" id="odSearchInput" class="od-search-input" placeholder="🔍 Tìm nhanh mọi cột (A → P)..." autocomplete="off" />
             <button type="button" id="btnClearOdSearch" class="od-search-clear hidden" title="Xóa tìm kiếm">✕</button>
           </div>
           <button type="button" id="btnCloseOrderDetail" class="od-close-btn" aria-label="Đóng" title="Đóng (Esc)">✕</button>
@@ -402,31 +418,98 @@
       <div class="od-table-wrapper" id="odTableWrapper">
         <table class="od-table" id="odTable">
           <thead>
-            <tr>
+            <tr class="od-head-titles">
               <th class="col-stt">STT</th>
-              <th class="col-time">Thời gian</th>
-              <th class="col-mvd">Mã vận đơn</th>
-              <th class="col-hoten">Họ tên</th>
-              <th class="col-sdt">Số điện thoại</th>
-              <th class="col-diachi">Địa chỉ</th>
-              <th class="col-dongsp">Dòng SP</th>
-              <th class="col-mausac">Màu sắc</th>
-              <th class="col-size">Size</th>
-              <th class="col-giaban">Giá bán</th>
-              <th class="col-phiship">Phí Ship</th>
-              <th class="col-nentang">Nền tảng</th>
-              <th class="col-sale">Sale</th>
-              <th class="col-mkt">MKT</th>
+              <th class="col-time"><span class="col-letter">A</span>Thời gian</th>
+              <th class="col-mvd"><span class="col-letter">B</span>Mã vận đơn</th>
+              <th class="col-hoten"><span class="col-letter">C</span>Họ tên</th>
+              <th class="col-sdt"><span class="col-letter">D</span>Số điện thoại</th>
+              <th class="col-diachi"><span class="col-letter">E</span>Địa chỉ</th>
+              <th class="col-dongsp"><span class="col-letter">F</span>Dòng SP</th>
+              <th class="col-mausac"><span class="col-letter">G</span>Màu sắc</th>
+              <th class="col-size"><span class="col-letter">H</span>Size</th>
+              <th class="col-giaban"><span class="col-letter">I</span>Giá bán</th>
+              <th class="col-phiship"><span class="col-letter">J</span>Phí Ship</th>
+              <th class="col-nentang"><span class="col-letter">K</span>Nền tảng</th>
+              <th class="col-sale"><span class="col-letter">L</span>Sale</th>
+              <th class="col-mkt"><span class="col-letter">M</span>MKT</th>
+              <th class="col-trangthai"><span class="col-letter">N</span>Trạng thái đơn</th>
+              <th class="col-soluong"><span class="col-letter">O</span>Số lượng</th>
+              <th class="col-ghichu"><span class="col-letter">P</span>Ghi chú</th>
+            </tr>
+            <tr class="od-filter-row" id="odFilterRow">
+              <th class="col-stt"><span class="od-filter-pin" title="Gõ hoặc chọn để lọc theo từng trường cột A → P">🔻</span></th>
+              <th class="col-time">
+                <input type="text" class="od-col-filter" data-col="thoi_gian" list="dlOdTime" placeholder="Lọc ngày..." autocomplete="off" />
+                <datalist id="dlOdTime"></datalist>
+              </th>
+              <th class="col-mvd">
+                <input type="text" class="od-col-filter" data-col="ma_van_don" list="dlOdMvd" placeholder="Lọc mã VĐ..." autocomplete="off" />
+                <datalist id="dlOdMvd">
+                  <option value="(Có dữ liệu)"></option>
+                  <option value="(Trống)"></option>
+                </datalist>
+              </th>
+              <th class="col-hoten">
+                <input type="text" class="od-col-filter" data-col="ho_ten" placeholder="Lọc tên..." autocomplete="off" />
+              </th>
+              <th class="col-sdt">
+                <input type="text" class="od-col-filter" data-col="sdt" placeholder="Lọc SĐT..." autocomplete="off" />
+              </th>
+              <th class="col-diachi">
+                <input type="text" class="od-col-filter" data-col="dia_chi" placeholder="Lọc địa chỉ..." autocomplete="off" />
+              </th>
+              <th class="col-dongsp">
+                <select class="od-col-filter" data-col="dong_sp"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-mausac">
+                <select class="od-col-filter" data-col="mau_sac"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-size">
+                <select class="od-col-filter" data-col="size"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-giaban">
+                <select class="od-col-filter" data-col="gia_ban_str"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-phiship">
+                <select class="od-col-filter" data-col="phi_ship_str"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-nentang">
+                <select class="od-col-filter" data-col="nen_tang"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-sale">
+                <select class="od-col-filter" data-col="sale"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-mkt">
+                <select class="od-col-filter" data-col="mkt"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-trangthai">
+                <select class="od-col-filter" data-col="trang_thai"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-soluong">
+                <select class="od-col-filter" data-col="so_luong"><option value="">Tất cả</option></select>
+              </th>
+              <th class="col-ghichu">
+                <input type="text" class="od-col-filter" data-col="ghi_chu" list="dlOdGhiChu" placeholder="Lọc ghi chú..." autocomplete="off" />
+                <datalist id="dlOdGhiChu">
+                  <option value="(Có dữ liệu)"></option>
+                  <option value="(Trống)"></option>
+                </datalist>
+              </th>
             </tr>
           </thead>
           <tbody id="odTableBody">
             <!-- Dynamic rows -->
           </tbody>
         </table>
+        <div id="odLoadMoreWrap" class="od-load-more-wrap hidden">
+          <button type="button" id="btnOdLoadMore" class="rounded-btn btn-default">Hiển thị thêm 500 dòng</button>
+          <button type="button" id="btnOdLoadAll" class="rounded-btn btn-choco">Hiển thị tất cả</button>
+        </div>
         <div id="odEmptyState" class="od-empty-state hidden">
           <div class="od-empty-icon">📦</div>
           <div class="od-empty-title">Không tìm thấy đơn hàng nào</div>
-          <div class="od-empty-desc">Chưa có đơn hàng nào khớp với điều kiện lọc hoặc từ khóa tìm kiếm.</div>
+          <div class="od-empty-desc">Chưa có đơn hàng nào khớp với điều kiện lọc trường hoặc từ khóa tìm kiếm.</div>
         </div>
       </div>
 
@@ -435,7 +518,7 @@
           Hiển thị 0 đơn hàng
         </div>
         <div class="od-footer-actions">
-          <button type="button" id="btnDismissOrderDetail" class="rounded-btn btn-choco" style="padding: 7px 22px; font-weight: 700;">
+          <button type="button" id="btnDismissOrderDetail" class="rounded-btn btn-choco" style="padding: 6px 20px; font-weight: 700;">
             Đóng
           </button>
         </div>
@@ -463,7 +546,7 @@
     <div class="update-celebration-card">
       <div class="uc-tag">HỆ THỐNG</div>
       <h2 class="uc-title">CẬP NHẬT THÀNH CÔNG</h2>
-      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.103</div>
+      <div class="uc-version-pill" id="ucVersionText">Phiên bản v8.6.104</div>
       <p class="uc-desc">Ứng dụng đã hoàn tất cập nhật lên phiên bản mới nhất.</p>
       <div class="uc-action-row">
         <button type="button" id="btnDismissCelebration" class="uc-btn">
