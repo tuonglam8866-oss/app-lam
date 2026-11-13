@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.106";
+const APP_FRONTEND_VERSION = "8.6.108";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1804,15 +1804,12 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
     const c2 = bo_dau_tieng_viet(String(r[2] || "").trim()).toUpperCase();
     if (c0 === "THOI GIAN" || c0 === "STT" || c2 === "HO TEN") continue;
 
-    // QUAN TRỌNG: Bỏ qua các dòng trống ở cuối bảng Google Sheets (chỉ có sẵn ngày ở cột A nhưng chưa có khách/SP/mã VĐ)
-    const mvd = r.length > 1 ? String(r[1] || "").trim() : "";
+    // QUAN TRỌNG: Bỏ qua các dòng chưa có thông tin khách hàng (họ tên, SĐT, địa chỉ đều trống)
     const hoTen = r.length > 2 ? String(r[2] || "").trim() : "";
     const sdtRaw = r.length > 3 ? String(r[3] || "").trim() : "";
     const diaChi = r.length > 4 ? String(r[4] || "").trim() : "";
-    const dongSp = r.length > 5 ? String(r[5] || "").trim() : "";
-    const trangThai = r.length > 13 ? String(r[13] || "").trim() : "";
 
-    if (!mvd && !hoTen && !sdtRaw && !diaChi && !dongSp && !trangThai) {
+    if (!hoTen && !sdtRaw && !diaChi) {
       continue;
     }
 
@@ -3406,7 +3403,6 @@ function render_order_detail_table(ordersToRender) {
     const extraColsHtml = isAllTableMode
       ? `
         <td class="col-trangthai">${order.trang_thai ? `<span class="pill-status ${get_status_pill_cls(order.trang_thai)}">${escape_html(order.trang_thai)}</span>` : "—"}</td>
-        <td class="col-soluong">${escape_html(order.so_luong || "—")}</td>
         <td class="col-ghichu" title="${escape_html(order.ghi_chu)}">${escape_html(order.ghi_chu || "—")}</td>`
       : "";
 
