@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.108";
+const APP_FRONTEND_VERSION = "8.6.109";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2902,7 +2902,9 @@ function get_od_col_sort_value(order, colKey) {
 function set_od_modal_layout_mode(isAllTableMode) {
   const cardEl = document.getElementById("orderDetailCard");
   const sortBtn = document.getElementById("btnOdSortToggle");
+  const countBadge = document.getElementById("odCountBadge");
   const qtyBadge = document.getElementById("odQtyBadge");
+  const metaRow = cardEl ? cardEl.querySelector(".od-meta-row") : null;
   const shipDivider = document.getElementById("odShipDivider");
   const shipText = document.getElementById("odShipText");
   const extraCols = document.querySelectorAll(".col-extra-ap");
@@ -2910,7 +2912,9 @@ function set_od_modal_layout_mode(isAllTableMode) {
 
   if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
   if (sortBtn) sortBtn.classList.toggle("hidden", !isAllTableMode);
-  if (qtyBadge) qtyBadge.classList.toggle("hidden", !isAllTableMode);
+  if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
+  if (qtyBadge) qtyBadge.classList.add("hidden");
+  if (metaRow) metaRow.classList.toggle("hidden", isAllTableMode);
   if (shipDivider) shipDivider.classList.toggle("hidden", !isAllTableMode);
   if (shipText) shipText.classList.toggle("hidden", !isAllTableMode);
   extraCols.forEach((th) => th.classList.toggle("hidden", !isAllTableMode));
@@ -3362,7 +3366,7 @@ function render_order_detail_table(ordersToRender) {
     tbody.innerHTML = "";
     if (emptyState) emptyState.classList.remove("hidden");
     if (loadMoreWrap) loadMoreWrap.classList.add("hidden");
-    if (footerSummary) footerSummary.textContent = "Không có đơn hàng nào khớp";
+    if (footerSummary) footerSummary.textContent = isAllTableMode ? "" : "Không có đơn hàng nào khớp";
     return;
   }
 
@@ -3371,7 +3375,7 @@ function render_order_detail_table(ordersToRender) {
   const sliceCount = Math.min(totalMatched, od_render_limit);
   if (footerSummary) {
     if (isAllTableMode) {
-      footerSummary.textContent = `Hiển thị ${sliceCount} / ${totalMatched} đơn hàng • Tổng SL: ${tong_sl} • Tổng doanh số: ${format_tien_vnd(tong_ds)} • Tổng Ship: ${format_tien_vnd(tong_ship)}`;
+      footerSummary.textContent = "";
     } else {
       footerSummary.textContent = `Hiển thị ${totalMatched} / ${current_od_raw_list.length} đơn hàng • Tổng doanh số: ${format_tien_vnd(tong_ds)}`;
     }
