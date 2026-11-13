@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.119";
+const APP_FRONTEND_VERSION = "8.6.120";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2940,7 +2940,6 @@ function update_od_date_btn_ui() {
 function set_od_modal_layout_mode(isAllTableMode) {
   const cardEl = document.getElementById("orderDetailCard");
   const dateBtn = document.getElementById("btnOdDateRange");
-  const sortBtn = document.getElementById("btnOdSortToggle");
   const countBadge = document.getElementById("odCountBadge");
   const qtyBadge = document.getElementById("odQtyBadge");
   const metaRow = cardEl ? cardEl.querySelector(".od-meta-row") : null;
@@ -2951,7 +2950,6 @@ function set_od_modal_layout_mode(isAllTableMode) {
 
   if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
   if (dateBtn) dateBtn.classList.toggle("hidden", !isAllTableMode);
-  if (sortBtn) sortBtn.classList.toggle("hidden", !isAllTableMode);
   if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
   if (qtyBadge) qtyBadge.classList.add("hidden");
   if (metaRow) metaRow.classList.toggle("hidden", isAllTableMode);
@@ -2959,13 +2957,6 @@ function set_od_modal_layout_mode(isAllTableMode) {
   if (shipText) shipText.classList.toggle("hidden", !isAllTableMode);
   extraCols.forEach((th) => th.classList.toggle("hidden", !isAllTableMode));
   thFilterBtns.forEach((btn) => btn.classList.toggle("hidden", !isAllTableMode));
-}
-
-function update_od_sort_button_ui() {
-  const btnSort = document.getElementById("btnOdSortToggle");
-  if (btnSort) {
-    btnSort.textContent = od_sort_newest_first ? "⇅ Mới nhất đầu" : "⇅ Thứ tự gốc";
-  }
 }
 
 function update_od_xl_header_indicators() {
@@ -3199,7 +3190,6 @@ function hien_thi_bang_loc_don_tong_hop() {
   }
   if (clearBtn) clearBtn.classList.add("hidden");
 
-  update_od_sort_button_ui();
   update_od_xl_header_indicators();
   apply_od_filters_and_render(true);
 
@@ -5135,14 +5125,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btnFilterAllOrders")?.addEventListener("click", (e) => {
     e.stopPropagation();
     hien_thi_bang_loc_don_tong_hop();
-  });
-
-  document.getElementById("btnOdSortToggle")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    od_excel_sort = { col: null, dir: null };
-    od_sort_newest_first = !od_sort_newest_first;
-    update_od_sort_button_ui();
-    apply_od_filters_and_render(true);
   });
 
   document.getElementById("btnOdDateRange")?.addEventListener("click", (e) => {
