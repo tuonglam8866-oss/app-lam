@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.112";
+const APP_FRONTEND_VERSION = "8.6.113";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2837,6 +2837,8 @@ let od_excel_filters = {}; // { [colKey]: Set<string> }
 let od_excel_sort = { col: null, dir: null }; // { col, dir: "asc" | "desc" }
 let od_xl_active_col = null;
 let od_xl_pending_values = []; // [{ val, label, count, checked }]
+let od_date_start = null; // "YYYY-MM-DD" or null
+let od_date_end = null;   // "YYYY-MM-DD" or null
 
 const OD_XL_COL_META = {
   ngay_only: { title: "Thời gian", isDate: true },
@@ -2899,8 +2901,36 @@ function get_od_col_sort_value(order, colKey) {
   return String(order[colKey] || "").trim();
 }
 
+function parse_order_ymd(order) {
+  const raw = String(order?.ngay_only || "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parts = raw.split(/[\/\-]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
+    }
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function update_od_date_btn_ui() {
+  const btn = document.getElementById("btnOdDateRange");
+  const txt = document.getElementById("odDateBtnText");
+  if (!btn || !txt) return;
+  if (od_date_start && od_date_end) {
+    txt.textContent = od_date_start === od_date_end ? od_date_start : `${od_date_start} → ${od_date_end}`;
+    btn.classList.add("active");
+  } else {
+    txt.textContent = "Tất cả ngày";
+    btn.classList.remove("active");
+  }
+}
+
 function set_od_modal_layout_mode(isAllTableMode) {
   const cardEl = document.getElementById("orderDetailCard");
+  const dateBtn = document.getElementById("btnOdDateRange");
   const sortBtn = document.getElementById("btnOdSortToggle");
   const countBadge = document.getElementById("odCountBadge");
   const qtyBadge = document.getElementById("odQtyBadge");
@@ -2911,6 +2941,7 @@ function set_od_modal_layout_mode(isAllTableMode) {
   const thFilterBtns = document.querySelectorAll(".od-th-filter-btn");
 
   if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
+  if (dateBtn) dateBtn.classList.toggle("hidden", !isAllTableMode);
   if (sortBtn) sortBtn.classList.toggle("hidden", !isAllTableMode);
   if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
   if (qtyBadge) qtyBadge.classList.add("hidden");
@@ -2938,7 +2969,7 @@ function update_od_xl_header_indicators() {
     btn.classList.toggle("is-sorted", isSorted);
   });
 
-  const activeCount = Object.keys(od_excel_filters).length + (od_excel_sort.col ? 1 : 0);
+  const activeCount = Object.keys(od_excel_filters).length + (od_excel_sort.col ? 1 : 0) + (od_date_start && od_date_end ? 1 : 0);
   const btnResetFilters = document.getElementById("btnResetOdColFilters");
   if (btnResetFilters) {
     if (current_od_mode === "all_table" && activeCount > 0) {
@@ -3033,11 +3064,16 @@ function open_od_excel_filter(colKey, anchorEl) {
     btnDesc.classList.toggle("active", od_excel_sort.col === colKey && od_excel_sort.dir === "desc");
   }
 
-  // Lọc theo các cột KHÁC (cascading giống Excel)
+  // Lọc theo các cột KHÁC (cascading giống Excel) + khoảng thời gian nếu đang lọc
   const otherKeys = Object.keys(od_excel_filters).filter((k) => k !== colKey);
+  const hasDateFilter = Boolean(od_date_start && od_date_end);
   const counts = new Map();
 
   for (const o of current_od_raw_list) {
+    if (hasDateFilter) {
+      const ymd = parse_order_ymd(o);
+      if (!ymd || ymd < od_date_start || ymd > od_date_end) continue;
+    }
     let ok = true;
     for (const k of otherKeys) {
       const allowedSet = od_excel_filters[k];
@@ -3117,8 +3153,11 @@ function hien_thi_bang_loc_don_tong_hop() {
   od_render_limit = 500;
   od_excel_filters = {};
   od_excel_sort = { col: null, dir: null };
+  od_date_start = null;
+  od_date_end = null;
 
   set_od_modal_layout_mode(true);
+  update_od_date_btn_ui();
 
   const orders = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
   current_od_raw_list = orders;
@@ -3175,8 +3214,11 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   od_render_limit = 500;
   od_excel_filters = {};
   od_excel_sort = { col: null, dir: null };
+  od_date_start = null;
+  od_date_end = null;
 
   set_od_modal_layout_mode(false);
+  update_od_date_btn_ui();
 
   const orders = lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp);
   current_od_raw_list = orders;
@@ -3246,6 +3288,13 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
 
 function dong_bang_don_hang_chi_tiet() {
   close_od_excel_filter();
+  if (current_cal_target === "od_filter") {
+    const calPopup = document.getElementById("calendarPopup");
+    calPopup?.classList.add("hidden");
+    calPopup?.classList.remove("is-modal-cal");
+    document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+    current_cal_target = null;
+  }
   const modal = document.getElementById("orderDetailModal");
   if (modal) modal.classList.add("hidden");
 }
@@ -3264,8 +3313,15 @@ function apply_od_filters_and_render(resetLimit = false) {
     : current_od_raw_list.slice();
 
   const activeFilterKeys = current_od_mode === "all_table" ? Object.keys(od_excel_filters) : [];
+  const hasDateFilter = current_od_mode === "all_table" && Boolean(od_date_start && od_date_end);
 
   const filtered = baseList.filter((o) => {
+    if (hasDateFilter) {
+      const ymd = parse_order_ymd(o);
+      if (!ymd || ymd < od_date_start || ymd > od_date_end) {
+        return false;
+      }
+    }
     for (const colKey of activeFilterKeys) {
       const allowedSet = od_excel_filters[colKey];
       if (allowedSet && !allowedSet.has(get_od_col_filter_value(o, colKey))) {
@@ -4042,8 +4098,9 @@ function update_cal_range_highlight() {
   const grid = document.getElementById("calGrid");
   if (!grid) return;
 
-  let rStart = current_start_date;
-  let rEnd = current_end_date;
+  const isOdCal = current_cal_target === "od_filter";
+  let rStart = isOdCal ? (od_date_start || "") : current_start_date;
+  let rEnd = isOdCal ? (od_date_end || od_date_start || "") : current_end_date;
 
   if (cal_pick_step === 1 && cal_temp_start) {
     const h = cal_hover_date || cal_temp_start;
@@ -4051,14 +4108,15 @@ function update_cal_range_highlight() {
     rEnd = cal_temp_start <= h ? h : cal_temp_start;
   }
 
-  const isSingleDay = rStart === rEnd;
+  const hasRange = Boolean(rStart && rEnd);
+  const isSingleDay = hasRange && rStart === rEnd;
   const cells = grid.querySelectorAll(".cal-cell[data-date]");
   cells.forEach((cell) => {
     const d = cell.getAttribute("data-date");
-    const isStart = d === rStart;
-    const isEnd = d === rEnd;
-    const inBetween = d > rStart && d < rEnd;
-    const inBand = !isSingleDay && d >= rStart && d <= rEnd;
+    const isStart = hasRange && d === rStart;
+    const isEnd = hasRange && d === rEnd;
+    const inBetween = hasRange && d > rStart && d < rEnd;
+    const inBand = hasRange && !isSingleDay && d >= rStart && d <= rEnd;
 
     cell.classList.toggle("is-start", isStart);
     cell.classList.toggle("is-end", isEnd);
@@ -4077,8 +4135,11 @@ function update_cal_range_highlight() {
     if (cal_pick_step === 1 && cal_temp_start) {
       hintEl.innerHTML = `<span class="cal-hint-dot"></span><span>${rStart} → ${rEnd}</span><span class="cal-hint-sub">Chọn ngày cuối</span>`;
       hintEl.classList.add("picking");
+    } else if (isOdCal && !hasRange) {
+      hintEl.innerHTML = `<span class="cal-hint-dot ready"></span><span>Tất cả ngày</span>`;
+      hintEl.classList.remove("picking");
     } else {
-      const rangeStr = current_start_date === current_end_date ? current_start_date : `${current_start_date} → ${current_end_date}`;
+      const rangeStr = rStart === rEnd ? rStart : `${rStart} → ${rEnd}`;
       hintEl.innerHTML = `<span class="cal-hint-dot ready"></span><span>${rangeStr}</span>`;
       hintEl.classList.remove("picking");
     }
@@ -4145,13 +4206,25 @@ function render_calendar_grid(year, month) {
         cal_hover_date = d_str;
         update_cal_range_highlight();
       } else {
-        // Click lần 2: Chốt khoảng ngày và tải dữ liệu
+        // Click lần 2: Chốt khoảng ngày và tải/lọc dữ liệu
         const st = d_str < cal_temp_start ? d_str : cal_temp_start;
         const en = d_str < cal_temp_start ? cal_temp_start : d_str;
         cal_pick_step = 0;
         cal_temp_start = null;
         cal_hover_date = null;
-        set_and_refresh(st, en);
+        if (current_cal_target === "od_filter") {
+          od_date_start = st;
+          od_date_end = en;
+          const calPopup = document.getElementById("calendarPopup");
+          calPopup?.classList.add("hidden");
+          calPopup?.classList.remove("is-modal-cal");
+          document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+          current_cal_target = null;
+          update_od_date_btn_ui();
+          apply_od_filters_and_render(true);
+        } else {
+          set_and_refresh(st, en);
+        }
       }
     });
 
@@ -4172,8 +4245,9 @@ function toggle_calendar_popup(targetType, anchorBtn) {
   settingsPopup?.classList.add("hidden");
   close_cal_custom_dropdowns();
 
-  if (!calPopup.classList.contains("hidden")) {
+  if (!calPopup.classList.contains("hidden") && current_cal_target === targetType) {
     calPopup.classList.add("hidden");
+    calPopup.classList.remove("is-modal-cal");
     anchorBtn.classList.remove("is-open");
     current_cal_target = null;
     cal_pick_step = 0;
@@ -4182,17 +4256,21 @@ function toggle_calendar_popup(targetType, anchorBtn) {
     return;
   }
 
-  current_cal_target = "range";
+  current_cal_target = targetType || "range";
   cal_pick_step = 0;
   cal_temp_start = null;
   cal_hover_date = null;
 
-  const dt = parse_ymd_date(current_end_date || current_start_date);
+  const baseDateStr = current_cal_target === "od_filter"
+    ? (od_date_end || od_date_start || current_end_date || current_start_date)
+    : (current_end_date || current_start_date);
+  const dt = parse_ymd_date(baseDateStr);
   current_cal_year = dt.getFullYear();
   current_cal_month = dt.getMonth() + 1;
 
   render_calendar_grid(current_cal_year, current_cal_month);
 
+  calPopup.classList.toggle("is-modal-cal", current_cal_target === "od_filter");
   calPopup.classList.remove("hidden");
   anchorBtn.classList.add("is-open");
   const rect = anchorBtn.getBoundingClientRect();
@@ -4249,8 +4327,12 @@ function hide_all_popups() {
   const calPopup = document.getElementById("calendarPopup");
   const settingsPopup = document.getElementById("settingsPopup");
   const ctxMenu = document.getElementById("contextMenu");
-  if (calPopup) calPopup.classList.add("hidden");
+  if (calPopup) {
+    calPopup.classList.add("hidden");
+    calPopup.classList.remove("is-modal-cal");
+  }
   document.getElementById("btnStartDate")?.classList.remove("is-open");
+  document.getElementById("btnOdDateRange")?.classList.remove("is-open");
   if (typeof close_cal_custom_dropdowns === "function") close_cal_custom_dropdowns();
   if (settingsPopup) settingsPopup.classList.add("hidden");
   if (ctxMenu) ctxMenu.classList.add("hidden");
@@ -4985,10 +5067,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     apply_od_filters_and_render(true);
   });
 
+  document.getElementById("btnOdDateRange")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    close_od_excel_filter();
+    toggle_calendar_popup("od_filter", e.currentTarget);
+  });
+
   document.getElementById("btnResetOdColFilters")?.addEventListener("click", (e) => {
     e.stopPropagation();
     od_excel_filters = {};
     od_excel_sort = { col: null, dir: null };
+    od_date_start = null;
+    od_date_end = null;
+    update_od_date_btn_ui();
     close_od_excel_filter();
     apply_od_filters_and_render(true);
   });
@@ -5148,6 +5239,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!e.target.closest("#odExcelFilterPopover") && !e.target.closest(".od-th-filter-btn")) {
       close_od_excel_filter();
     }
+    if (current_cal_target === "od_filter" && !e.target.closest("#calendarPopup") && !e.target.closest("#btnOdDateRange")) {
+      const calPopup = document.getElementById("calendarPopup");
+      calPopup?.classList.add("hidden");
+      calPopup?.classList.remove("is-modal-cal");
+      document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+      current_cal_target = null;
+    }
   });
 
   // TỰ ĐỘNG CẬP NHẬT TỨC THÌ KHI MÁY TÍNH BẮT ĐƯỢC SÓNG WI-FI / INTERNET
@@ -5175,6 +5273,14 @@ window.addEventListener("DOMContentLoaded", async () => {
       const xlPop = document.getElementById("odExcelFilterPopover");
       if (xlPop && !xlPop.classList.contains("hidden")) {
         close_od_excel_filter();
+        return;
+      }
+      const calPop = document.getElementById("calendarPopup");
+      if (current_cal_target === "od_filter" && calPop && !calPop.classList.contains("hidden")) {
+        calPop.classList.add("hidden");
+        calPop.classList.remove("is-modal-cal");
+        document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+        current_cal_target = null;
         return;
       }
       hide_all_popups();
