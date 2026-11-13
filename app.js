@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.109";
+const APP_FRONTEND_VERSION = "8.6.110";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2993,7 +2993,6 @@ function render_od_xl_list() {
       return `<label class="od-xl-item" title="${escape_html(item.label)}">
         <input type="checkbox" class="od-xl-chk" data-val="${escape_html(item.val)}" ${item.checked ? "checked" : ""} />
         <span class="${valCls}">${escape_html(item.label)}</span>
-        <span class="od-xl-val-cnt">${item.count}</span>
       </label>`;
     })
     .join("");
