@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.120";
+const APP_FRONTEND_VERSION = "8.6.121";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1637,9 +1637,10 @@ function tao_cac_dang_ngay_khop(start_str, end_str) {
     const mm = String(m).padStart(2, "0");
 
     date_patterns.add(`${dd}/${mm}/${y}`);
-    date_patterns.add(`${mm}/${dd}/${y}`);
     date_patterns.add(`${y}-${mm}-${dd}`);
     date_patterns.add(`${d}/${m}/${y}`);
+    date_patterns.add(`${d}/${mm}/${y}`);
+    date_patterns.add(`${dd}/${m}/${y}`);
 
     curr.setDate(curr.getDate() + 1);
   }
@@ -1983,7 +1984,6 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
     const mm = String(m).padStart(2, "0");
 
     date_patterns.add(`${dd}/${mm}/${y}`);
-    date_patterns.add(`${mm}/${dd}/${y}`);
     date_patterns.add(`${y}-${mm}-${dd}`);
     date_patterns.add(`${d}/${m}/${y}`);
     date_patterns.add(`${d}/${mm}/${y}`);
