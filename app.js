@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.116";
+const APP_FRONTEND_VERSION = "8.6.117";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -392,11 +392,11 @@ const I18N = {
     colCode: "Mã SP",
     colOrders: "Đơn",
     allCodesTotal: "TỔNG",
-    crBadgeTitle: "TỈ LỆ CHỐT ĐƠN LANDING PAGE TỔNG CÔNG TY",
-    crDescText: "Đã lọc đơn trùng, đơn Capture Form",
-    crSubHint: "Xem chi tiết →",
-    actBadgeTitle: "THỜI GIAN GỌI SỐ TRUNG BÌNH",
-    actDescText: "(đã loại trừ khung giờ nghỉ)",
+    crBadgeTitle: "TỈ LỆ CHỐT LANDING",
+    crDescText: "Lọc trùng & Form",
+    crSubHint: "Chi tiết →",
+    actBadgeTitle: "TG GỌI SỐ TRUNG BÌNH",
+    actDescText: "Trừ giờ nghỉ",
     crLblClosed: "ĐƠN ĐÃ CHỐT",
     crLblTotal: "ĐẾM ĐƠN",
     crLblUnclosed: "CHƯA CHỐT",
