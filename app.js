@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.102";
+const APP_FRONTEND_VERSION = "8.6.103";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2644,8 +2644,9 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   const dict = t();
 
   const card = document.createElement("div");
-  card.className = "cozy-card company-summary-card";
+  card.className = "cozy-card clickable-card company-summary-card";
   card.style.setProperty("--card-index", "0");
+  card.title = `Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người`;
 
   const topRow = document.createElement("div");
   topRow.className = "card-top-row";
@@ -2653,8 +2654,9 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
     <div class="card-title-group">
       <span class="card-name">${dict.companySummaryTitle}</span>
       <span class="card-sub-label">${date_label}</span>
+      <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">📋 Xem ${tong_don} đơn →</span>
     </div>
-    <div class="card-count-group">
+    <div class="card-count-group js-company-count-group" style="cursor: pointer;" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng">
       <span class="card-count-val js-total-orders" style="color: var(--color-highlight)">0</span>
       <span class="card-count-unit">${dict.totalOrdersUnit}</span>
     </div>
@@ -2664,6 +2666,22 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   card.appendChild(
     create_metrics_grid_dom(tong_cp, tong_dt, tong_don, dict.noRevenueYet)
   );
+
+  const openCompanyOrders = (e) => {
+    if (e) e.stopPropagation();
+    hien_thi_bang_don_hang_chi_tiet(null, null);
+  };
+
+  const btnViewCompanyOrders = topRow.querySelector(".js-btn-view-company-orders");
+  if (btnViewCompanyOrders) {
+    btnViewCompanyOrders.addEventListener("click", openCompanyOrders);
+  }
+  const companyCountGroup = topRow.querySelector(".js-company-count-group");
+  if (companyCountGroup) {
+    companyCountGroup.addEventListener("click", openCompanyOrders);
+  }
+  card.addEventListener("click", () => hien_thi_bang_don_hang_chi_tiet(null, null));
+
   attach_right_click_copy(card, tong_cp);
 
   holder.appendChild(card);
@@ -2772,6 +2790,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
       mktBadge.classList.remove("hidden");
     } else {
       mktBadge.textContent = `TỔNG CÔNG TY`;
+      mktBadge.classList.remove("hidden");
     }
   }
 
@@ -2783,7 +2802,8 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
       spBadge.textContent = `T\u1ea4T C\u1ea2 M\u00c3 SP`;
       spBadge.classList.remove("hidden");
     } else {
-      spBadge.classList.add("hidden");
+      spBadge.textContent = `T\u1ea4T C\u1ea2 M\u1eccI NG\u01af\u1edcI`;
+      spBadge.classList.remove("hidden");
     }
   }
 
@@ -2798,8 +2818,10 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
       titleText.textContent = `CHI TI\u1ebeT \u0110\u01a0N H\u00c0NG: ${ten_mkt} - ${ten_sp}`;
     } else if (ten_mkt) {
       titleText.textContent = `CHI TI\u1ebeT \u0110\u01a0N H\u00c0NG MKT: ${ten_mkt} (T\u1ea4T C\u1ea2 M\u00c3 SP)`;
-    } else {
+    } else if (ten_sp) {
       titleText.textContent = `CHI TI\u1ebeT \u0110\u01a0N H\u00c0NG: ${ten_sp}`;
+    } else {
+      titleText.textContent = `CHI TI\u1ebeT \u0110\u01a0N H\u00c0NG T\u1ed4NG C\u00d4NG TY (T\u1ea4T C\u1ea2 M\u1eccI NG\u01af\u1edcI)`;
     }
   }
 
