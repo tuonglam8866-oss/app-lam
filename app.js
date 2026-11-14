@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.128";
+const APP_FRONTEND_VERSION = "8.6.129";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -4455,7 +4455,7 @@ function toggle_calendar_popup(targetType, anchorBtn) {
   calPopup.classList.remove("hidden");
   anchorBtn.classList.add("is-open");
   const rect = anchorBtn.getBoundingClientRect();
-  const popupWidth = 432;
+  const popupWidth = 444;
   let left = rect.left;
   if (left + popupWidth > window.innerWidth - 12) {
     left = window.innerWidth - popupWidth - 12;

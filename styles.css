@@ -3260,7 +3260,7 @@ input::-ms-clear {
 /* Khung bảng lịch Tone Kem Cozy & Viền Cà Phê Ấm */
 .calendar-popup {
   padding: 14px 16px 14px 14px;
-  width: 432px;
+  width: 444px;
   max-width: calc(100vw - 24px);
   background: linear-gradient(165deg, #FFFDF9 0%, #FAF1E4 100%);
   border: 2px solid #C6AD94;
@@ -3280,8 +3280,8 @@ input::-ms-clear {
 .cal-presets-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  width: 112px;
+  gap: 6px;
+  width: 122px;
   flex-shrink: 0;
   padding-right: 12px;
   border-right: 1.5px dashed #DECAB6;
@@ -3293,14 +3293,17 @@ input::-ms-clear {
 
 .cal-preset-item {
   width: 100%;
-  height: 30px;
-  padding: 0 9px;
-  border-radius: 8px;
+  flex: 1 1 0;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 9px;
   border: 1.5px solid #D8C4B0;
   background: #F5ECE0;
   color: #4E3423;
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 800;
   text-align: left;
   cursor: pointer;
@@ -3322,7 +3325,6 @@ input::-ms-clear {
 }
 
 .cal-preset-item.cal-preset-all {
-  margin-top: auto;
   border-style: dashed;
   background: #FFFDF9;
   color: #92400E;
