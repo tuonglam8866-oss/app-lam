@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.122";
+const APP_FRONTEND_VERSION = "8.6.123";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1922,7 +1922,7 @@ function parse_datetime_vn(raw) {
 }
 
 // Tính số giây làm việc giữa thời điểm đơn về (dtStart) và thời điểm gọi (dtEnd)
-// Loại trừ khung giờ nghỉ: 23:00 - 08:00, 12:00 - 12:30, 18:00 - 19:00
+// Loại trừ khung giờ nghỉ: 22:00 - 08:30, 12:00 - 14:00, 18:00 - 19:30
 function calc_working_call_seconds(dtStart, dtEnd) {
   if (!dtStart || !dtEnd) return null;
   const tStart = dtStart.getTime();
@@ -1935,12 +1935,12 @@ function calc_working_call_seconds(dtStart, dtEnd) {
   const dayCursor = new Date(dtStart.getFullYear(), dtStart.getMonth(), dtStart.getDate(), 0, 0, 0, 0);
   const lastDay = new Date(dtEnd.getFullYear(), dtEnd.getMonth(), dtEnd.getDate(), 0, 0, 0, 0);
 
-  // Các khung giờ làm việc trong ngày (đã loại trừ 23h-8h, 12h-12h30, 18h-19h):
-  // Ca sáng: 08:00 - 12:00 | Ca chiều: 12:30 - 18:00 | Ca tối: 19:00 - 23:00
+  // Các khung giờ làm việc trong ngày (đã loại trừ 22h-8h30, 12h-14h, 18h-19h30):
+  // Ca sáng: 08:30 - 12:00 | Ca chiều: 14:00 - 18:00 | Ca tối: 19:30 - 22:00
   const shifts = [
-    [8, 0, 12, 0],
-    [12, 30, 18, 0],
-    [19, 0, 23, 0],
+    [8, 30, 12, 0],
+    [14, 0, 18, 0],
+    [19, 30, 22, 0],
   ];
 
   let totalSec = 0;
