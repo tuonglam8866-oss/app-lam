@@ -81,6 +81,9 @@
           <div
             class="cozy-header-card closing-rate-card call-time-card"
             id="avgCallTimeCard"
+            role="button"
+            tabindex="0"
+            aria-haspopup="dialog"
             title="Khung giờ nghỉ đã loại trừ: 22h-8h30, 12h-14h, 18h-19h30"
           >
             <div class="cr-icon-badge" aria-hidden="true">📞</div>
@@ -374,6 +377,21 @@
         <tfoot id="closingRateFoot"></tfoot>
       </table>
     </div>
+  </div>
+
+  <!-- Avg Call Time Shift Breakdown Popup -->
+  <div id="avgCallTimePopup" class="popup-panel all-codes-popup cr-compact-popup hidden" role="dialog" aria-label="Chi tiết thời gian gọi TB theo ca">
+    <div class="ac-header" style="justify-content: flex-end; padding: 6px 8px 0; border-bottom: none; margin-bottom: 4px;">
+      <button type="button" id="btnCloseAvgCallTime" class="ac-close cr-popup-close-float" aria-label="Close" title="Đóng">✕</button>
+    </div>
+    <div class="ac-scroll cr-popup-scroll">
+      <table class="ac-table cr-compact-table">
+        <thead id="avgCallTimeHead"></thead>
+        <tbody id="avgCallTimeBody"></tbody>
+        <tfoot id="avgCallTimeFoot"></tfoot>
+      </table>
+    </div>
+    <div class="act-popup-note">Loại trừ: 22h-8h30, 12h-14h, 18h-19h30</div>
   </div>
   <!-- Right-Click Context Menu for Copy CP -->
   <div id="contextMenu" class="context-menu hidden" role="menu">

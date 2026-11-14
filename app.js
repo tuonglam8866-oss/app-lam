@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.124";
+const APP_FRONTEND_VERSION = "8.6.125";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2015,6 +2015,10 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   let tong_chot = 0;
   let tong_tg_goi_sec = 0;
   let so_don_da_goi = 0;
+  let tong_tg_goi_hc_sec = 0;
+  let so_don_da_goi_hc = 0;
+  let tong_tg_goi_toi_sec = 0;
+  let so_don_da_goi_toi = 0;
   const by_mkt = {};
 
   for (const r of data_tong_don_upyo) {
@@ -2064,6 +2068,14 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
             if (callSec !== null && callSec >= 0) {
               tong_tg_goi_sec += callSec;
               so_don_da_goi += 1;
+              const callMins = dtCall.getHours() * 60 + dtCall.getMinutes();
+              if (callMins >= 8 * 60 + 30 && callMins < 17 * 60 + 30) {
+                tong_tg_goi_hc_sec += callSec;
+                so_don_da_goi_hc += 1;
+              } else {
+                tong_tg_goi_toi_sec += callSec;
+                so_don_da_goi_toi += 1;
+              }
             }
           }
         }
@@ -2074,6 +2086,8 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   const tong_chua_chot = Math.max(0, tong_dem - tong_chot);
   const ty_le_chot = tong_dem > 0 ? (tong_chot / tong_dem) * 100 : 0;
   const avg_call_sec = so_don_da_goi > 0 ? tong_tg_goi_sec / so_don_da_goi : 0;
+  const avg_call_hc_sec = so_don_da_goi_hc > 0 ? tong_tg_goi_hc_sec / so_don_da_goi_hc : 0;
+  const avg_call_toi_sec = so_don_da_goi_toi > 0 ? tong_tg_goi_toi_sec / so_don_da_goi_toi : 0;
 
   return {
     tong_dem,
@@ -2082,6 +2096,10 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
     ty_le_chot,
     avg_call_sec,
     so_don_da_goi,
+    avg_call_hc_sec,
+    so_don_da_goi_hc,
+    avg_call_toi_sec,
+    so_don_da_goi_toi,
     by_mkt,
   };
 }
@@ -2424,6 +2442,7 @@ function toggle_all_codes_popup(anchorBtn) {
   document.getElementById("calendarPopup")?.classList.add("hidden");
   document.getElementById("settingsPopup")?.classList.add("hidden");
   document.getElementById("closingRatePopup")?.classList.add("hidden");
+  document.getElementById("avgCallTimePopup")?.classList.add("hidden");
 
   if (!pop.classList.contains("hidden")) {
     pop.classList.add("hidden");
@@ -2515,6 +2534,7 @@ function render_closing_rate_card(crData) {
   }
 
   render_closing_rate_popup_table();
+  render_avg_call_time_popup_table();
 }
 
 function render_closing_rate_popup_table() {
@@ -2611,6 +2631,7 @@ function toggle_closing_rate_popup(anchorEl) {
   document.getElementById("calendarPopup")?.classList.add("hidden");
   document.getElementById("settingsPopup")?.classList.add("hidden");
   document.getElementById("allCodesPopup")?.classList.add("hidden");
+  document.getElementById("avgCallTimePopup")?.classList.add("hidden");
 
   if (!pop.classList.contains("hidden")) {
     pop.classList.add("hidden");
@@ -2622,6 +2643,116 @@ function toggle_closing_rate_popup(anchorEl) {
 
   const rect = anchorEl.getBoundingClientRect();
   const w = Math.min(265, window.innerWidth - 24);
+  let left = rect.right - w;
+  if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
+  if (left < 12) left = 12;
+  pop.style.width = `${w}px`;
+  pop.style.left = `${left}px`;
+  pop.style.top = `${rect.bottom + 7}px`;
+  pop.style.maxHeight = `${Math.max(220, window.innerHeight - rect.bottom - 24)}px`;
+}
+
+function render_avg_call_time_popup_table() {
+  const head = document.getElementById("avgCallTimeHead");
+  const body = document.getElementById("avgCallTimeBody");
+  const foot = document.getElementById("avgCallTimeFoot");
+  if (!head || !body || !foot) return;
+
+  const cr = last_closing_rate_data || {};
+  head.innerHTML =
+    `<tr><th class="ac-left">CA LÀM VIỆC</th>` +
+    `<th>SỐ ĐƠN</th>` +
+    `<th>GỌI TB</th></tr>`;
+
+  const make_shift_row = (title, sub, count, avgSec, extraCls) => {
+    const tr = document.createElement("tr");
+    if (extraCls) tr.className = extraCls;
+
+    const tdLabel = document.createElement("td");
+    tdLabel.className = "ac-left ac-code";
+    if (sub) {
+      const wrap = document.createElement("div");
+      wrap.className = "act-shift-wrap";
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "act-shift-name";
+      nameSpan.textContent = title;
+      const subSpan = document.createElement("span");
+      subSpan.className = "act-shift-sub";
+      subSpan.textContent = sub;
+      wrap.appendChild(nameSpan);
+      wrap.appendChild(subSpan);
+      tdLabel.appendChild(wrap);
+    } else {
+      tdLabel.textContent = title;
+    }
+    tr.appendChild(tdLabel);
+
+    const tdCount = document.createElement("td");
+    tdCount.className = "ac-num";
+    tdCount.textContent = String(count || 0);
+    tr.appendChild(tdCount);
+
+    const tdTime = document.createElement("td");
+    tdTime.className = "ac-num";
+    const pill = document.createElement("span");
+    const pillCls = get_call_time_pill_cls(avgSec, count);
+    pill.className = `cpds-pill ${pillCls}`;
+    pill.textContent = count > 0 ? format_call_duration(avgSec) : "--";
+    tdTime.appendChild(pill);
+    tr.appendChild(tdTime);
+    return tr;
+  };
+
+  body.innerHTML = "";
+  body.appendChild(
+    make_shift_row(
+      "☀️ Ca hành chính",
+      "08:30 - 17:30",
+      cr.so_don_da_goi_hc || 0,
+      cr.avg_call_hc_sec || 0,
+      (cr.so_don_da_goi_hc || 0) === 0 ? "ac-idle" : ""
+    )
+  );
+  body.appendChild(
+    make_shift_row(
+      "🌙 Ca tối",
+      "17:30 - 22:00",
+      cr.so_don_da_goi_toi || 0,
+      cr.avg_call_toi_sec || 0,
+      (cr.so_don_da_goi_toi || 0) === 0 ? "ac-idle" : ""
+    )
+  );
+
+  foot.innerHTML = "";
+  foot.appendChild(
+    make_shift_row(
+      "Tổng cộng",
+      "",
+      cr.so_don_da_goi || 0,
+      cr.avg_call_sec || 0,
+      "ac-total"
+    )
+  );
+}
+
+function toggle_avg_call_time_popup(anchorEl) {
+  const pop = document.getElementById("avgCallTimePopup");
+  if (!pop || !anchorEl) return;
+  document.getElementById("calendarPopup")?.classList.add("hidden");
+  document.getElementById("settingsPopup")?.classList.add("hidden");
+  document.getElementById("allCodesPopup")?.classList.add("hidden");
+  document.getElementById("closingRatePopup")?.classList.add("hidden");
+
+  if (!pop.classList.contains("hidden")) {
+    pop.classList.add("hidden");
+    return;
+  }
+
+  render_avg_call_time_popup_table();
+  pop.classList.remove("hidden");
+
+  const rect = anchorEl.getBoundingClientRect();
+  const w = Math.min(290, window.innerWidth - 24);
   let left = rect.right - w;
   if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
   if (left < 12) left = 12;
@@ -4241,6 +4372,7 @@ function toggle_calendar_popup(targetType, anchorBtn) {
 
   document.getElementById("allCodesPopup")?.classList.add("hidden");
   document.getElementById("closingRatePopup")?.classList.add("hidden");
+  document.getElementById("avgCallTimePopup")?.classList.add("hidden");
   settingsPopup?.classList.add("hidden");
   close_cal_custom_dropdowns();
 
@@ -4362,6 +4494,7 @@ function toggle_settings_popup(anchorBtn) {
 
   document.getElementById("allCodesPopup")?.classList.add("hidden");
   document.getElementById("closingRatePopup")?.classList.add("hidden");
+  document.getElementById("avgCallTimePopup")?.classList.add("hidden");
   calPopup.classList.add("hidden");
 
   if (!settingsPopup.classList.contains("hidden")) {
@@ -4408,6 +4541,7 @@ function hide_all_popups() {
   if (ctxMenu) ctxMenu.classList.add("hidden");
   document.getElementById("allCodesPopup")?.classList.add("hidden");
   document.getElementById("closingRatePopup")?.classList.add("hidden");
+  document.getElementById("avgCallTimePopup")?.classList.add("hidden");
   current_cal_target = null;
 }
 
@@ -4903,6 +5037,26 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   document
     .getElementById("closingRatePopup")
+    ?.addEventListener("click", (e) => e.stopPropagation());
+
+  const avgCallTimeCard = document.getElementById("avgCallTimeCard");
+  avgCallTimeCard?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggle_avg_call_time_popup(avgCallTimeCard);
+  });
+  avgCallTimeCard?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      toggle_avg_call_time_popup(avgCallTimeCard);
+    }
+  });
+  document.getElementById("btnCloseAvgCallTime")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("avgCallTimePopup")?.classList.add("hidden");
+  });
+  document
+    .getElementById("avgCallTimePopup")
     ?.addEventListener("click", (e) => e.stopPropagation());
 
   document.getElementById("btnToggleAutoStart")?.addEventListener("click", () => {

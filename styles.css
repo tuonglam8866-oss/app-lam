@@ -424,7 +424,7 @@ html, body {
 }
 
 .call-time-card {
-  cursor: default;
+  cursor: pointer;
 }
 
 .closing-rate-card:hover {
@@ -596,6 +596,33 @@ html, body {
 .cr-compact-table .cpds-pill {
   font-size: 11.5px;
   padding: 1.5px 8px;
+}
+
+.act-shift-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.25;
+}
+
+.act-shift-name {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--choco);
+}
+
+.act-shift-sub {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--choco-muted);
+}
+
+.act-popup-note {
+  margin-top: 6px;
+  padding: 0 4px 2px;
+  font-size: 10.5px;
+  color: var(--choco-muted);
+  text-align: center;
 }
 
 .cr-mkt-cell-wrap {
