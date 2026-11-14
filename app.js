@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.129";
+const APP_FRONTEND_VERSION = "8.6.130";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2997,6 +2997,7 @@ let od_xl_active_col = null;
 let od_xl_pending_values = []; // [{ val, label, count, checked }]
 let od_date_start = null; // "YYYY-MM-DD" or null
 let od_date_end = null;   // "YYYY-MM-DD" or null
+let od_only_missing_tracking = false;
 
 const OD_XL_COL_META = {
   ngay_only: { title: "Thời gian", isDate: true },
@@ -3097,6 +3098,7 @@ function update_od_date_btn_ui() {
 
 function set_od_modal_layout_mode(isAllTableMode) {
   const cardEl = document.getElementById("orderDetailCard");
+  const noTrackingBtn = document.getElementById("btnOdNoTracking");
   const dateBtn = document.getElementById("btnOdDateRange");
   const countBadge = document.getElementById("odCountBadge");
   const qtyBadge = document.getElementById("odQtyBadge");
@@ -3107,6 +3109,7 @@ function set_od_modal_layout_mode(isAllTableMode) {
   const thFilterBtns = document.querySelectorAll(".od-th-filter-btn");
 
   if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
+  if (noTrackingBtn) noTrackingBtn.classList.toggle("hidden", !isAllTableMode);
   if (dateBtn) dateBtn.classList.toggle("hidden", !isAllTableMode);
   if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
   if (qtyBadge) qtyBadge.classList.add("hidden");
@@ -3127,7 +3130,17 @@ function update_od_xl_header_indicators() {
     btn.classList.toggle("is-sorted", isSorted);
   });
 
-  const activeCount = Object.keys(od_excel_filters).length + (od_excel_sort.col ? 1 : 0) + (od_date_start && od_date_end ? 1 : 0);
+  const noTrackingBtn = document.getElementById("btnOdNoTracking");
+  if (noTrackingBtn) {
+    noTrackingBtn.classList.toggle("active", Boolean(od_only_missing_tracking));
+    noTrackingBtn.setAttribute("aria-pressed", od_only_missing_tracking ? "true" : "false");
+  }
+
+  const activeCount =
+    Object.keys(od_excel_filters).length +
+    (od_excel_sort.col ? 1 : 0) +
+    (od_date_start && od_date_end ? 1 : 0) +
+    (od_only_missing_tracking ? 1 : 0);
   const btnResetFilters = document.getElementById("btnResetOdColFilters");
   if (btnResetFilters) {
     if (current_od_mode === "all_table" && activeCount > 0) {
@@ -3313,6 +3326,7 @@ function hien_thi_bang_loc_don_tong_hop() {
   od_excel_sort = { col: null, dir: null };
   od_date_start = null;
   od_date_end = null;
+  od_only_missing_tracking = false;
 
   set_od_modal_layout_mode(true);
   update_od_date_btn_ui();
@@ -3373,6 +3387,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   od_excel_sort = { col: null, dir: null };
   od_date_start = null;
   od_date_end = null;
+  od_only_missing_tracking = false;
 
   set_od_modal_layout_mode(false);
   update_od_date_btn_ui();
@@ -3471,8 +3486,15 @@ function apply_od_filters_and_render(resetLimit = false) {
 
   const activeFilterKeys = current_od_mode === "all_table" ? Object.keys(od_excel_filters) : [];
   const hasDateFilter = current_od_mode === "all_table" && Boolean(od_date_start && od_date_end);
+  const onlyMissingTracking = current_od_mode === "all_table" && od_only_missing_tracking;
 
   const filtered = baseList.filter((o) => {
+    if (onlyMissingTracking) {
+      const mvd = String(o.ma_van_don || "").trim();
+      if (mvd && mvd !== "-" && mvd !== "—") {
+        return false;
+      }
+    }
     if (hasDateFilter) {
       const ymd = parse_order_ymd(o);
       if (!ymd || ymd < od_date_start || ymd > od_date_end) {
@@ -5309,6 +5331,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     hien_thi_bang_loc_don_tong_hop();
   });
 
+  document.getElementById("btnOdNoTracking")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    close_od_excel_filter();
+    od_only_missing_tracking = !od_only_missing_tracking;
+    apply_od_filters_and_render(true);
+  });
+
   document.getElementById("btnOdDateRange")?.addEventListener("click", (e) => {
     e.stopPropagation();
     close_od_excel_filter();
@@ -5321,6 +5350,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     od_excel_sort = { col: null, dir: null };
     od_date_start = null;
     od_date_end = null;
+    od_only_missing_tracking = false;
     update_od_date_btn_ui();
     close_od_excel_filter();
     apply_od_filters_and_render(true);

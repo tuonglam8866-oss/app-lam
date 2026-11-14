@@ -3947,6 +3947,55 @@ input::-ms-clear {
   box-shadow: none;
 }
 
+.od-no-mvd-btn {
+  height: 37px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1.5px solid #D5BFAA;
+  background: linear-gradient(180deg, #FFFDF9 0%, #F5ECE0 100%);
+  color: #4E3423;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: 0 2px 6px rgba(61, 35, 20, 0.06);
+}
+
+.od-no-mvd-btn:hover {
+  background: linear-gradient(180deg, #FBF2E4 0%, #EADCCB 100%);
+  border-color: #9C7154;
+  color: #3D2314;
+  transform: translateY(-1px);
+}
+
+.od-no-mvd-btn.active {
+  background: linear-gradient(135deg, #6E4F3A 0%, #4E3423 100%);
+  border-color: #3D2618;
+  color: #FFFDF9;
+  box-shadow: 0 4px 10px rgba(78, 52, 35, 0.28);
+}
+
+[data-theme="dark"] .od-no-mvd-btn {
+  background: #2D2018;
+  border-color: #4B382C;
+  color: #E6D2BE;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .od-no-mvd-btn:hover {
+  background: #3B2B20;
+  border-color: #8C654B;
+  color: #FFFDF9;
+}
+
+[data-theme="dark"] .od-no-mvd-btn.active {
+  background: linear-gradient(135deg, #B5835E 0%, #855A3B 100%);
+  border-color: #CFA07C;
+  color: #FFFDF9;
+}
+
 .od-quick-date-group {
   display: inline-flex;
   align-items: center;
