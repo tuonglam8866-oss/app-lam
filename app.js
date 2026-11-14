@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.127";
+const APP_FRONTEND_VERSION = "8.6.128";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -333,6 +333,9 @@ const I18N = {
     yesterday: "Hôm qua",
     lastMonth: "Tháng trước",
     thisMonth: "Tháng này",
+    last3Days: "3 ngày qua",
+    last7Days: "7 ngày qua",
+    last14Days: "14 ngày qua",
     fromLabel: "Từ:",
     toLabel: "Đến:",
     btnRefresh: "Tải Lại",
@@ -417,6 +420,9 @@ const I18N = {
     yesterday: "昨天",
     lastMonth: "上个月",
     thisMonth: "本月",
+    last3Days: "最近3天",
+    last7Days: "最近7天",
+    last14Days: "最近14天",
     fromLabel: "从:",
     toLabel: "至:",
     btnRefresh: "刷新",
@@ -501,6 +507,9 @@ const I18N = {
     yesterday: "Yesterday",
     lastMonth: "Last Month",
     thisMonth: "This Month",
+    last3Days: "Last 3 Days",
+    last7Days: "Last 7 Days",
+    last14Days: "Last 14 Days",
     fromLabel: "From:",
     toLabel: "To:",
     btnRefresh: "Refresh",
@@ -1036,6 +1045,9 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("btnYesterday", dict.yesterday);
   setText("btnLastMonth", dict.lastMonth);
   setText("btnThisMonth", dict.thisMonth);
+  setText("btnLast3Days", dict.last3Days);
+  setText("btnLast7Days", dict.last7Days);
+  setText("btnLast14Days", dict.last14Days);
   setText("lblFromDate", dict.fromLabel);
   setText("lblToDate", dict.toLabel);
   setText("btnRefreshText", dict.btnRefresh);
@@ -4113,46 +4125,68 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
   }
 }
 
+const CAL_PRESET_ORDER = [
+  "today",
+  "yesterday",
+  "this_month",
+  "last_month",
+  "last_3_days",
+  "last_7_days",
+  "last_14_days",
+];
+
+function get_cal_preset_range(preset, refNow) {
+  const now = refNow ? new Date(refNow) : new Date();
+  if (preset === "today") {
+    const s = format_ymd_date(now);
+    return { start: s, end: s };
+  }
+  if (preset === "yesterday") {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 1);
+    const s = format_ymd_date(d);
+    return { start: s, end: s };
+  }
+  if (preset === "this_month") {
+    return {
+      start: format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 1)),
+      end: format_ymd_date(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    };
+  }
+  if (preset === "last_month") {
+    return {
+      start: format_ymd_date(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      end: format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 0)),
+    };
+  }
+  const daysBackMap = { last_3_days: 2, last_7_days: 6, last_14_days: 13 };
+  if (preset in daysBackMap) {
+    const stDate = new Date(now);
+    stDate.setDate(stDate.getDate() - daysBackMap[preset]);
+    return { start: format_ymd_date(stDate), end: format_ymd_date(now) };
+  }
+  return { start: null, end: null };
+}
+
+function detect_active_cal_preset(st, en, isOdCal) {
+  if (isOdCal && (!st || !en)) return "all_dates";
+  const now = new Date();
+  for (const preset of CAL_PRESET_ORDER) {
+    const r = get_cal_preset_range(preset, now);
+    if (r.start && r.end && st === r.start && en === r.end) {
+      return preset;
+    }
+  }
+  return "";
+}
+
 function update_date_buttons_text() {
   const startText = document.getElementById("startDateText");
   const endText = document.getElementById("endDateText");
   if (startText) startText.textContent = current_start_date;
   if (endText) endText.textContent = current_end_date;
 
-  const now = new Date();
-  const todayStr = format_ymd_date(now);
-  const yest = new Date(now);
-  yest.setDate(yest.getDate() - 1);
-  const yestStr = format_ymd_date(yest);
-  const tmStartStr = format_ymd_date(
-    new Date(now.getFullYear(), now.getMonth(), 1)
-  );
-  const tmEndStr = format_ymd_date(
-    new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  );
-  const lmStartStr = format_ymd_date(
-    new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  );
-  const lmEndStr = format_ymd_date(
-    new Date(now.getFullYear(), now.getMonth(), 0)
-  );
-
-  let activePreset = "";
-  if (current_start_date === todayStr && current_end_date === todayStr) {
-    activePreset = "today";
-  } else if (current_start_date === yestStr && current_end_date === yestStr) {
-    activePreset = "yesterday";
-  } else if (
-    current_start_date === lmStartStr &&
-    current_end_date === lmEndStr
-  ) {
-    activePreset = "last_month";
-  } else if (
-    current_start_date === tmStartStr &&
-    current_end_date === tmEndStr
-  ) {
-    activePreset = "this_month";
-  }
+  const activePreset = detect_active_cal_preset(current_start_date, current_end_date, false);
 
   document.querySelectorAll(".quick-preset-btn").forEach((btn) => {
     btn.classList.toggle(
@@ -4439,29 +4473,7 @@ function sync_cal_preset_sidebar_ui() {
 
   const st = isOdCal ? od_date_start : current_start_date;
   const en = isOdCal ? od_date_end : current_end_date;
-
-  const now = new Date();
-  const todayStr = format_ymd_date(now);
-  const yest = new Date(now);
-  yest.setDate(yest.getDate() - 1);
-  const yestStr = format_ymd_date(yest);
-  const lmStartStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-  const lmEndStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 0));
-  const tmStartStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 1));
-  const tmEndStr = format_ymd_date(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-
-  let activePreset = "";
-  if (isOdCal && (!st || !en)) {
-    activePreset = "all_dates";
-  } else if (st === todayStr && en === todayStr) {
-    activePreset = "today";
-  } else if (st === yestStr && en === yestStr) {
-    activePreset = "yesterday";
-  } else if (st === lmStartStr && en === lmEndStr) {
-    activePreset = "last_month";
-  } else if (st === tmStartStr && en === tmEndStr) {
-    activePreset = "this_month";
-  }
+  const activePreset = detect_active_cal_preset(st, en, isOdCal);
 
   document.querySelectorAll("#calPresetsSidebar .cal-preset-item").forEach((btn) => {
     btn.classList.toggle("active-preset", btn.getAttribute("data-preset") === activePreset);
@@ -4469,23 +4481,9 @@ function sync_cal_preset_sidebar_ui() {
 }
 
 function apply_cal_preset_choice(preset) {
-  let st = null;
-  let en = null;
-  const now = new Date();
-
-  if (preset === "today") {
-    st = en = format_ymd_date(now);
-  } else if (preset === "yesterday") {
-    const yest = new Date(now);
-    yest.setDate(yest.getDate() - 1);
-    st = en = format_ymd_date(yest);
-  } else if (preset === "last_month") {
-    st = format_ymd_date(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-    en = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 0));
-  } else if (preset === "this_month") {
-    st = format_ymd_date(new Date(now.getFullYear(), now.getMonth(), 1));
-    en = format_ymd_date(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-  }
+  const range = get_cal_preset_range(preset);
+  const st = range.start;
+  const en = range.end;
 
   if (current_cal_target === "od_filter") {
     od_date_start = st;
@@ -4940,6 +4938,21 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btnThisMonth")?.addEventListener("click", (e) => {
     e.stopPropagation();
     apply_cal_preset_choice("this_month");
+  });
+
+  document.getElementById("btnLast3Days")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("last_3_days");
+  });
+
+  document.getElementById("btnLast7Days")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("last_7_days");
+  });
+
+  document.getElementById("btnLast14Days")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    apply_cal_preset_choice("last_14_days");
   });
 
   document.getElementById("btnCalAllDates")?.addEventListener("click", (e) => {

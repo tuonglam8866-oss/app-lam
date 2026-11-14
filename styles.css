@@ -3280,7 +3280,7 @@ input::-ms-clear {
 .cal-presets-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   width: 112px;
   flex-shrink: 0;
   padding-right: 12px;
@@ -3293,14 +3293,14 @@ input::-ms-clear {
 
 .cal-preset-item {
   width: 100%;
-  height: 34px;
-  padding: 0 10px;
-  border-radius: 9px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 8px;
   border: 1.5px solid #D8C4B0;
   background: #F5ECE0;
   color: #4E3423;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 800;
   text-align: left;
   cursor: pointer;
