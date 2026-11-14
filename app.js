@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.125";
+const APP_FRONTEND_VERSION = "8.6.126";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2661,16 +2661,21 @@ function render_avg_call_time_popup_table() {
   const cr = last_closing_rate_data || {};
   head.innerHTML =
     `<tr><th class="ac-left">CA LÀM VIỆC</th>` +
-    `<th>SỐ ĐƠN</th>` +
     `<th>GỌI TB</th></tr>`;
 
-  const make_shift_row = (title, sub, count, avgSec, extraCls) => {
+  const make_shift_row = (icon, title, sub, count, avgSec, extraCls) => {
     const tr = document.createElement("tr");
     if (extraCls) tr.className = extraCls;
 
     const tdLabel = document.createElement("td");
     tdLabel.className = "ac-left ac-code";
     if (sub) {
+      const rowWrap = document.createElement("div");
+      rowWrap.className = "act-shift-row";
+      const iconBox = document.createElement("span");
+      iconBox.className = "act-shift-icon";
+      iconBox.setAttribute("aria-hidden", "true");
+      iconBox.textContent = icon;
       const wrap = document.createElement("div");
       wrap.className = "act-shift-wrap";
       const nameSpan = document.createElement("span");
@@ -2681,16 +2686,13 @@ function render_avg_call_time_popup_table() {
       subSpan.textContent = sub;
       wrap.appendChild(nameSpan);
       wrap.appendChild(subSpan);
-      tdLabel.appendChild(wrap);
+      rowWrap.appendChild(iconBox);
+      rowWrap.appendChild(wrap);
+      tdLabel.appendChild(rowWrap);
     } else {
       tdLabel.textContent = title;
     }
     tr.appendChild(tdLabel);
-
-    const tdCount = document.createElement("td");
-    tdCount.className = "ac-num";
-    tdCount.textContent = String(count || 0);
-    tr.appendChild(tdCount);
 
     const tdTime = document.createElement("td");
     tdTime.className = "ac-num";
@@ -2706,7 +2708,8 @@ function render_avg_call_time_popup_table() {
   body.innerHTML = "";
   body.appendChild(
     make_shift_row(
-      "☀️ Ca hành chính",
+      "☀️",
+      "Ca hành chính",
       "08:30 - 17:30",
       cr.so_don_da_goi_hc || 0,
       cr.avg_call_hc_sec || 0,
@@ -2715,7 +2718,8 @@ function render_avg_call_time_popup_table() {
   );
   body.appendChild(
     make_shift_row(
-      "🌙 Ca tối",
+      "🌙",
+      "Ca tối",
       "17:30 - 22:00",
       cr.so_don_da_goi_toi || 0,
       cr.avg_call_toi_sec || 0,
@@ -2726,6 +2730,7 @@ function render_avg_call_time_popup_table() {
   foot.innerHTML = "";
   foot.appendChild(
     make_shift_row(
+      "",
       "Tổng cộng",
       "",
       cr.so_don_da_goi || 0,
@@ -2752,14 +2757,14 @@ function toggle_avg_call_time_popup(anchorEl) {
   pop.classList.remove("hidden");
 
   const rect = anchorEl.getBoundingClientRect();
-  const w = Math.min(290, window.innerWidth - 24);
+  const w = Math.min(280, window.innerWidth - 24);
   let left = rect.right - w;
   if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
   if (left < 12) left = 12;
   pop.style.width = `${w}px`;
   pop.style.left = `${left}px`;
   pop.style.top = `${rect.bottom + 7}px`;
-  pop.style.maxHeight = `${Math.max(220, window.innerHeight - rect.bottom - 24)}px`;
+  pop.style.maxHeight = `${Math.max(240, window.innerHeight - rect.bottom - 24)}px`;
 }
 function calc_metrics_display(spend, doanh_so, count, zeroDsLabel) {
   const cpo_val = spend > 0 && count > 0 ? spend / count : 0;
