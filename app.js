@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.126";
+const APP_FRONTEND_VERSION = "8.6.127";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2066,13 +2066,23 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
             const dtCall = parse_datetime_vn(tgGoiRaw);
             const callSec = calc_working_call_seconds(dtOrder, dtCall);
             if (callSec !== null && callSec >= 0) {
-              tong_tg_goi_sec += callSec;
-              so_don_da_goi += 1;
               const callMins = dtCall.getHours() * 60 + dtCall.getMinutes();
-              if (callMins >= 8 * 60 + 30 && callMins < 17 * 60 + 30) {
+              const isCaHanhChinh =
+                (callMins >= 8 * 60 + 30 && callMins < 12 * 60) ||
+                (callMins >= 14 * 60 && callMins < 17 * 60 + 30);
+              const isCaToi =
+                (callMins >= 17 * 60 + 30 && callMins < 18 * 60) ||
+                (callMins >= 19 * 60 + 30 && callMins < 22 * 60);
+
+              // Bỏ qua các đơn được gọi trong khung giờ nghỉ (22h-8h30, 12h-14h, 18h-19h30)
+              if (isCaHanhChinh) {
+                tong_tg_goi_sec += callSec;
+                so_don_da_goi += 1;
                 tong_tg_goi_hc_sec += callSec;
                 so_don_da_goi_hc += 1;
-              } else {
+              } else if (isCaToi) {
+                tong_tg_goi_sec += callSec;
+                so_don_da_goi += 1;
                 tong_tg_goi_toi_sec += callSec;
                 so_don_da_goi_toi += 1;
               }
