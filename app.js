@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.197";
+const APP_FRONTEND_VERSION = "8.6.198";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -110,18 +110,34 @@ function get_pancake_valid_phones(conv) {
   return out;
 }
 
-async function fetch_json_with_timeout(url, timeoutMs = 10000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { cache: "no-store", signal: controller.signal });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  } finally {
-    clearTimeout(timer);
+async function fetch_json_with_timeout(url, timeoutMs = 10000, maxRetries = 4) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let waitMs = 0;
+    try {
+      const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (res.ok) {
+        return await res.json();
+      }
+      if (res.status === 429 || res.status >= 500) {
+        const ra = parseFloat(res.headers.get("Retry-After") || "0");
+        waitMs = (!Number.isNaN(ra) && ra > 0)
+          ? Math.min(5000, Math.round(ra * 1000))
+          : (550 * (attempt + 1) + attempt * 300);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      waitMs = 500 * (attempt + 1);
+    } finally {
+      clearTimeout(timer);
+    }
+    if (attempt < maxRetries && waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
   }
+  return null;
 }
 
 function parse_gia_tin_nhan_pancake(raw) {
@@ -387,13 +403,14 @@ async function tai_du_lieu_pancake(force = false) {
 
       const convs = [];
       let lastId = "";
-      for (let pg = 0; pg < 5; pg++) {
+      for (let pg = 0; pg < 8; pg++) {
+        if (pg > 0) await new Promise((r) => setTimeout(r, 120));
         let url =
           `https://pages.fm/api/public_api/v2/pages/${pageCfg.pageId}/conversations` +
           `?page_access_token=${encodeURIComponent(token)}&page_size=60`;
         if (lastId) url += `&last_conversation_id=${encodeURIComponent(lastId)}`;
 
-        const json = await fetch_json_with_timeout(url, 10000);
+        const json = await fetch_json_with_timeout(url, 12000, 4);
         const batch = json && Array.isArray(json.conversations) ? json.conversations : [];
         if (batch.length === 0) break;
 
@@ -404,8 +421,9 @@ async function tai_du_lieu_pancake(force = false) {
       }
 
       const phoneConvs = convs.filter((c) => get_pancake_valid_phones(c).length > 0);
-      const BATCH_SIZE = 8;
+      const BATCH_SIZE = 3;
       for (let i = 0; i < phoneConvs.length; i += BATCH_SIZE) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 150));
         const chunk = phoneConvs.slice(i, i + BATCH_SIZE);
         const chunkOrders = await Promise.all(
           chunk.map(async (conv) => {
@@ -416,9 +434,12 @@ async function tai_du_lieu_pancake(force = false) {
             const msgUrl =
               `https://pages.fm/api/public_api/v1/pages/${pageCfg.pageId}/conversations/${encodeURIComponent(conv.id)}/messages` +
               `?page_access_token=${encodeURIComponent(token)}&current_count=0`;
-            const msgJson = await fetch_json_with_timeout(msgUrl, 8000);
+            const msgJson = await fetch_json_with_timeout(msgUrl, 10000, 4);
             const msgs = msgJson && (Array.isArray(msgJson.messages) ? msgJson.messages : msgJson.data);
-            const extracted = extract_confirmed_pancake_orders(conv, msgs || [], pageCfg);
+            if (!Array.isArray(msgs)) {
+              return [];
+            }
+            const extracted = extract_confirmed_pancake_orders(conv, msgs, pageCfg);
             pancake_conv_msg_cache.set(cacheKey, extracted);
             return extracted;
           })
@@ -431,6 +452,12 @@ async function tai_du_lieu_pancake(force = false) {
 
     data_pancake_orders = allOrders;
     pancake_last_fetch_ms = Date.now();
+    try {
+      const odModal = document.getElementById("orderDetailModal");
+      if (odModal && !odModal.classList.contains("hidden") && current_od_mode === "all_table") {
+        apply_od_filters_and_render(false);
+      }
+    } catch (e) {}
     return data_pancake_orders;
   })();
 
