@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.186";
+const APP_FRONTEND_VERSION = "8.6.188";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3368,8 +3368,6 @@ let od_date_end = null;   // "YYYY-MM-DD" or null
 let od_only_missing_tracking = false;
 let od_only_landing_mkt_issue = false;
 let od_only_dup_mkt = false;
-let od_only_wrong_mkt = false;
-let od_only_no_mkt = false;
 
 const OD_XL_COL_META = {
   ngay_only: { title: "Thời gian", isDate: true },
@@ -3829,6 +3827,37 @@ function lay_danh_sach_don_khong_mkt() {
   return results;
 }
 
+function lay_danh_sach_don_loi_vao_don() {
+  const byRowNum = new Map();
+
+  // 1. Đơn sai MKT (không trùng)
+  for (const row of lay_danh_sach_don_sai_mkt()) {
+    byRowNum.set(row.row_num, row);
+  }
+
+  // 2. Đơn điền thiếu (Chưa vào bảng TH + thiếu MKT Landing / Zalo / Khách ngoài)
+  for (const row of lay_danh_sach_don_landing_loi_mkt("missing")) {
+    if (!byRowNum.has(row.row_num)) {
+      byRowNum.set(row.row_num, row);
+    }
+  }
+
+  // 3. Đơn không điền MKT nhưng từng đặt của 1 MKT trước đó (bổ sung gợi ý nếu thiếu hoặc chưa nằm trong list)
+  for (const row of lay_danh_sach_don_khong_mkt()) {
+    const existing = byRowNum.get(row.row_num);
+    if (!existing || existing.mkt === "CHƯA ĐIỀN MKT") {
+      byRowNum.set(row.row_num, row);
+    }
+  }
+
+  return Array.from(byRowNum.values()).sort((a, b) => {
+    const ya = parse_order_ymd(a) || "";
+    const yb = parse_order_ymd(b) || "";
+    if (ya !== yb) return yb.localeCompare(ya);
+    return ((b.group_id || b.row_num || 0) - (a.group_id || a.row_num || 0)) || ((a.row_num || 0) - (b.row_num || 0));
+  });
+}
+
 function chuan_hoa_ten_hoac_dia_chi_trung(raw, minWords, minLen) {
   const norm = bo_dau_tieng_viet(String(raw || "").trim())
     .toLowerCase()
@@ -4027,8 +4056,6 @@ function set_od_modal_layout_mode(isAllTableMode) {
   const noTrackingBtn = document.getElementById("btnOdNoTracking");
   const landingMktBtn = document.getElementById("btnOdLandingMktCheck");
   const dupMktBtn = document.getElementById("btnOdDupMktCheck");
-  const wrongMktBtn = document.getElementById("btnOdWrongMktCheck");
-  const noMktBtn = document.getElementById("btnOdNoMkt");
   const dateBtn = document.getElementById("btnOdDateRange");
   const countBadge = document.getElementById("odCountBadge");
   const qtyBadge = document.getElementById("odQtyBadge");
@@ -4042,8 +4069,6 @@ function set_od_modal_layout_mode(isAllTableMode) {
   if (noTrackingBtn) noTrackingBtn.classList.toggle("hidden", !isAllTableMode);
   if (landingMktBtn) landingMktBtn.classList.toggle("hidden", !isAllTableMode);
   if (dupMktBtn) dupMktBtn.classList.toggle("hidden", !isAllTableMode);
-  if (wrongMktBtn) wrongMktBtn.classList.toggle("hidden", !isAllTableMode);
-  if (noMktBtn) noMktBtn.classList.toggle("hidden", !isAllTableMode);
   if (dateBtn) dateBtn.classList.toggle("hidden", !isAllTableMode);
   if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
   if (qtyBadge) qtyBadge.classList.add("hidden");
@@ -4082,27 +4107,13 @@ function update_od_xl_header_indicators() {
     dupMktBtn.setAttribute("aria-pressed", od_only_dup_mkt ? "true" : "false");
   }
 
-  const wrongMktBtn = document.getElementById("btnOdWrongMktCheck");
-  if (wrongMktBtn) {
-    wrongMktBtn.classList.toggle("active", Boolean(od_only_wrong_mkt));
-    wrongMktBtn.setAttribute("aria-pressed", od_only_wrong_mkt ? "true" : "false");
-  }
-
-  const noMktBtn = document.getElementById("btnOdNoMkt");
-  if (noMktBtn) {
-    noMktBtn.classList.toggle("active", Boolean(od_only_no_mkt));
-    noMktBtn.setAttribute("aria-pressed", od_only_no_mkt ? "true" : "false");
-  }
-
   const activeCount =
     Object.keys(od_excel_filters).length +
     (od_excel_sort.col ? 1 : 0) +
     (od_date_start && od_date_end ? 1 : 0) +
     (od_only_missing_tracking ? 1 : 0) +
     (od_only_landing_mkt_issue ? 1 : 0) +
-    (od_only_dup_mkt ? 1 : 0) +
-    (od_only_wrong_mkt ? 1 : 0) +
-    (od_only_no_mkt ? 1 : 0);
+    (od_only_dup_mkt ? 1 : 0);
   const btnResetFilters = document.getElementById("btnResetOdColFilters");
   if (btnResetFilters) {
     if (current_od_mode === "all_table" && activeCount > 0) {
@@ -4291,8 +4302,6 @@ function hien_thi_bang_loc_don_tong_hop() {
   od_only_missing_tracking = false;
   od_only_landing_mkt_issue = false;
   od_only_dup_mkt = false;
-  od_only_wrong_mkt = false;
-  od_only_no_mkt = false;
 
   set_od_modal_layout_mode(true);
   update_od_date_btn_ui();
@@ -4356,8 +4365,6 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   od_only_missing_tracking = false;
   od_only_landing_mkt_issue = false;
   od_only_dup_mkt = false;
-  od_only_wrong_mkt = false;
-  od_only_no_mkt = false;
 
   set_od_modal_layout_mode(false);
   update_od_date_btn_ui();
@@ -4452,13 +4459,9 @@ function apply_od_filters_and_render(resetLimit = false) {
 
   let baseList;
   if (current_od_mode === "all_table" && od_only_landing_mkt_issue) {
-    baseList = lay_danh_sach_don_landing_loi_mkt("missing");
+    baseList = lay_danh_sach_don_loi_vao_don();
   } else if (current_od_mode === "all_table" && od_only_dup_mkt) {
     baseList = lay_danh_sach_don_trung_mkt();
-  } else if (current_od_mode === "all_table" && od_only_wrong_mkt) {
-    baseList = lay_danh_sach_don_sai_mkt();
-  } else if (current_od_mode === "all_table" && od_only_no_mkt) {
-    baseList = lay_danh_sach_don_khong_mkt();
   } else {
     baseList = (current_od_mode === "all_table" && od_sort_newest_first)
       ? current_od_raw_list.slice().sort((a, b) => ((b.group_id || b.row_num || 0) - (a.group_id || a.row_num || 0)) || ((a.row_num || 0) - (b.row_num || 0)))
@@ -6295,8 +6298,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (keepKey !== "no_tracking") od_only_missing_tracking = false;
     if (keepKey !== "landing_missing") od_only_landing_mkt_issue = false;
     if (keepKey !== "dup_mkt") od_only_dup_mkt = false;
-    if (keepKey !== "wrong_mkt") od_only_wrong_mkt = false;
-    if (keepKey !== "no_mkt") od_only_no_mkt = false;
   };
 
   document.getElementById("btnOdNoTracking")?.addEventListener("click", (e) => {
@@ -6323,28 +6324,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     close_od_excel_filter();
     od_only_dup_mkt = !od_only_dup_mkt;
     if (od_only_dup_mkt) clearOtherQuickFilters("dup_mkt");
-    apply_od_filters_and_render(true);
-  });
-
-  document.getElementById("btnOdWrongMktCheck")?.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    close_od_excel_filter();
-    od_only_wrong_mkt = !od_only_wrong_mkt;
-    if (od_only_wrong_mkt) {
-      clearOtherQuickFilters("wrong_mkt");
-      await ensureTongDonUpyoLoaded();
-    }
-    apply_od_filters_and_render(true);
-  });
-
-  document.getElementById("btnOdNoMkt")?.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    close_od_excel_filter();
-    od_only_no_mkt = !od_only_no_mkt;
-    if (od_only_no_mkt) {
-      clearOtherQuickFilters("no_mkt");
-      await ensureTongDonUpyoLoaded();
-    }
     apply_od_filters_and_render(true);
   });
 
