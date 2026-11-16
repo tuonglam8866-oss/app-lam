@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.183";
+const APP_FRONTEND_VERSION = "8.6.185";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3340,6 +3340,15 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing") {
     if (!ymdA || !ymdB) return null;
     return Math.abs(parse_ymd_date(ymdA).getTime() - parse_ymd_date(ymdB).getTime()) / 86400000;
   };
+  const getSignedDays = (thYmd, tdYmd) => {
+    if (!thYmd || !tdYmd) return null;
+    return (parse_ymd_date(thYmd).getTime() - parse_ymd_date(tdYmd).getTime()) / 86400000;
+  };
+  // Sale có thể chốt và điền vào ĐƠN TỔNG HỢP sau ngày khách đặt Landing nhiều ngày (ví dụ 12/11 -> 16/11)
+  const isThMatchedWindow = (thYmd, tdYmd) => {
+    const signed = getSignedDays(thYmd, tdYmd);
+    return signed === null || (signed >= -2 && signed <= 14);
+  };
 
   for (let i = 0; i < tdRows.length; i++) {
     const r = tdRows[i];
@@ -3458,10 +3467,7 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing") {
 
     const { valid: validMkts, preferredMkt } = getValidMktsForClosedRec(rec);
     const candidates = thBySdt.get(rec.sdtNorm) || [];
-    const candidatesInWindow = candidates.filter((o) => {
-      const diff = getDiffDays(rec.ymd, parse_order_ymd(o));
-      return diff === null || diff <= 2;
-    });
+    const candidatesInWindow = candidates.filter((o) => isThMatchedWindow(parse_order_ymd(o), rec.ymd));
 
     if (candidatesInWindow.length === 0) {
       if (!isWrongMktMode) {
@@ -3546,10 +3552,7 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing") {
     const oYmd = parse_order_ymd(o);
     const allTdForSdt = sdtNorm ? (tdRecordsBySdt.get(sdtNorm) || []) : [];
     const tdInWindow = allTdForSdt
-      .filter((rec) => {
-        const diff = getDiffDays(oYmd, rec.ymd);
-        return diff === null || diff <= 2;
-      })
+      .filter((rec) => isThMatchedWindow(oYmd, rec.ymd))
       .sort((a, b) => (getDiffDays(oYmd, a.ymd) ?? 999) - (getDiffDays(oYmd, b.ymd) ?? 999));
 
     const isZaloOutside = is_zalo_or_outside_platform(o.nen_tang);
