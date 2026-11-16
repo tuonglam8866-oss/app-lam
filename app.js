@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.161";
+const APP_FRONTEND_VERSION = "8.6.162";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3163,6 +3163,15 @@ function chuan_hoa_mkt_so_sanh(raw) {
   return String(raw || "").trim().toUpperCase();
 }
 
+function chuan_hoa_sp_so_sanh(raw) {
+  const clean = String(raw || "").trim().toUpperCase();
+  if (!clean || ["DÒNG SP", "TÊN SP", "SẢN PHẨM", "MÃ SP", "MÃ", "CHƯA XÁC ĐỊNH"].includes(clean)) {
+    return "";
+  }
+  const extracted = trich_xuat_ten_mau_thong_minh(clean);
+  return extracted && extracted !== "CHƯA XÁC ĐỊNH" ? extracted : clean;
+}
+
 function parse_gia_ghi_chu_sale(raw) {
   const s = String(raw || "").trim();
   if (!s) return 0;
@@ -3262,6 +3271,7 @@ function lay_danh_sach_don_landing_loi_mkt() {
     }
 
     const chot = r.length > colDaChot ? parseInt(String(r[colDaChot] || "0").trim(), 10) || 0 : 0;
+    const dongSpRaw = r.length > colDongSp ? String(r[colDongSp] || "").trim().toUpperCase() : "";
     const rec = {
       rowIdx: i,
       r,
@@ -3272,7 +3282,8 @@ function lay_danh_sach_don_landing_loi_mkt() {
       sdtNorm,
       mktRaw: mktTdRaw,
       mktNorm: mktTdNorm,
-      dongSp: r.length > colDongSp ? String(r[colDongSp] || "").trim().toUpperCase() : "",
+      dongSp: dongSpRaw,
+      spNorm: chuan_hoa_sp_so_sanh(dongSpRaw),
       chot,
     };
     tdRecords.push(rec);
@@ -3280,13 +3291,14 @@ function lay_danh_sach_don_landing_loi_mkt() {
     tdRecordsBySdt.get(sdtNorm).push(rec);
   }
 
-  // Các đơn chốt hợp lệ cho phép giữ MKT của lần khách đặt đầu tiên (nếu có form chưa chốt trước đó <= 7 ngày)
+  // Nếu có form chưa chốt trước đó <= 7 ngày CÙNG SP -> tính cho người đầu tiên; nếu đổi SP -> tính cho người đặt sau
   const getValidMktsForClosedRec = (rec) => {
     const valid = new Set();
     const allForSdt = tdRecordsBySdt.get(rec.sdtNorm) || [];
-    const earlierUnclosed = allForSdt
+    const earlierSameSpUnclosed = allForSdt
       .filter((e) => {
         if (!e.mktNorm || e.rowIdx === rec.rowIdx || e.chot > 0) return false;
+        if (!e.spNorm || !rec.spNorm || e.spNorm !== rec.spNorm) return false;
         if (rec.timeMs && e.timeMs) {
           const diffMs = rec.timeMs - e.timeMs;
           return diffMs >= 0 && diffMs <= 7 * 86400 * 1000;
@@ -3296,9 +3308,8 @@ function lay_danh_sach_don_landing_loi_mkt() {
       })
       .sort((a, b) => (a.timeMs || 0) - (b.timeMs || 0));
 
-    earlierUnclosed.forEach((e) => valid.add(e.mktNorm));
-    if (rec.mktNorm) valid.add(rec.mktNorm);
-    const preferredMkt = earlierUnclosed.length > 0 ? earlierUnclosed[0].mktNorm : rec.mktNorm;
+    const preferredMkt = earlierSameSpUnclosed.length > 0 ? earlierSameSpUnclosed[0].mktNorm : rec.mktNorm;
+    if (preferredMkt) valid.add(preferredMkt);
     return { valid, preferredMkt };
   };
 
