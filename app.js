@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.201";
+const APP_FRONTEND_VERSION = "8.6.202";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2048,6 +2048,28 @@ function kich_hoat_tai_nen_sau_bang_chinh(delayMs = 150) {
   }, delayMs);
 }
 
+const CACHE_KEY_THONG_KE = "applam_cache_thong_ke_v1";
+
+function luu_cache_thong_ke(rows) {
+  try {
+    localStorage.setItem(CACHE_KEY_THONG_KE, JSON.stringify({ t: Date.now(), rows }));
+  } catch (e) {
+    try {
+      localStorage.removeItem(CACHE_KEY_THONG_KE);
+    } catch (e2) {}
+  }
+}
+
+function doc_cache_thong_ke() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_THONG_KE);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (obj && Array.isArray(obj.rows) && obj.rows.length > 0) return obj.rows;
+  } catch (e) {}
+  return null;
+}
+
 async function tai_du_lieu_google_sheets() {
   doc_cau_hinh_tu_storage();
 
@@ -2065,6 +2087,7 @@ async function tai_du_lieu_google_sheets() {
   if (rowsThongKe && rowsThongKe.length > 0) {
     data_hien_tai = rowsThongKe;
     rebuild_cust_first_mkt_index();
+    luu_cache_thong_ke(rowsThongKe);
     if (!hasCachedCodes) {
       await dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
     }
@@ -6044,8 +6067,24 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
     canReuseSheets && cachedFbEntry && Date.now() - cachedFbEntry.timeMs < 60000
   );
 
+  // Chế độ "hiện ngay – làm mới ngầm": đã có dữ liệu trong RAM (hoặc bộ nhớ đệm lần trước) thì vẽ liền, tải mới chạy nền
+  let softMode = false;
+  if (!canReuseSheets && !isAutoRetry) {
+    if (!(Array.isArray(data_hien_tai) && data_hien_tai.length > 0)) {
+      const cachedRows = doc_cache_thong_ke();
+      if (cachedRows) {
+        data_hien_tai = cachedRows;
+        try {
+          rebuild_cust_first_mkt_index();
+        } catch (e) {}
+      }
+    }
+    softMode = Array.isArray(data_hien_tai) && data_hien_tai.length > 0;
+  }
+  let sheetRefreshOk = true;
+
   // Nếu đã có dữ liệu Sheet và cache Ads trong 60s -> vẽ lại ngay lập tức không cần overlay xoay
-  if (!canReuseFb && loadingOverlay) loadingOverlay.classList.remove("hidden");
+  if (!canReuseFb && !softMode && loadingOverlay) loadingOverlay.classList.remove("hidden");
   if (btnRefresh) btnRefresh.disabled = true;
   if (refreshIcon) refreshIcon.classList.add("spinning");
 
@@ -6071,13 +6110,30 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
           return res;
         });
 
-    const [gsResult, fbResult] = await Promise.all([
-      canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(),
-      fbPromise,
-    ]);
-    gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
-    cached_fb_chi_tiet = fbResult.local_chi_tiet;
-    cached_fb_tong = fbResult.local_tong;
+    let gsResult;
+    let fbResult;
+    if (softMode) {
+      const sheetsPromise = tai_du_lieu_google_sheets();
+      fbResult = await fbPromise;
+      cached_fb_chi_tiet = fbResult.local_chi_tiet;
+      cached_fb_tong = fbResult.local_tong;
+      // Vẽ NGAY bằng dữ liệu đang có, ẩn màn hình chờ; phần Sheet mới sẽ vẽ lại khi tải xong
+      ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
+      if (loadingOverlay) loadingOverlay.classList.add("hidden");
+      const lastSyncSoft = document.getElementById("lastSyncText");
+      if (lastSyncSoft) lastSyncSoft.textContent = "⏳ Đang làm mới dữ liệu ngầm...";
+      gsResult = await sheetsPromise;
+      sheetRefreshOk = Boolean(gsResult);
+      gsSuccess = Boolean(data_hien_tai && data_hien_tai.length > 0);
+    } else {
+      [gsResult, fbResult] = await Promise.all([
+        canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(),
+        fbPromise,
+      ]);
+      gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
+      cached_fb_chi_tiet = fbResult.local_chi_tiet;
+      cached_fb_tong = fbResult.local_tong;
+    }
 
     ve_noi_dung_dashboard(
       current_start_date,
@@ -6086,7 +6142,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       cached_fb_tong
     );
 
-    if (!canReuseSheets) {
+    if (!canReuseSheets && sheetRefreshOk) {
       const now = new Date();
       const hh = String(now.getHours()).padStart(2, "0");
       const mm = String(now.getMinutes()).padStart(2, "0");
@@ -6096,7 +6152,9 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
 
     const lastSyncEl = document.getElementById("lastSyncText");
     if (lastSyncEl) {
-      if (gsSuccess) {
+      if (gsSuccess && !sheetRefreshOk) {
+        lastSyncEl.textContent = "Đang hiện dữ liệu cũ (chưa làm mới được, bấm Tải lại thử lại)";
+      } else if (gsSuccess) {
         lastSyncEl.textContent = `${t().lastSyncPrefix}${last_sync_time_str || ""}`;
       } else {
         lastSyncEl.textContent = "Đang chờ kết nối Wi-Fi...";
