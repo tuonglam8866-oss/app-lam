@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.135";
+const APP_FRONTEND_VERSION = "8.6.136";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1866,6 +1866,8 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
     : null;
 
   const ket_qua = [];
+  let lastCustomerCtx = null;
+  let groupCounter = 0;
   for (let i = 0; i < data_hien_tai.length; i++) {
     const r = data_hien_tai[i];
     if (!Array.isArray(r) || r.length === 0) continue;
@@ -1875,21 +1877,60 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
     const c2 = bo_dau_tieng_viet(String(r[2] || "").trim()).toUpperCase();
     if (c0 === "THOI GIAN" || c0 === "STT" || c2 === "HO TEN") continue;
 
-    // QUAN TRỌNG: Bỏ qua các dòng chưa có thông tin khách hàng (họ tên, SĐT, địa chỉ đều trống)
+    const maVanDon = r.length > 1 ? String(r[1] || "").trim() : "";
     const hoTen = r.length > 2 ? String(r[2] || "").trim() : "";
     const sdtRaw = r.length > 3 ? String(r[3] || "").trim() : "";
     const diaChi = r.length > 4 ? String(r[4] || "").trim() : "";
+    const dongSp = r.length > 5 ? String(r[5] || "").trim() : "";
+    const giaBanVal = r.length > 8 ? parse_gia_tien(r[8]) : 0;
+    const trangThaiRaw = r.length > 13 ? String(r[13] || "").trim() : "";
 
-    if (!hoTen && !sdtRaw && !diaChi) {
+    const hasCustomerInfo = Boolean(maVanDon || hoTen || sdtRaw || diaChi);
+    const hasOrderItemInfo = Boolean(dongSp || trangThaiRaw || giaBanVal > 0);
+
+    // Bỏ qua các dòng mẫu trống ở cuối Sheet (chỉ có sẵn ngày, chưa có khách lẫn SP/giá/trạng thái)
+    if (!hasCustomerInfo && !hasOrderItemInfo) {
       continue;
     }
 
+    const mapped = map_sheet_row_a_to_p(r, i + 1, null);
+    if (hasCustomerInfo) {
+      groupCounter += 1;
+      mapped.group_id = groupCounter;
+      lastCustomerCtx = {
+        group_id: groupCounter,
+        ngay_only: mapped.ngay_only,
+        mkt: mapped.mkt,
+        ma_van_don: mapped.ma_van_don,
+        ho_ten: mapped.ho_ten,
+        sdt: mapped.sdt,
+        dia_chi: mapped.dia_chi,
+      };
+    } else if (lastCustomerCtx) {
+      const sameDate = !mapped.ngay_only || !lastCustomerCtx.ngay_only || mapped.ngay_only === lastCustomerCtx.ngay_only;
+      const sameMkt = !mapped.mkt || !lastCustomerCtx.mkt || mapped.mkt === lastCustomerCtx.mkt;
+      if (sameDate && sameMkt) {
+        if (!mapped.ngay_only) mapped.ngay_only = lastCustomerCtx.ngay_only;
+        mapped.group_id = lastCustomerCtx.group_id;
+        mapped.parent_ma_van_don = lastCustomerCtx.ma_van_don;
+        mapped.parent_ho_ten = lastCustomerCtx.ho_ten;
+        mapped.parent_sdt = lastCustomerCtx.sdt;
+        mapped.parent_dia_chi = lastCustomerCtx.dia_chi;
+      } else {
+        groupCounter += 1;
+        mapped.group_id = groupCounter;
+      }
+    } else {
+      groupCounter += 1;
+      mapped.group_id = groupCounter;
+    }
+
     if (patternsArr) {
-      const tg = String(r[0] || "").trim();
+      const tg = String(r[0] || mapped.ngay_only || "").trim();
       if (!patternsArr.some((p) => tg.includes(p))) continue;
     }
 
-    ket_qua.push(map_sheet_row_a_to_p(r, i + 1, null));
+    ket_qua.push(mapped);
   }
   return ket_qua;
 }
@@ -3539,7 +3580,7 @@ function apply_od_filters_and_render(resetLimit = false) {
   update_od_xl_header_indicators();
 
   let baseList = (current_od_mode === "all_table" && od_sort_newest_first)
-    ? current_od_raw_list.slice().reverse()
+    ? current_od_raw_list.slice().sort((a, b) => ((b.group_id || b.row_num || 0) - (a.group_id || a.row_num || 0)) || ((a.row_num || 0) - (b.row_num || 0)))
     : current_od_raw_list.slice();
 
   const activeFilterKeys = current_od_mode === "all_table" ? Object.keys(od_excel_filters) : [];
@@ -3548,7 +3589,7 @@ function apply_od_filters_and_render(resetLimit = false) {
 
   const filtered = baseList.filter((o) => {
     if (onlyMissingTracking) {
-      const mvd = String(o.ma_van_don || "").trim();
+      const mvd = String(o.ma_van_don || o.parent_ma_van_don || "").trim();
       if (mvd && mvd !== "-" && mvd !== "—") {
         return false;
       }
@@ -3573,6 +3614,10 @@ function apply_od_filters_and_render(resetLimit = false) {
         o.ho_ten,
         o.sdt,
         o.dia_chi,
+        o.parent_ma_van_don,
+        o.parent_ho_ten,
+        o.parent_sdt,
+        o.parent_dia_chi,
         o.dong_sp,
         o.mau_sac,
         o.size,
@@ -3658,7 +3703,7 @@ function render_order_detail_table(ordersToRender) {
     tbody.innerHTML = "";
     if (emptyState) emptyState.classList.remove("hidden");
     if (loadMoreWrap) loadMoreWrap.classList.add("hidden");
-    if (footerSummary) footerSummary.textContent = "Tổng doanh số: 0 đ";
+    if (footerSummary) footerSummary.textContent = "Tổng doanh số: 0 đ • Số đơn: 0";
     return;
   }
 
@@ -3666,7 +3711,7 @@ function render_order_detail_table(ordersToRender) {
 
   const sliceCount = Math.min(totalMatched, od_render_limit);
   if (footerSummary) {
-    footerSummary.textContent = `Tổng doanh số: ${format_tien_vnd(tong_ds)}`;
+    footerSummary.textContent = `Tổng doanh số: ${format_tien_vnd(tong_ds)} • Số đơn: ${totalMatched}`;
   }
 
   if (loadMoreWrap) {
