@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.133";
+const APP_FRONTEND_VERSION = "8.6.134";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3596,7 +3596,7 @@ function render_order_detail_table(ordersToRender) {
     tbody.innerHTML = "";
     if (emptyState) emptyState.classList.remove("hidden");
     if (loadMoreWrap) loadMoreWrap.classList.add("hidden");
-    if (footerSummary) footerSummary.textContent = "Không có đơn hàng nào khớp • Tổng doanh số: 0 đ";
+    if (footerSummary) footerSummary.textContent = "Tổng doanh số: 0 đ";
     return;
   }
 
@@ -3604,7 +3604,7 @@ function render_order_detail_table(ordersToRender) {
 
   const sliceCount = Math.min(totalMatched, od_render_limit);
   if (footerSummary) {
-    footerSummary.textContent = `Hiển thị ${totalMatched} / ${current_od_raw_list.length} đơn hàng • Tổng doanh số: ${format_tien_vnd(tong_ds)}`;
+    footerSummary.textContent = `Tổng doanh số: ${format_tien_vnd(tong_ds)}`;
   }
 
   if (loadMoreWrap) {
