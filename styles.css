@@ -4774,38 +4774,31 @@ input::-ms-clear {
 .skeleton-w-85 { width: 85%; }
 
 /* iPhone-style spring cascade when unlock_app() opens the dashboard */
-body.app-opening-ready .header-left-group,
-html.app-pre-unlocked .header-left-group {
+body.app-opening-ready .header-left-group {
   animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.02s both;
 }
 
-body.app-opening-ready .header-right-cards,
-html.app-pre-unlocked .header-right-cards {
+body.app-opening-ready .header-right-cards {
   animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.07s both;
 }
 
-body.app-opening-ready .toolbar-left,
-html.app-pre-unlocked .toolbar-left {
+body.app-opening-ready .toolbar-left {
   animation: ios-spring-pop 0.46s cubic-bezier(0.18, 1.15, 0.32, 1) 0.11s both;
 }
 
-body.app-opening-ready .toolbar-right,
-html.app-pre-unlocked .toolbar-right {
+body.app-opening-ready .toolbar-right {
   animation: ios-spring-pop 0.46s cubic-bezier(0.18, 1.15, 0.32, 1) 0.14s both;
 }
 
-body.app-opening-ready #badgeHolder,
-html.app-pre-unlocked #badgeHolder {
+body.app-opening-ready #badgeHolder {
   animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.17s both;
 }
 
-body.app-opening-ready #colMkt,
-html.app-pre-unlocked #colMkt {
+body.app-opening-ready #colMkt {
   animation: ios-spring-pop 0.52s cubic-bezier(0.18, 1.14, 0.32, 1) 0.2s both;
 }
 
-body.app-opening-ready #colSp,
-html.app-pre-unlocked #colSp {
+body.app-opening-ready #colSp {
   animation: ios-spring-pop 0.52s cubic-bezier(0.18, 1.14, 0.32, 1) 0.25s both;
 }
 
@@ -4815,18 +4808,15 @@ html.app-pre-unlocked #colSp {
   will-change: transform, opacity;
 }
 
-body.app-opening-ready .skeleton-card:nth-child(1),
-html.app-pre-unlocked .skeleton-card:nth-child(1) {
+body.app-opening-ready .skeleton-card:nth-child(1) {
   animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.22s both;
 }
 
-body.app-opening-ready .skeleton-card:nth-child(2),
-html.app-pre-unlocked .skeleton-card:nth-child(2) {
+body.app-opening-ready .skeleton-card:nth-child(2) {
   animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.27s both;
 }
 
-body.app-opening-ready .skeleton-card:nth-child(3),
-html.app-pre-unlocked .skeleton-card:nth-child(3) {
+body.app-opening-ready .skeleton-card:nth-child(3) {
   animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.32s both;
 }
 

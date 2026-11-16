@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.205";
+const APP_FRONTEND_VERSION = "8.6.206";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -736,17 +736,27 @@ function animate_dashboard_cards_pop() {
   });
 }
 
+let _nativeUiReadySent = false;
+function notify_native_ui_ready() {
+  if (_nativeUiReadySent) return;
+  _nativeUiReadySent = true;
+  try {
+    if (window.location.protocol.startsWith("http")) {
+      fetch("/api/ui-ready", { method: "POST", keepalive: true }).catch(() => {});
+    }
+  } catch (e) {}
+}
+
 function unlock_app() {
   const lockScreen = document.getElementById("authLockScreen");
   const appContainer = document.getElementById("appContainer");
   if (lockScreen) lockScreen.classList.add("hidden");
   if (appContainer) appContainer.classList.remove("hidden");
   _shouldAnimateOpeningCards = true;
-  if (!document.documentElement.classList.contains("app-pre-unlocked")) {
-    document.body.classList.remove("app-opening-ready");
-    void document.body.offsetWidth;
-    document.body.classList.add("app-opening-ready");
-  }
+  document.body.classList.remove("app-opening-ready");
+  void document.body.offsetWidth;
+  document.body.classList.add("app-opening-ready");
+  requestAnimationFrame(() => notify_native_ui_ready());
 }
 
 const KNOWN_CODES_DEFAULT = [
@@ -7728,6 +7738,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const isAuthed = await check_persisted_auth_session();
   if (!isAuthed) {
     show_auth_lock_screen();
+    requestAnimationFrame(() => notify_native_ui_ready());
   } else {
     unlock_app();
     await tai_va_cap_nhat_theo_ngay();
