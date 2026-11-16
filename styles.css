@@ -2709,9 +2709,9 @@ input::-ms-clear {
 }
 
 .od-search-input {
-  width: 155px;
+  width: 112px;
   height: 36px;
-  padding: 0 32px 0 14px;
+  padding: 0 26px 0 11px;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -2731,13 +2731,13 @@ input::-ms-clear {
 
 .od-search-clear {
   position: absolute;
-  right: 10px;
+  right: 6px;
   background: transparent;
   border: none;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--choco-muted);
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border-radius: 4px;
 }
 

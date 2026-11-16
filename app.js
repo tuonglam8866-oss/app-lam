@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.165";
+const APP_FRONTEND_VERSION = "8.6.166";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3194,6 +3194,7 @@ let od_date_start = null; // "YYYY-MM-DD" or null
 let od_date_end = null;   // "YYYY-MM-DD" or null
 let od_only_missing_tracking = false;
 let od_only_landing_mkt_issue = false;
+let od_only_dup_mkt = false;
 
 const OD_XL_COL_META = {
   ngay_only: { title: "Thời gian", isDate: true },
@@ -3540,6 +3541,141 @@ function lay_danh_sach_don_landing_loi_mkt() {
   return results;
 }
 
+function chuan_hoa_ten_hoac_dia_chi_trung(raw, minWords, minLen) {
+  const norm = bo_dau_tieng_viet(String(raw || "").trim())
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!norm || norm.length < minLen) return "";
+  const words = norm.split(" ").filter(Boolean);
+  if (words.length < minWords) return "";
+  return norm;
+}
+
+function lay_danh_sach_don_trung_mkt() {
+  const list = Array.isArray(current_od_raw_list) ? current_od_raw_list : [];
+  const custRows = [];
+  const rowsByGroupId = new Map();
+
+  for (const o of list) {
+    const gid = o.group_id || o.row_num;
+    if (!rowsByGroupId.has(gid)) rowsByGroupId.set(gid, []);
+    rowsByGroupId.get(gid).push(o);
+
+    const hasCust = Boolean(o.ho_ten || o.sdt || o.dia_chi);
+    if (!hasCust) continue;
+
+    const mktDash = chuan_hoa_mkt_dashboard(o.mkt);
+    const sdtRaw = chuan_hoa_sdt_so_sanh(o.sdt);
+    const sdtKey = sdtRaw.length >= 9 && !/^0+$/.test(sdtRaw) ? sdtRaw : "";
+    const nameKey = chuan_hoa_ten_hoac_dia_chi_trung(o.ho_ten, 2, 4);
+    const addrKey = chuan_hoa_ten_hoac_dia_chi_trung(o.dia_chi, 3, 10);
+
+    if (!sdtKey && !nameKey && !addrKey) continue;
+    custRows.push({ o, mktDash, sdtKey, nameKey, addrKey });
+  }
+
+  const n = custRows.length;
+  if (n < 2) return [];
+
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = (x) => {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  };
+  const union = (a, b) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[rb] = ra;
+  };
+
+  const bySdt = new Map();
+  const byName = new Map();
+  const byAddr = new Map();
+
+  for (let i = 0; i < n; i++) {
+    const item = custRows[i];
+    if (item.sdtKey) {
+      if (bySdt.has(item.sdtKey)) union(bySdt.get(item.sdtKey), i);
+      else bySdt.set(item.sdtKey, i);
+    }
+    if (item.nameKey) {
+      if (byName.has(item.nameKey)) union(byName.get(item.nameKey), i);
+      else byName.set(item.nameKey, i);
+    }
+    if (item.addrKey) {
+      if (byAddr.has(item.addrKey)) union(byAddr.get(item.addrKey), i);
+      else byAddr.set(item.addrKey, i);
+    }
+  }
+
+  const comps = new Map();
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    if (!comps.has(root)) comps.set(root, []);
+    comps.get(root).push(custRows[i]);
+  }
+
+  const conflictComps = [];
+  comps.forEach((items) => {
+    if (items.length < 2) return;
+    const distinctMkts = new Set();
+    for (const it of items) {
+      if (it.mktDash && it.mktDash !== "KHÁC") {
+        distinctMkts.add(it.mktDash);
+      }
+    }
+    if (distinctMkts.size < 2) return;
+
+    const sdtCounts = new Map();
+    const nameCounts = new Map();
+    const addrCounts = new Map();
+    let maxRowNum = 0;
+    for (const it of items) {
+      if ((it.o.row_num || 0) > maxRowNum) maxRowNum = it.o.row_num || 0;
+      if (it.sdtKey) sdtCounts.set(it.sdtKey, (sdtCounts.get(it.sdtKey) || 0) + 1);
+      if (it.nameKey) nameCounts.set(it.nameKey, (nameCounts.get(it.nameKey) || 0) + 1);
+      if (it.addrKey) addrCounts.set(it.addrKey, (addrCounts.get(it.addrKey) || 0) + 1);
+    }
+
+    const matchTypes = [];
+    if (Array.from(sdtCounts.values()).some((c) => c > 1)) matchTypes.push("SĐT");
+    if (Array.from(nameCounts.values()).some((c) => c > 1)) matchTypes.push("Tên");
+    if (Array.from(addrCounts.values()).some((c) => c > 1)) matchTypes.push("Địa chỉ");
+    const reasonStr = matchTypes.length > 0 ? `Trùng ${matchTypes.join(", ")}` : "Trùng khách";
+    const mktsList = Array.from(distinctMkts).join(" / ");
+
+    conflictComps.push({ items, maxRowNum, reasonStr, mktsList });
+  });
+
+  conflictComps.sort((a, b) => b.maxRowNum - a.maxRowNum);
+
+  const results = [];
+  const addedRowNums = new Set();
+  for (const comp of conflictComps) {
+    const sortedItems = comp.items.slice().sort((a, b) => (b.o.row_num || 0) - (a.o.row_num || 0));
+    for (const it of sortedItems) {
+      const gid = it.o.group_id || it.o.row_num;
+      const groupRows = rowsByGroupId.get(gid) || [it.o];
+      for (const rowObj of groupRows) {
+        if (addedRowNums.has(rowObj.row_num)) continue;
+        addedRowNums.add(rowObj.row_num);
+        const dupTag = `${comp.reasonStr} (${comp.mktsList})`;
+        results.push({
+          ...rowObj,
+          ghi_chu: [rowObj.ghi_chu, dupTag].filter(Boolean).join(" • "),
+        });
+      }
+    }
+  }
+
+  return results;
+}
+
 function get_od_col_filter_value(order, colKey) {
   if (!order) return "__EMPTY__";
   if (colKey === "gia_ban") {
@@ -3611,6 +3747,7 @@ function set_od_modal_layout_mode(isAllTableMode) {
   const cardEl = document.getElementById("orderDetailCard");
   const noTrackingBtn = document.getElementById("btnOdNoTracking");
   const landingMktBtn = document.getElementById("btnOdLandingMktCheck");
+  const dupMktBtn = document.getElementById("btnOdDupMktCheck");
   const dateBtn = document.getElementById("btnOdDateRange");
   const countBadge = document.getElementById("odCountBadge");
   const qtyBadge = document.getElementById("odQtyBadge");
@@ -3623,6 +3760,7 @@ function set_od_modal_layout_mode(isAllTableMode) {
   if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
   if (noTrackingBtn) noTrackingBtn.classList.toggle("hidden", !isAllTableMode);
   if (landingMktBtn) landingMktBtn.classList.toggle("hidden", !isAllTableMode);
+  if (dupMktBtn) dupMktBtn.classList.toggle("hidden", !isAllTableMode);
   if (dateBtn) dateBtn.classList.toggle("hidden", !isAllTableMode);
   if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
   if (qtyBadge) qtyBadge.classList.add("hidden");
@@ -3655,12 +3793,19 @@ function update_od_xl_header_indicators() {
     landingMktBtn.setAttribute("aria-pressed", od_only_landing_mkt_issue ? "true" : "false");
   }
 
+  const dupMktBtn = document.getElementById("btnOdDupMktCheck");
+  if (dupMktBtn) {
+    dupMktBtn.classList.toggle("active", Boolean(od_only_dup_mkt));
+    dupMktBtn.setAttribute("aria-pressed", od_only_dup_mkt ? "true" : "false");
+  }
+
   const activeCount =
     Object.keys(od_excel_filters).length +
     (od_excel_sort.col ? 1 : 0) +
     (od_date_start && od_date_end ? 1 : 0) +
     (od_only_missing_tracking ? 1 : 0) +
-    (od_only_landing_mkt_issue ? 1 : 0);
+    (od_only_landing_mkt_issue ? 1 : 0) +
+    (od_only_dup_mkt ? 1 : 0);
   const btnResetFilters = document.getElementById("btnResetOdColFilters");
   if (btnResetFilters) {
     if (current_od_mode === "all_table" && activeCount > 0) {
@@ -3848,6 +3993,7 @@ function hien_thi_bang_loc_don_tong_hop() {
   od_date_end = null;
   od_only_missing_tracking = false;
   od_only_landing_mkt_issue = false;
+  od_only_dup_mkt = false;
 
   set_od_modal_layout_mode(true);
   update_od_date_btn_ui();
@@ -3910,6 +4056,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   od_date_end = null;
   od_only_missing_tracking = false;
   od_only_landing_mkt_issue = false;
+  od_only_dup_mkt = false;
 
   set_od_modal_layout_mode(false);
   update_od_date_btn_ui();
@@ -4005,6 +4152,8 @@ function apply_od_filters_and_render(resetLimit = false) {
   let baseList;
   if (current_od_mode === "all_table" && od_only_landing_mkt_issue) {
     baseList = lay_danh_sach_don_landing_loi_mkt();
+  } else if (current_od_mode === "all_table" && od_only_dup_mkt) {
+    baseList = lay_danh_sach_don_trung_mkt();
   } else {
     baseList = (current_od_mode === "all_table" && od_sort_newest_first)
       ? current_od_raw_list.slice().sort((a, b) => ((b.group_id || b.row_num || 0) - (a.group_id || a.row_num || 0)) || ((a.row_num || 0) - (b.row_num || 0)))
@@ -5832,7 +5981,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     e.stopPropagation();
     close_od_excel_filter();
     od_only_missing_tracking = !od_only_missing_tracking;
-    if (od_only_missing_tracking) od_only_landing_mkt_issue = false;
+    if (od_only_missing_tracking) {
+      od_only_landing_mkt_issue = false;
+      od_only_dup_mkt = false;
+    }
     apply_od_filters_and_render(true);
   });
 
@@ -5842,12 +5994,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     od_only_landing_mkt_issue = !od_only_landing_mkt_issue;
     if (od_only_landing_mkt_issue) {
       od_only_missing_tracking = false;
+      od_only_dup_mkt = false;
       if (!Array.isArray(data_tong_don_upyo) || data_tong_don_upyo.length === 0) {
         try {
           const rows = await fetch_csv_with_fallback(CSV_URL_THONG_BAO, CSV_URL_THONG_BAO_FALLBACK, "thong_bao");
           if (rows && rows.length > 0) data_tong_don_upyo = rows;
         } catch (err) {}
       }
+    }
+    apply_od_filters_and_render(true);
+  });
+
+  document.getElementById("btnOdDupMktCheck")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    close_od_excel_filter();
+    od_only_dup_mkt = !od_only_dup_mkt;
+    if (od_only_dup_mkt) {
+      od_only_missing_tracking = false;
+      od_only_landing_mkt_issue = false;
     }
     apply_od_filters_and_render(true);
   });
@@ -5866,6 +6030,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     od_date_end = null;
     od_only_missing_tracking = false;
     od_only_landing_mkt_issue = false;
+    od_only_dup_mkt = false;
     update_od_date_btn_ui();
     close_od_excel_filter();
     apply_od_filters_and_render(true);
