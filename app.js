@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.189";
+const APP_FRONTEND_VERSION = "8.6.190";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -4785,8 +4785,9 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
 
   // 2. Cột MKT (Danh sách hoặc Chi tiết)
   const colMkt = document.getElementById("colMkt");
+  const frameMkt = document.getElementById("frameMkt");
   const containerMkt = document.getElementById("containerMkt");
-  const mktDetailBannerSlot = document.getElementById("mktDetailBannerSlot");
+  const btnMktViewAllInline = document.getElementById("btnMktViewAllInline");
   const headerMktText = document.getElementById("headerMktText");
   const headerMktIcon = document.getElementById("headerMktIcon");
   const btnBackMkt = document.getElementById("btnBackMkt");
@@ -4794,14 +4795,13 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   function ve_danh_sach_top_mkt() {
     current_mkt_detail = null;
     if (colMkt) colMkt.classList.remove("is-mkt-detail");
-    if (mktDetailBannerSlot) {
-      mktDetailBannerSlot.innerHTML = "";
-      mktDetailBannerSlot.classList.add("hidden");
-    }
+    if (btnMktViewAllInline) btnMktViewAllInline.classList.add("hidden");
     btnBackMkt.classList.add("hidden");
     if (headerMktIcon) headerMktIcon.textContent = "🏆";
     headerMktText.textContent = dict.mktReportHeader;
     containerMkt.innerHTML = "";
+    containerMkt.scrollTop = 0;
+    if (frameMkt) frameMkt.classList.remove("is-scrolled");
 
     const tat_ca_mkt = new Set([
       ...Object.keys(stats_mkt_don),
@@ -4876,24 +4876,17 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     if (headerMktIcon) headerMktIcon.textContent = "📊";
     headerMktText.textContent = dict.mktDetailHeader(ten_mkt);
     containerMkt.innerHTML = "";
+    containerMkt.scrollTop = 0;
+    if (frameMkt) frameMkt.classList.remove("is-scrolled");
 
     const tong_don_mkt = stats_mkt_don[ten_mkt] || 0;
-    const banner = document.createElement("div");
-    banner.className = "mkt-view-all-banner";
-    banner.innerHTML = `
-      <button class="btn-mkt-view-all-orders" type="button" title="Xem danh s\u00e1ch t\u1ea5t c\u1ea3 \u0111\u01a1n c\u1ee7a ${ten_mkt}">
-        \ud83d\udccb Xem chi ti\u1ebft t\u1ea5t c\u1ea3 ${tong_don_mkt} \u0111\u01a1n c\u1ee7a ${ten_mkt} (T\u1ea5t c\u1ea3 m\u00e3 SP) \u2192
-      </button>
-    `;
-    banner.querySelector("button").addEventListener("click", () => {
-      hien_thi_bang_don_hang_chi_tiet(ten_mkt, null);
-    });
-    if (mktDetailBannerSlot) {
-      mktDetailBannerSlot.innerHTML = "";
-      mktDetailBannerSlot.appendChild(banner);
-      mktDetailBannerSlot.classList.remove("hidden");
-    } else {
-      containerMkt.appendChild(banner);
+    if (btnMktViewAllInline) {
+      btnMktViewAllInline.textContent = `\ud83d\udccb Xem ${tong_don_mkt} \u0111\u01a1n \u2192`;
+      btnMktViewAllInline.title = `Xem danh s\u00e1ch t\u1ea5t c\u1ea3 ${tong_don_mkt} \u0111\u01a1n c\u1ee7a ${ten_mkt} (T\u1ea5t c\u1ea3 m\u00e3 SP)`;
+      btnMktViewAllInline.classList.remove("hidden");
+      btnMktViewAllInline.onclick = () => {
+        hien_thi_bang_don_hang_chi_tiet(ten_mkt, null);
+      };
     }
 
     const chi_tiet_fb = fb_chi_tiet_map[ten_mkt] || {};
@@ -5030,6 +5023,8 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
       listSp.appendChild(card);
     });
   }
+  const frameSp = document.getElementById("frameSp");
+  if (frameSp) frameSp.classList.toggle("is-scrolled", listSp.scrollTop > 4);
 }
 
 // ==============================================================
@@ -6475,6 +6470,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     od_render_limit = 999999;
     render_order_detail_table(current_od_filtered_list);
   });
+
+  const attachScrollFrameFade = (listId, frameId) => {
+    const listEl = document.getElementById(listId);
+    const frameEl = document.getElementById(frameId);
+    if (!listEl || !frameEl) return;
+    listEl.addEventListener("scroll", () => {
+      frameEl.classList.toggle("is-scrolled", listEl.scrollTop > 4);
+    }, { passive: true });
+  };
+  attachScrollFrameFade("containerMkt", "frameMkt");
+  attachScrollFrameFade("listSp", "frameSp");
 
   const odSearchInput = document.getElementById("odSearchInput");
   const odClearBtn = document.getElementById("btnClearOdSearch");

@@ -175,14 +175,20 @@
                 <span class="section-icon" id="headerMktIcon">🏆</span>
                 <span id="headerMktText">BÁO CÁO MKT (Chuột phải Copy CP)</span>
               </div>
-              <button type="button" id="btnBackMkt" class="rounded-btn btn-default btn-back hidden">
-                <span id="btnBackMktText">← Quay lại</span>
-              </button>
+              <div class="col-header-right-actions">
+                <button type="button" id="btnMktViewAllInline" class="rounded-btn btn-mkt-view-all-pill hidden" title="Xem danh sách tất cả đơn hàng của MKT này">
+                  📋 Xem 0 đơn →
+                </button>
+                <button type="button" id="btnBackMkt" class="rounded-btn btn-default btn-back hidden">
+                  <span id="btnBackMktText">← Quay lại</span>
+                </button>
+              </div>
             </div>
-            <div id="mktDetailBannerSlot" class="mkt-detail-banner-slot hidden"></div>
           </div>
-          <div class="cards-list" id="containerMkt">
-            <!-- MKT cards or MKT detail SP cards rendered here -->
+          <div class="cards-list-frame" id="frameMkt">
+            <div class="cards-list" id="containerMkt">
+              <!-- MKT cards or MKT detail SP cards rendered here -->
+            </div>
           </div>
         </section>
 
@@ -194,8 +200,10 @@
               <span id="headerSpText">TOP 10 MÃ TỔNG CÔNG TY</span>
             </div>
           </div>
-          <div class="cards-list" id="listSp">
-            <!-- Top 10 SP cards rendered here -->
+          <div class="cards-list-frame" id="frameSp">
+            <div class="cards-list" id="listSp">
+              <!-- Top 10 SP cards rendered here -->
+            </div>
           </div>
         </section>
       </div>
