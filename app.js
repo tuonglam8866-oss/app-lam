@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.162";
+const APP_FRONTEND_VERSION = "8.6.165";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1547,8 +1547,12 @@ async function tai_du_lieu_google_sheets() {
   ).then((rowsThongBao) => {
     if (rowsThongBao && rowsThongBao.length > 0) {
       data_tong_don_upyo = rowsThongBao;
+      rebuild_td_first_landing_index();
       try {
         render_closing_rate_card(tinh_ty_le_chot_theo_ngay(current_start_date, current_end_date));
+        if (Array.isArray(data_hien_tai) && data_hien_tai.length > 0 && cached_fb_chi_tiet && cached_fb_tong) {
+          ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
+        }
       } catch (e) {}
     }
   }).catch(() => {});
@@ -1718,6 +1722,115 @@ function tao_cac_dang_ngay_khop(start_str, end_str) {
   return Array.from(date_patterns);
 }
 
+let td_first_landing_by_sdt = new Map();
+let td_first_landing_indexed_ref = null;
+
+function chuan_hoa_mkt_dashboard(raw) {
+  const mkt = String(raw || "").trim().toUpperCase();
+  if (!mkt || ["MKT", "MARKETER", "TÊN MKT", "SALE", "KHÁC", "KHAC", "—", "-"].includes(mkt)) {
+    return "KHÁC";
+  }
+  const mktNoDau = bo_dau_tieng_viet(mkt);
+  if (mktNoDau.includes("THANH") || mktNoDau.includes("TH.LAM") || mktNoDau.includes("TH LAM")) {
+    return "TH.LÂM";
+  }
+  if (mktNoDau.includes("LAM")) return "LÂM";
+  if (mktNoDau.includes("PHUC")) return "PHÚC";
+  if (mktNoDau.includes("TAM")) return "TÂM";
+  if (mktNoDau.includes("SAN")) return "SAN";
+  if (mktNoDau.includes("DUNG")) return "D\u0168NG";
+  return mkt;
+}
+
+function is_zalo_or_outside_platform(nenTangRaw) {
+  const s = bo_dau_tieng_viet(String(nenTangRaw || "").trim()).toUpperCase();
+  return Boolean(s && (s.includes("ZALO") || s.includes("KHACH NGOAI") || s === "NGOAI"));
+}
+
+function rebuild_td_first_landing_index() {
+  td_first_landing_by_sdt = new Map();
+  td_first_landing_indexed_ref = data_tong_don_upyo;
+  if (!Array.isArray(data_tong_don_upyo) || data_tong_don_upyo.length === 0) return;
+
+  let colTg = 0;
+  let colSdt = 2;
+  let colMkt = 6;
+  const headerRow = data_tong_don_upyo[0];
+  if (Array.isArray(headerRow)) {
+    for (let i = 0; i < headerRow.length; i++) {
+      const h = bo_dau_tieng_viet(String(headerRow[i] || "").trim()).toLowerCase();
+      if (h === "so dien thoai" || h === "sdt") colSdt = i;
+      else if (h === "mkt" || h === "marketer") colMkt = i;
+    }
+  }
+
+  for (let i = 0; i < data_tong_don_upyo.length; i++) {
+    const r = data_tong_don_upyo[i];
+    if (!Array.isArray(r) || r.length <= Math.max(colSdt, colMkt)) continue;
+    const tgRaw = String(r[colTg] || "").trim();
+    const c0 = bo_dau_tieng_viet(tgRaw).toUpperCase();
+    if (i === 0 && (c0.includes("THOI GIAN") || c0 === "STT")) continue;
+
+    const sdtNorm = chuan_hoa_sdt_so_sanh(r[colSdt]);
+    if (!sdtNorm) continue;
+
+    const mktRaw = String(r[colMkt] || "").trim();
+    const mktDash = chuan_hoa_mkt_dashboard(mktRaw);
+    if (mktDash === "KHÁC") continue;
+
+    const mktSheet = mktDash === "TH.LÂM" ? "THANH LÂM" : mktDash;
+    let ymd = "";
+    let timeMs = 0;
+    const dt = parse_datetime_vn(tgRaw);
+    if (dt) {
+      timeMs = dt.getTime();
+      ymd = format_ymd_date(dt);
+    } else {
+      const token = tgRaw.split(/\s+/)[0] || "";
+      ymd = parse_order_ymd({ ngay_only: token });
+      if (ymd) timeMs = parse_ymd_date(ymd).getTime();
+    }
+
+    if (!td_first_landing_by_sdt.has(sdtNorm)) td_first_landing_by_sdt.set(sdtNorm, []);
+    td_first_landing_by_sdt.get(sdtNorm).push({ timeMs, ymd, mktDashboard: mktDash, mktSheet });
+  }
+
+  td_first_landing_by_sdt.forEach((arr) => {
+    arr.sort((a, b) => (a.timeMs || 0) - (b.timeMs || 0));
+  });
+}
+
+function tim_mkt_landing_dau_tien_theo_sdt(sdtRaw, orderYmd) {
+  if (td_first_landing_indexed_ref !== data_tong_don_upyo) {
+    rebuild_td_first_landing_index();
+  }
+  const sdtNorm = chuan_hoa_sdt_so_sanh(sdtRaw);
+  if (!sdtNorm) return null;
+  const list = td_first_landing_by_sdt.get(sdtNorm);
+  if (!list || list.length === 0) return null;
+
+  for (const rec of list) {
+    if (!orderYmd || !rec.ymd || rec.ymd <= orderYmd) {
+      return rec;
+    }
+  }
+  return null;
+}
+
+function resolve_row_mkt_for_dashboard(r, fallbackSdt) {
+  let mkt_norm = chuan_hoa_mkt_dashboard(r[12]);
+  if (mkt_norm === "KHÁC" && is_zalo_or_outside_platform(r[10])) {
+    const sdt = String(r[3] || "").trim() || fallbackSdt || "";
+    const tgToken = String(r[0] || "").trim().split(/\s+/)[0] || "";
+    const orderYmd = parse_order_ymd({ ngay_only: tgToken });
+    const firstLanding = tim_mkt_landing_dau_tien_theo_sdt(sdt, orderYmd);
+    if (firstLanding) {
+      mkt_norm = firstLanding.mktDashboard;
+    }
+  }
+  return mkt_norm;
+}
+
 function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
   const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
 
@@ -1728,32 +1841,25 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
   const stats_mkt_sp_don = {};
   const stats_mkt_sp_dt = {};
 
+  let lastCustSdt = "";
+  let lastCustDate = "";
+
   for (const r of data_hien_tai) {
     if (r.length > 13) {
       const tg = String(r[0] || "").trim();
+      const dateOnly = tg ? tg.split(/\s+/)[0] : "";
+      const sdtCell = String(r[3] || "").trim();
+      if (sdtCell || String(r[2] || "").trim()) {
+        lastCustSdt = sdtCell;
+        lastCustDate = dateOnly;
+      }
+
       const is_matched_date = patternsArr.some((p) => tg.includes(p));
 
       if (is_matched_date) {
         if (la_don_hop_le_de_dem(r[13])) {
-          const mkt = String(r[12] || "").trim().toUpperCase();
-          let mkt_norm = "KHÁC";
-          if (mkt && !["MKT", "MARKETER", "TÊN MKT", "SALE", "KHÁC", "KHAC"].includes(mkt)) {
-            if (mkt.includes("THANH") || mkt.includes("TH.LÂM")) {
-              mkt_norm = "TH.LÂM";
-            } else if (mkt.includes("LÂM")) {
-              mkt_norm = "LÂM";
-            } else if (mkt.includes("PHÚC")) {
-              mkt_norm = "PHÚC";
-            } else if (mkt.includes("TÂM")) {
-              mkt_norm = "TÂM";
-            } else if (mkt.includes("SAN")) {
-              mkt_norm = "SAN";
-            } else if (mkt.includes("D\u0168NG") || mkt.includes("DUNG")) {
-              mkt_norm = "D\u0168NG";
-            } else {
-              mkt_norm = mkt;
-            }
-          }
+          const fallbackSdt = !sdtCell && (!dateOnly || !lastCustDate || dateOnly === lastCustDate) ? lastCustSdt : "";
+          const mkt_norm = resolve_row_mkt_for_dashboard(r, fallbackSdt);
 
           // Không tính những đơn chưa điền tên MKT (đang hiện KHÁC) hoặc chưa điền tên SP
           if (mkt_norm === "KHÁC") {
@@ -1941,35 +2047,27 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp) {
   const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
 
   const ket_qua = [];
+  let lastCustSdt = "";
+  let lastCustDate = "";
   for (let i = 0; i < data_hien_tai.length; i++) {
     const r = data_hien_tai[i];
     if (r.length <= 13) continue;
 
     const tg = String(r[0] || "").trim();
+    const dateOnly = tg ? tg.split(/\s+/)[0] : "";
+    const sdtCell = String(r[3] || "").trim();
+    if (sdtCell || String(r[2] || "").trim()) {
+      lastCustSdt = sdtCell;
+      lastCustDate = dateOnly;
+    }
+
     const is_matched_date = patternsArr.some((p) => tg.includes(p));
     if (!is_matched_date) continue;
 
     if (!la_don_hop_le_de_dem(r[13])) continue;
 
-    const mkt = String(r[12] || "").trim().toUpperCase();
-    let mkt_norm = "KHÁC";
-    if (mkt && !["MKT", "MARKETER", "TÊN MKT", "SALE", "KHÁC", "KHAC"].includes(mkt)) {
-      if (mkt.includes("THANH") || mkt.includes("TH.LÂM")) {
-        mkt_norm = "TH.LÂM";
-      } else if (mkt.includes("LÂM")) {
-        mkt_norm = "LÂM";
-      } else if (mkt.includes("PHÚC")) {
-        mkt_norm = "PHÚC";
-      } else if (mkt.includes("TÂM")) {
-        mkt_norm = "TÂM";
-      } else if (mkt.includes("SAN")) {
-        mkt_norm = "SAN";
-      } else if (mkt.includes("D\u0168NG") || mkt.includes("DUNG")) {
-        mkt_norm = "D\u0168NG";
-      } else {
-        mkt_norm = mkt;
-      }
-    }
+    const fallbackSdt = !sdtCell && (!dateOnly || !lastCustDate || dateOnly === lastCustDate) ? lastCustSdt : "";
+    const mkt_norm = resolve_row_mkt_for_dashboard(r, fallbackSdt);
 
     if (mkt_norm === "KHÁC") continue;
     if (ten_mkt) {
@@ -3380,26 +3478,18 @@ function lay_danh_sach_don_landing_loi_mkt() {
           trang_thai: mRow.trang_thai || "CHƯA ĐIỀN MKT",
           ghi_chu: [mRow.ghi_chu, preferredMkt ? `MKT đúng: ${preferredMkt}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
         });
-      } else if (validMkts.size > 0 && !validMkts.has(mktThNorm)) {
-        addedThRowNums.add(mRow.row_num);
-        results.push({
-          ...mRow,
-          mkt: `${mRow.mkt} (Đúng: ${preferredMkt})`,
-          trang_thai: mRow.trang_thai ? `${mRow.trang_thai} • SAI MKT` : "SAI MKT",
-          ghi_chu: [mRow.ghi_chu, `Sai MKT (Tổng đơn: ${preferredMkt})`].filter(Boolean).join(" • "),
-        });
       }
     }
   }
 
-  // Kiểm tra thêm các dòng trong ĐƠN TỔNG HỢP có Nền tảng LANDING PAGE mà để trống / sai MKT
+  // Kiểm tra thêm các dòng trong ĐƠN TỔNG HỢP có Nền tảng LANDING PAGE (hoặc ZALO / KHÁCH NGOÀI chưa điền MKT mà từng đặt Landing)
   for (const o of thList) {
     if (addedThRowNums.has(o.row_num) || matchedValidThRowNums.has(o.row_num)) continue;
     const hasCust = Boolean(o.ma_van_don || o.ho_ten || o.sdt || o.dia_chi);
     if (!hasCust) continue;
 
     const ntUpper = String(o.nen_tang || "").trim().toUpperCase();
-    const sdtNorm = chuan_hoa_sdt_so_sanh(o.sdt);
+    const sdtNorm = chuan_hoa_sdt_so_sanh(o.sdt || o.parent_sdt);
     const oYmd = parse_order_ymd(o);
     const allTdForSdt = sdtNorm ? (tdRecordsBySdt.get(sdtNorm) || []) : [];
     const tdInWindow = allTdForSdt
@@ -3409,33 +3499,42 @@ function lay_danh_sach_don_landing_loi_mkt() {
       })
       .sort((a, b) => (getDiffDays(oYmd, a.ymd) ?? 999) - (getDiffDays(oYmd, b.ymd) ?? 999));
 
+    const isZaloOutside = is_zalo_or_outside_platform(o.nen_tang);
     const isLandingRow = ntUpper.includes("LANDING") || (!ntUpper && tdInWindow.length > 0);
-    if (!isLandingRow) continue;
-
-    const closestWithMkt = tdInWindow.find((rec) => Boolean(rec.mktNorm)) || null;
-    const hintMkt = closestWithMkt ? getValidMktsForClosedRec(closestWithMkt).preferredMkt : "";
     const mktThNorm = chuan_hoa_mkt_so_sanh(o.mkt);
 
-    if (!mktThNorm) {
-      addedThRowNums.add(o.row_num);
-      results.push({
-        ...o,
-        mkt: hintMkt ? `CHƯA ĐIỀN (Đúng: ${hintMkt})` : "CHƯA ĐIỀN MKT",
-        trang_thai: o.trang_thai || "CHƯA ĐIỀN MKT",
-        ghi_chu: [o.ghi_chu, hintMkt ? `MKT đúng: ${hintMkt}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
-      });
-    } else if (tdInWindow.some((rec) => Boolean(rec.mktNorm))) {
-      const hasAnyMatchingMkt = tdInWindow.some((rec) => getValidMktsForClosedRec(rec).valid.has(mktThNorm));
-      if (!hasAnyMatchingMkt && hintMkt) {
+    // Chỉ lọc đơn điền thiếu MKT
+    if (mktThNorm) continue;
+
+    if (isZaloOutside) {
+      const firstLanding = tim_mkt_landing_dau_tien_theo_sdt(sdtNorm, oYmd);
+      if (firstLanding) {
         addedThRowNums.add(o.row_num);
         results.push({
           ...o,
-          mkt: `${o.mkt} (Đúng: ${hintMkt})`,
-          trang_thai: o.trang_thai ? `${o.trang_thai} • SAI MKT` : "SAI MKT",
-          ghi_chu: [o.ghi_chu, `Sai MKT (Tổng đơn: ${hintMkt})`].filter(Boolean).join(" • "),
+          mkt: `CHƯA ĐIỀN (Đúng: ${firstLanding.mktSheet})`,
+          trang_thai: o.trang_thai || "CHƯA ĐIỀN MKT",
+          ghi_chu: [o.ghi_chu, `Từng đặt Landing • MKT đầu tiên: ${firstLanding.mktSheet}`].filter(Boolean).join(" • "),
         });
       }
+      continue;
     }
+
+    if (!isLandingRow) continue;
+
+    const closestWithMkt = tdInWindow.find((rec) => Boolean(rec.mktNorm)) || null;
+    const firstLandingHint = tim_mkt_landing_dau_tien_theo_sdt(sdtNorm, oYmd);
+    const hintMkt = closestWithMkt
+      ? getValidMktsForClosedRec(closestWithMkt).preferredMkt
+      : (firstLandingHint ? firstLandingHint.mktSheet : "");
+
+    addedThRowNums.add(o.row_num);
+    results.push({
+      ...o,
+      mkt: hintMkt ? `CHƯA ĐIỀN (Đúng: ${hintMkt})` : "CHƯA ĐIỀN MKT",
+      trang_thai: o.trang_thai || "CHƯA ĐIỀN MKT",
+      ghi_chu: [o.ghi_chu, hintMkt ? `MKT đúng: ${hintMkt}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
+    });
   }
 
   return results;
