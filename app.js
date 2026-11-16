@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.207";
+const APP_FRONTEND_VERSION = "8.6.208";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -729,7 +729,7 @@ function trigger_opening_reveal() {
   document.body.classList.remove("app-opening-ready");
   void document.body.offsetWidth;
   document.body.classList.add("app-opening-ready");
-  requestAnimationFrame(() => notify_native_ui_ready());
+  requestAnimationFrame(() => requestAnimationFrame(() => notify_native_ui_ready()));
 }
 
 let _nativeUiReadySent = false;
@@ -6110,8 +6110,13 @@ let auto_retry_count = 0;
 let auto_retry_timer = null;
 
 const fb_range_cache = new Map();
+let _isFirstDashboardSync = true;
+let _isDashboardSyncRunning = false;
 
 async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded = false) {
+  const isStartupSync = _isFirstDashboardSync;
+  _isFirstDashboardSync = false;
+  _isDashboardSyncRunning = true;
   const btnRefresh = document.getElementById("btnRefresh");
   const refreshIcon = document.getElementById("refreshIcon");
   const loadingOverlay = document.getElementById("loadingOverlay");
@@ -6172,13 +6177,14 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       fb_range_cache.clear();
     }
 
-    const fbPromise = canReuseFb
-      ? Promise.resolve(cachedFbEntry.result)
-      : quet_chi_phi_facebook_helper(current_start_date, current_end_date).then((res) => {
-          fb_range_cache.set(fbCacheKey, { timeMs: Date.now(), result: res });
-          luu_cache_fb_last(current_start_date, current_end_date, res);
-          return res;
-        });
+    const buildFbPromise = () =>
+      canReuseFb
+        ? Promise.resolve(cachedFbEntry.result)
+        : quet_chi_phi_facebook_helper(current_start_date, current_end_date).then((res) => {
+            fb_range_cache.set(fbCacheKey, { timeMs: Date.now(), result: res });
+            luu_cache_fb_last(current_start_date, current_end_date, res);
+            return res;
+          });
 
     let gsResult;
     let fbResult;
@@ -6202,7 +6208,6 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
     };
 
     if (softMode) {
-      const sheetsPromise = tai_du_lieu_google_sheets();
       const instantFb =
         (cachedFbEntry && cachedFbEntry.result) ||
         doc_cache_fb_last(current_start_date, current_end_date);
@@ -6217,6 +6222,14 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       const lastSyncSoft = document.getElementById("lastSyncText");
       if (lastSyncSoft) lastSyncSoft.textContent = "⏳ Đang làm mới dữ liệu ngầm...";
 
+      // Nhường main thread & băng thông ~700ms cho animation mở app (đặc biệt lúc Windows mới khởi động) chạy trọn 60fps rồi mới tải mạng ngầm
+      if (isStartupSync) {
+        await new Promise((r) => setTimeout(r, 700));
+      }
+
+      const sheetsPromise = tai_du_lieu_google_sheets();
+      const fbPromise = buildFbPromise();
+
       fbResult = await fbPromise;
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
@@ -6227,6 +6240,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       gsSuccess = Boolean(data_hien_tai && data_hien_tai.length > 0);
       runSilentDashboardRender();
     } else {
+      const fbPromise = buildFbPromise();
       [gsResult, fbResult] = await Promise.all([
         canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(),
         fbPromise,
@@ -6264,6 +6278,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
   } catch (e) {
     console.error("Lỗi khi tải dữ liệu:", e);
   } finally {
+    _isDashboardSyncRunning = false;
     // CHỈ ẨN MÀN HÌNH BLUR XOAY XOAY KHI VÀ CHỈ KHI ĐÃ TẢI DỮ LIỆU THÀNH CÔNG!
     if (gsSuccess) {
       initial_load_success = true;
@@ -7763,13 +7778,21 @@ window.addEventListener("DOMContentLoaded", async () => {
       clearInterval(auto_retry_timer);
       auto_retry_timer = null;
     }
-    const loadingOverlay = document.getElementById("loadingOverlay");
-    const loadingMainText = document.getElementById("loadingMainText");
-    const loadingSubText = document.getElementById("loadingSubText");
-    if (loadingOverlay) loadingOverlay.classList.remove("hidden");
-    if (loadingMainText) loadingMainText.textContent = "⏳ Đã có mạng Wi-Fi!";
-    if (loadingSubText) loadingSubText.textContent = "Đang đồng bộ tức thì Google Sheets & Ads...";
-    tai_va_cap_nhat_theo_ngay(true);
+    if (_isDashboardSyncRunning) return;
+    const hasCachedData = Array.isArray(data_hien_tai) && data_hien_tai.length > 0;
+    if (hasCachedData) {
+      const lastSyncEl = document.getElementById("lastSyncText");
+      if (lastSyncEl) lastSyncEl.textContent = "⏳ Đã có Wi-Fi, đang đồng bộ ngầm...";
+      tai_va_cap_nhat_theo_ngay(false);
+    } else {
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      const loadingMainText = document.getElementById("loadingMainText");
+      const loadingSubText = document.getElementById("loadingSubText");
+      if (loadingOverlay) loadingOverlay.classList.remove("hidden");
+      if (loadingMainText) loadingMainText.textContent = "⏳ Đã có mạng Wi-Fi!";
+      if (loadingSubText) loadingSubText.textContent = "Đang đồng bộ tức thì Google Sheets & Ads...";
+      tai_va_cap_nhat_theo_ngay(true);
+    }
   });
 
   window.addEventListener("click", () => {
