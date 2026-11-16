@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.182";
+const APP_FRONTEND_VERSION = "8.6.183";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3292,12 +3292,6 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing") {
   const dupMktRowNums = isWrongMktMode
     ? new Set(lay_danh_sach_don_trung_mkt().map((r) => r.row_num))
     : null;
-  const laDonBiTrung = (row) => {
-    if (!row || !isWrongMktMode) return false;
-    if (dupMktRowNums && dupMktRowNums.has(row.row_num)) return true;
-    const tt = bo_dau_tieng_viet(String(row.trang_thai || "")).toUpperCase();
-    return tt.includes("TRUNG");
-  };
 
   const thBySdt = new Map();
   for (const o of thList) {
@@ -3339,6 +3333,8 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing") {
   const matchedValidThRowNums = new Set();
   const tdRecords = [];
   const tdRecordsBySdt = new Map();
+  const tdMktsBySdt = new Map();
+  const tdMktsByAddr = new Map();
 
   const getDiffDays = (ymdA, ymdB) => {
     if (!ymdA || !ymdB) return null;
@@ -3347,16 +3343,29 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing") {
 
   for (let i = 0; i < tdRows.length; i++) {
     const r = tdRows[i];
-    if (!Array.isArray(r) || r.length <= colSdt) continue;
+    if (!Array.isArray(r) || r.length <= Math.min(colSdt, colDiaChi)) continue;
     const tgRaw = String(r[colTg] || "").trim();
     const c0 = bo_dau_tieng_viet(tgRaw).toUpperCase();
     if (i === 0 && (c0.includes("THOI GIAN") || c0 === "STT")) continue;
 
-    const sdtNorm = chuan_hoa_sdt_so_sanh(r[colSdt]);
-    if (!sdtNorm) continue;
-
+    const sdtNorm = r.length > colSdt ? chuan_hoa_sdt_so_sanh(r[colSdt]) : "";
+    const diaChiRaw = r.length > colDiaChi ? String(r[colDiaChi] || "").trim() : "";
+    const addrKey = chuan_hoa_ten_hoac_dia_chi_trung(diaChiRaw, 3, 10);
     const mktTdRaw = r.length > colMkt ? String(r[colMkt] || "").trim() : "";
     const mktTdNorm = chuan_hoa_mkt_so_sanh(mktTdRaw);
+
+    if (mktTdNorm) {
+      if (sdtNorm) {
+        if (!tdMktsBySdt.has(sdtNorm)) tdMktsBySdt.set(sdtNorm, new Set());
+        tdMktsBySdt.get(sdtNorm).add(mktTdNorm);
+      }
+      if (addrKey) {
+        if (!tdMktsByAddr.has(addrKey)) tdMktsByAddr.set(addrKey, new Set());
+        tdMktsByAddr.get(addrKey).add(mktTdNorm);
+      }
+    }
+
+    if (!sdtNorm) continue;
 
     let ymd = "";
     let dmy = "";
@@ -3401,6 +3410,25 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing") {
     if (!tdRecordsBySdt.has(sdtNorm)) tdRecordsBySdt.set(sdtNorm, []);
     tdRecordsBySdt.get(sdtNorm).push(rec);
   }
+
+  // Với "Đơn sai MKT": loại khách bị trùng MKT cả ở ĐƠN TỔNG HỢP lẫn TỔNG ĐƠN UPYO (chỉ giữ khách đặt đúng 1 MKT nhưng điền nhầm)
+  const laDonBiTrung = (row) => {
+    if (!row || !isWrongMktMode) return false;
+    if (dupMktRowNums && dupMktRowNums.has(row.row_num)) return true;
+    const tt = bo_dau_tieng_viet(String(row.trang_thai || "")).toUpperCase();
+    if (tt.includes("TRUNG")) return true;
+
+    const sdtNorm = chuan_hoa_sdt_so_sanh(row.sdt || row.parent_sdt);
+    const addrKey = chuan_hoa_ten_hoac_dia_chi_trung(row.dia_chi, 3, 10);
+    const tdMkts = new Set();
+    if (sdtNorm && tdMktsBySdt.has(sdtNorm)) {
+      tdMktsBySdt.get(sdtNorm).forEach((m) => tdMkts.add(m));
+    }
+    if (addrKey && tdMktsByAddr.has(addrKey)) {
+      tdMktsByAddr.get(addrKey).forEach((m) => tdMkts.add(m));
+    }
+    return tdMkts.size !== 1;
+  };
 
   // Nếu có form chưa chốt trước đó <= 7 ngày CÙNG SP -> tính cho người đầu tiên; nếu đổi SP -> tính cho người đặt sau
   const getValidMktsForClosedRec = (rec) => {
