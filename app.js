@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.166";
+const APP_FRONTEND_VERSION = "8.6.168";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -4025,7 +4025,7 @@ function hien_thi_bang_loc_don_tong_hop() {
 
   if (searchInput) {
     searchInput.value = "";
-    searchInput.placeholder = "🔍 Tìm kiếm";
+    searchInput.placeholder = "🔍";
   }
   if (clearBtn) clearBtn.classList.add("hidden");
 
@@ -4114,7 +4114,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
 
   if (searchInput) {
     searchInput.value = "";
-    searchInput.placeholder = "🔍 Tìm kiếm";
+    searchInput.placeholder = "🔍";
   }
   if (clearBtn) clearBtn.classList.add("hidden");
 

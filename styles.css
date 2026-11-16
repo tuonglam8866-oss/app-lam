@@ -2709,18 +2709,26 @@ input::-ms-clear {
 }
 
 .od-search-input {
-  width: 112px;
-  height: 36px;
-  padding: 0 26px 0 11px;
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  height: 37px;
+  padding: 0 22px 0 9px;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   color: var(--choco-dark, #3D2314);
   background: rgba(255, 253, 249, 0.95);
   border: 1.5px solid var(--border-soft, #CDB7A3);
-  border-radius: 12px;
+  border-radius: 10px;
   outline: none;
-  transition: all 0.2s ease;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.od-search-input:placeholder-shown {
+  text-align: center;
+  padding: 0;
 }
 
 .od-search-input:focus {
@@ -2731,13 +2739,13 @@ input::-ms-clear {
 
 .od-search-clear {
   position: absolute;
-  right: 6px;
+  right: 5px;
   background: transparent;
   border: none;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--choco-muted);
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 2px 3px;
   border-radius: 4px;
 }
 
@@ -2822,7 +2830,10 @@ input::-ms-clear {
   text-transform: uppercase;
   letter-spacing: 0.4px;
   padding: 11px 12px;
+  border-left: none;
+  border-right: none;
   border-bottom: 2px solid var(--border-soft, #CDB7A3);
+  box-shadow: -1px 0 0 #EFE4D6, 1px 0 0 #EFE4D6;
   white-space: nowrap;
 }
 
@@ -3064,6 +3075,7 @@ input::-ms-clear {
   background: #2D2018;
   color: #FAF5ED;
   border-color: #4B382C;
+  box-shadow: -1px 0 0 #2D2018, 1px 0 0 #2D2018;
 }
 
 [data-theme="dark"] .od-table tbody tr:nth-child(even) {
