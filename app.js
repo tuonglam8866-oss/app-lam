@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.160";
+const APP_FRONTEND_VERSION = "8.6.161";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3240,8 +3240,10 @@ function lay_danh_sach_don_landing_loi_mkt() {
 
     let ymd = "";
     let dmy = "";
+    let timeMs = 0;
     const dt = parse_datetime_vn(tgRaw);
     if (dt) {
+      timeMs = dt.getTime();
       ymd = format_ymd_date(dt);
       const dd = String(dt.getDate()).padStart(2, "0");
       const mm = String(dt.getMonth() + 1).padStart(2, "0");
@@ -3256,6 +3258,7 @@ function lay_danh_sach_don_landing_loi_mkt() {
         dmy = token;
         ymd = parse_order_ymd({ ngay_only: token });
       }
+      if (ymd) timeMs = parse_ymd_date(ymd).getTime();
     }
 
     const chot = r.length > colDaChot ? parseInt(String(r[colDaChot] || "0").trim(), 10) || 0 : 0;
@@ -3265,6 +3268,7 @@ function lay_danh_sach_don_landing_loi_mkt() {
       tgRaw,
       ymd,
       dmy,
+      timeMs,
       sdtNorm,
       mktRaw: mktTdRaw,
       mktNorm: mktTdNorm,
@@ -3276,10 +3280,33 @@ function lay_danh_sach_don_landing_loi_mkt() {
     tdRecordsBySdt.get(sdtNorm).push(rec);
   }
 
+  // Các đơn chốt hợp lệ cho phép giữ MKT của lần khách đặt đầu tiên (nếu có form chưa chốt trước đó <= 7 ngày)
+  const getValidMktsForClosedRec = (rec) => {
+    const valid = new Set();
+    const allForSdt = tdRecordsBySdt.get(rec.sdtNorm) || [];
+    const earlierUnclosed = allForSdt
+      .filter((e) => {
+        if (!e.mktNorm || e.rowIdx === rec.rowIdx || e.chot > 0) return false;
+        if (rec.timeMs && e.timeMs) {
+          const diffMs = rec.timeMs - e.timeMs;
+          return diffMs >= 0 && diffMs <= 7 * 86400 * 1000;
+        }
+        const diff = getDiffDays(rec.ymd, e.ymd);
+        return diff !== null && diff <= 7;
+      })
+      .sort((a, b) => (a.timeMs || 0) - (b.timeMs || 0));
+
+    earlierUnclosed.forEach((e) => valid.add(e.mktNorm));
+    if (rec.mktNorm) valid.add(rec.mktNorm);
+    const preferredMkt = earlierUnclosed.length > 0 ? earlierUnclosed[0].mktNorm : rec.mktNorm;
+    return { valid, preferredMkt };
+  };
+
   let syntheticId = 900000;
   for (const rec of tdRecords) {
     if (rec.chot <= 0) continue;
 
+    const { valid: validMkts, preferredMkt } = getValidMktsForClosedRec(rec);
     const candidates = thBySdt.get(rec.sdtNorm) || [];
     const candidatesInWindow = candidates.filter((o) => {
       const diff = getDiffDays(rec.ymd, parse_order_ymd(o));
@@ -3311,7 +3338,7 @@ function lay_danh_sach_don_landing_loi_mkt() {
         phi_ship_str: "",
         nen_tang: "LANDING PAGE",
         sale: "",
-        mkt: rec.mktNorm || rec.mktRaw || "CHƯA RÕ",
+        mkt: preferredMkt || rec.mktRaw || "CHƯA RÕ",
         mkt_raw: rec.mktRaw,
         trang_thai: "CHƯA VÀO BẢNG TH",
         so_luong: "1",
@@ -3321,10 +3348,10 @@ function lay_danh_sach_don_landing_loi_mkt() {
       continue;
     }
 
-    // Nếu trong cửa sổ ngày đã có dòng khớp đúng tên MKT thì đơn này hợp lệ
+    // Nếu trong cửa sổ ngày đã có dòng khớp MKT (bao gồm MKT đặt lần đầu tiên trước đó) thì hợp lệ
     const exactMatched = candidatesInWindow.filter((o) => {
       const mktThNorm = chuan_hoa_mkt_so_sanh(o.mkt);
-      return rec.mktNorm ? mktThNorm === rec.mktNorm : Boolean(mktThNorm);
+      return validMkts.size > 0 ? validMkts.has(mktThNorm) : Boolean(mktThNorm);
     });
     if (exactMatched.length > 0) {
       exactMatched.forEach((o) => matchedValidThRowNums.add(o.row_num));
@@ -3338,17 +3365,17 @@ function lay_danh_sach_don_landing_loi_mkt() {
         addedThRowNums.add(mRow.row_num);
         results.push({
           ...mRow,
-          mkt: rec.mktNorm ? `CHƯA ĐIỀN (Đúng: ${rec.mktNorm})` : "CHƯA ĐIỀN MKT",
+          mkt: preferredMkt ? `CHƯA ĐIỀN (Đúng: ${preferredMkt})` : "CHƯA ĐIỀN MKT",
           trang_thai: mRow.trang_thai || "CHƯA ĐIỀN MKT",
-          ghi_chu: [mRow.ghi_chu, rec.mktNorm ? `MKT đúng: ${rec.mktNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
+          ghi_chu: [mRow.ghi_chu, preferredMkt ? `MKT đúng: ${preferredMkt}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
         });
-      } else if (rec.mktNorm && mktThNorm !== rec.mktNorm) {
+      } else if (validMkts.size > 0 && !validMkts.has(mktThNorm)) {
         addedThRowNums.add(mRow.row_num);
         results.push({
           ...mRow,
-          mkt: `${mRow.mkt} (Đúng: ${rec.mktNorm})`,
+          mkt: `${mRow.mkt} (Đúng: ${preferredMkt})`,
           trang_thai: mRow.trang_thai ? `${mRow.trang_thai} • SAI MKT` : "SAI MKT",
-          ghi_chu: [mRow.ghi_chu, `Sai MKT (Tổng đơn: ${rec.mktNorm})`].filter(Boolean).join(" • "),
+          ghi_chu: [mRow.ghi_chu, `Sai MKT (Tổng đơn: ${preferredMkt})`].filter(Boolean).join(" • "),
         });
       }
     }
@@ -3375,25 +3402,26 @@ function lay_danh_sach_don_landing_loi_mkt() {
     if (!isLandingRow) continue;
 
     const closestWithMkt = tdInWindow.find((rec) => Boolean(rec.mktNorm)) || null;
+    const hintMkt = closestWithMkt ? getValidMktsForClosedRec(closestWithMkt).preferredMkt : "";
     const mktThNorm = chuan_hoa_mkt_so_sanh(o.mkt);
 
     if (!mktThNorm) {
       addedThRowNums.add(o.row_num);
       results.push({
         ...o,
-        mkt: closestWithMkt ? `CHƯA ĐIỀN (Đúng: ${closestWithMkt.mktNorm})` : "CHƯA ĐIỀN MKT",
+        mkt: hintMkt ? `CHƯA ĐIỀN (Đúng: ${hintMkt})` : "CHƯA ĐIỀN MKT",
         trang_thai: o.trang_thai || "CHƯA ĐIỀN MKT",
-        ghi_chu: [o.ghi_chu, closestWithMkt ? `MKT đúng: ${closestWithMkt.mktNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
+        ghi_chu: [o.ghi_chu, hintMkt ? `MKT đúng: ${hintMkt}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
       });
     } else if (tdInWindow.some((rec) => Boolean(rec.mktNorm))) {
-      const hasAnyMatchingMkt = tdInWindow.some((rec) => rec.mktNorm === mktThNorm);
-      if (!hasAnyMatchingMkt && closestWithMkt) {
+      const hasAnyMatchingMkt = tdInWindow.some((rec) => getValidMktsForClosedRec(rec).valid.has(mktThNorm));
+      if (!hasAnyMatchingMkt && hintMkt) {
         addedThRowNums.add(o.row_num);
         results.push({
           ...o,
-          mkt: `${o.mkt} (Đúng: ${closestWithMkt.mktNorm})`,
+          mkt: `${o.mkt} (Đúng: ${hintMkt})`,
           trang_thai: o.trang_thai ? `${o.trang_thai} • SAI MKT` : "SAI MKT",
-          ghi_chu: [o.ghi_chu, `Sai MKT (Tổng đơn: ${closestWithMkt.mktNorm})`].filter(Boolean).join(" • "),
+          ghi_chu: [o.ghi_chu, `Sai MKT (Tổng đơn: ${hintMkt})`].filter(Boolean).join(" • "),
         });
       }
     }
