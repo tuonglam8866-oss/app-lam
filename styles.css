@@ -4719,136 +4719,8 @@ input::-ms-clear {
 }
 
 /* =========================================================
-   v8.6.203: Opening Splash, Skeletons & Choreographed Entrance
+   v8.6.204: iOS-style Spring Unlock & Staggered Card Cascade
    ========================================================= */
-.startup-splash {
-  position: fixed;
-  inset: 0;
-  z-index: 9990;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 50% 38%, rgba(255, 253, 249, 0.96), rgba(247, 237, 224, 0.98));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  opacity: 1;
-  transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1), transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-[data-theme="dark"] .startup-splash {
-  background: radial-gradient(circle at 50% 38%, rgba(44, 30, 22, 0.97), rgba(26, 18, 14, 0.98));
-}
-
-.startup-splash.hidden {
-  display: none !important;
-}
-
-.startup-splash.is-hiding {
-  opacity: 0;
-  transform: scale(1.03);
-  pointer-events: none;
-}
-
-.startup-splash-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 36px 44px;
-  border-radius: 26px;
-  background: rgba(255, 253, 249, 0.88);
-  border: 1px solid rgba(200, 117, 51, 0.24);
-  box-shadow: 0 24px 60px rgba(61, 35, 20, 0.14), 0 4px 16px rgba(200, 117, 51, 0.08);
-  animation: splash-card-pop 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-[data-theme="dark"] .startup-splash-card {
-  background: rgba(45, 32, 24, 0.9);
-  border-color: rgba(200, 117, 51, 0.32);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.48), 0 4px 16px rgba(200, 117, 51, 0.12);
-}
-
-.startup-logo-wrap {
-  position: relative;
-  width: 78px;
-  height: 78px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 18px;
-}
-
-.startup-logo-badge {
-  position: relative;
-  z-index: 2;
-  width: 60px;
-  height: 60px;
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #FFFDF9;
-  background: linear-gradient(135deg, #3D2314 0%, #5C3620 55%, #C87533 100%);
-  box-shadow: 0 10px 24px rgba(61, 35, 20, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.24);
-  animation: splash-logo-float 2.4s ease-in-out infinite;
-}
-
-.startup-pulse-ring {
-  position: absolute;
-  inset: 4px;
-  border-radius: 22px;
-  border: 2px solid rgba(200, 117, 51, 0.45);
-  animation: splash-ring-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
-
-.startup-pulse-ring-2 {
-  animation-delay: 0.75s;
-}
-
-.startup-brand-title {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: #3D2314;
-  margin-bottom: 6px;
-}
-
-[data-theme="dark"] .startup-brand-title {
-  color: #F7EDE0;
-}
-
-.startup-brand-sub {
-  font-size: 13px;
-  font-weight: 500;
-  color: #7D5A44;
-  margin-bottom: 18px;
-}
-
-[data-theme="dark"] .startup-brand-sub {
-  color: #D2B8A3;
-}
-
-.startup-progress-track {
-  width: 210px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(200, 117, 51, 0.16);
-  overflow: hidden;
-  position: relative;
-}
-
-.startup-progress-bar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 45%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #C87533, #E69D5C, #C87533);
-  animation: splash-progress-slide 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
 /* Skeleton placeholder cards inside empty #containerMkt / #listSp before data arrives */
 .skeleton-stack {
   display: flex;
@@ -4901,26 +4773,56 @@ input::-ms-clear {
 .skeleton-w-80 { width: 80%; }
 .skeleton-w-85 { width: 85%; }
 
-/* Choreographed entrance once unlock_app() reveals #appContainer */
-body.app-opening-ready .header-top-frame {
-  animation: app-glide-down 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* iPhone-style spring cascade when unlock_app() opens the dashboard */
+body.app-opening-ready .header-left-group {
+  animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.02s both;
+}
+
+body.app-opening-ready .header-right-cards {
+  animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.07s both;
+}
+
+body.app-opening-ready .toolbar-left {
+  animation: ios-spring-pop 0.46s cubic-bezier(0.18, 1.15, 0.32, 1) 0.11s both;
+}
+
+body.app-opening-ready .toolbar-right {
+  animation: ios-spring-pop 0.46s cubic-bezier(0.18, 1.15, 0.32, 1) 0.14s both;
 }
 
 body.app-opening-ready #badgeHolder {
-  animation: app-glide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+  animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.17s both;
 }
 
 body.app-opening-ready #colMkt {
-  animation: app-glide-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+  animation: ios-spring-pop 0.52s cubic-bezier(0.18, 1.14, 0.32, 1) 0.2s both;
 }
 
 body.app-opening-ready #colSp {
-  animation: app-glide-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both;
+  animation: ios-spring-pop 0.52s cubic-bezier(0.18, 1.14, 0.32, 1) 0.25s both;
+}
+
+/* Individual cards inside #containerMkt & #listSp pop out one by one like iOS unlock */
+.ios-card-pop {
+  animation: ios-card-spring 0.46s cubic-bezier(0.18, 1.16, 0.32, 1) calc(var(--card-idx, 0) * 34ms) both;
+  will-change: transform, opacity;
+}
+
+body.app-opening-ready .skeleton-card:nth-child(1) {
+  animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.22s both;
+}
+
+body.app-opening-ready .skeleton-card:nth-child(2) {
+  animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.27s both;
+}
+
+body.app-opening-ready .skeleton-card:nth-child(3) {
+  animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.32s both;
 }
 
 /* Upgraded Loading Overlay modal feel */
 .loading-overlay:not(.hidden) .status-box {
-  animation: splash-card-pop 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: ios-spring-pop 0.32s cubic-bezier(0.18, 1.15, 0.32, 1) both;
 }
 
 .loading-overlay .spinner-ring {
@@ -4928,10 +4830,10 @@ body.app-opening-ready #colSp {
   border-right-color: rgba(200, 117, 51, 0.35);
 }
 
-@keyframes splash-card-pop {
+@keyframes ios-spring-pop {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.95);
+    transform: translateY(14px) scale(0.92);
   }
   to {
     opacity: 1;
@@ -4939,25 +4841,15 @@ body.app-opening-ready #colSp {
   }
 }
 
-@keyframes splash-logo-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-@keyframes splash-ring-pulse {
-  0% {
-    opacity: 0.7;
-    transform: scale(0.92);
-  }
-  100% {
+@keyframes ios-card-spring {
+  from {
     opacity: 0;
-    transform: scale(1.38);
+    transform: translateY(18px) scale(0.88);
   }
-}
-
-@keyframes splash-progress-slide {
-  0% { left: -45%; }
-  100% { left: 100%; }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes skeleton-shimmer {
@@ -4965,39 +4857,17 @@ body.app-opening-ready #colSp {
   100% { background-position: -200% 0; }
 }
 
-@keyframes app-glide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes app-glide-up {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .startup-splash,
-  .startup-splash-card,
-  .startup-logo-badge,
-  .startup-pulse-ring,
-  .startup-progress-bar,
   .skeleton-line,
-  body.app-opening-ready .header-top-frame,
+  .ios-card-pop,
+  body.app-opening-ready .header-left-group,
+  body.app-opening-ready .header-right-cards,
+  body.app-opening-ready .toolbar-left,
+  body.app-opening-ready .toolbar-right,
   body.app-opening-ready #badgeHolder,
   body.app-opening-ready #colMkt,
   body.app-opening-ready #colSp,
+  body.app-opening-ready .skeleton-card,
   .loading-overlay:not(.hidden) .status-box {
     animation: none !important;
     transition: none !important;

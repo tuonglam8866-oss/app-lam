@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.203";
+const APP_FRONTEND_VERSION = "8.6.204";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -714,43 +714,25 @@ function show_auth_lock_screen() {
   }
 }
 
-let _startupSplashShownAt = 0;
-let _startupSplashDismissed = false;
-let _startupSplashFailsafeTimer = null;
+let _shouldAnimateOpeningCards = false;
 
-function show_startup_splash() {
-  const splash = document.getElementById("startupSplash");
-  if (!splash || _startupSplashDismissed) return;
-  _startupSplashShownAt = Date.now();
-  splash.classList.remove("hidden", "is-hiding");
-  if (_startupSplashFailsafeTimer) clearTimeout(_startupSplashFailsafeTimer);
-  _startupSplashFailsafeTimer = setTimeout(() => {
-    dismiss_startup_splash(true);
-  }, 2200);
-}
-
-function dismiss_startup_splash(immediate) {
-  if (_startupSplashDismissed) return;
-  const splash = document.getElementById("startupSplash");
-  if (!splash) {
-    _startupSplashDismissed = true;
-    return;
-  }
-  const elapsed = _startupSplashShownAt ? Date.now() - _startupSplashShownAt : 9999;
-  const minVisibleMs = 600;
-  const waitMs = immediate ? 0 : Math.max(0, minVisibleMs - elapsed);
-  _startupSplashDismissed = true;
-  if (_startupSplashFailsafeTimer) {
-    clearTimeout(_startupSplashFailsafeTimer);
-    _startupSplashFailsafeTimer = null;
-  }
-  setTimeout(() => {
-    splash.classList.add("is-hiding");
-    setTimeout(() => {
-      splash.classList.add("hidden");
-      splash.classList.remove("is-hiding");
-    }, 430);
-  }, waitMs);
+function animate_dashboard_cards_pop() {
+  if (!_shouldAnimateOpeningCards) return;
+  _shouldAnimateOpeningCards = false;
+  const lists = ["containerMkt", "listSp"];
+  lists.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const children = el.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (!child || child.classList.contains("skeleton-stack")) continue;
+      child.style.setProperty("--card-idx", String(Math.min(i, 12)));
+      child.classList.remove("ios-card-pop");
+      void child.offsetWidth;
+      child.classList.add("ios-card-pop");
+    }
+  });
 }
 
 function unlock_app() {
@@ -758,8 +740,10 @@ function unlock_app() {
   const appContainer = document.getElementById("appContainer");
   if (lockScreen) lockScreen.classList.add("hidden");
   if (appContainer) appContainer.classList.remove("hidden");
+  _shouldAnimateOpeningCards = true;
+  document.body.classList.remove("app-opening-ready");
+  void document.body.offsetWidth;
   document.body.classList.add("app-opening-ready");
-  show_startup_splash();
 }
 
 const KNOWN_CODES_DEFAULT = [
@@ -1611,7 +1595,6 @@ function apply_language_ui(rerenderDashboard = false) {
       cached_fb_chi_tiet,
       cached_fb_tong
     );
-    dismiss_startup_splash();
   }
 }
 
@@ -2062,7 +2045,6 @@ function tai_du_lieu_thong_bao_ngam(force = false) {
           render_closing_rate_card(tinh_ty_le_chot_theo_ngay(current_start_date, current_end_date));
           if (Array.isArray(data_hien_tai) && data_hien_tai.length > 0 && cached_fb_chi_tiet && cached_fb_tong) {
             ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
-      dismiss_startup_splash();
           }
           const odModal = document.getElementById("orderDetailModal");
           if (odModal && !odModal.classList.contains("hidden") && current_od_mode === "all_table") {
@@ -6074,6 +6056,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   }
   const frameSp = document.getElementById("frameSp");
   if (frameSp) frameSp.classList.toggle("is-scrolled", listSp.scrollTop > 4);
+  animate_dashboard_cards_pop();
 }
 
 // ==============================================================
@@ -6162,7 +6145,6 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       cached_fb_tong = fbResult.local_tong;
       // Vẽ NGAY bằng dữ liệu đang có, ẩn màn hình chờ; phần Sheet mới sẽ vẽ lại khi tải xong
       ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
-      dismiss_startup_splash();
       if (loadingOverlay) loadingOverlay.classList.add("hidden");
       const lastSyncSoft = document.getElementById("lastSyncText");
       if (lastSyncSoft) lastSyncSoft.textContent = "⏳ Đang làm mới dữ liệu ngầm...";
@@ -6185,7 +6167,6 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       cached_fb_chi_tiet,
       cached_fb_tong
     );
-    dismiss_startup_splash();
 
     if (!canReuseSheets && sheetRefreshOk) {
       const now = new Date();
