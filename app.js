@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.202";
+const APP_FRONTEND_VERSION = "8.6.203";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -714,11 +714,52 @@ function show_auth_lock_screen() {
   }
 }
 
+let _startupSplashShownAt = 0;
+let _startupSplashDismissed = false;
+let _startupSplashFailsafeTimer = null;
+
+function show_startup_splash() {
+  const splash = document.getElementById("startupSplash");
+  if (!splash || _startupSplashDismissed) return;
+  _startupSplashShownAt = Date.now();
+  splash.classList.remove("hidden", "is-hiding");
+  if (_startupSplashFailsafeTimer) clearTimeout(_startupSplashFailsafeTimer);
+  _startupSplashFailsafeTimer = setTimeout(() => {
+    dismiss_startup_splash(true);
+  }, 2200);
+}
+
+function dismiss_startup_splash(immediate) {
+  if (_startupSplashDismissed) return;
+  const splash = document.getElementById("startupSplash");
+  if (!splash) {
+    _startupSplashDismissed = true;
+    return;
+  }
+  const elapsed = _startupSplashShownAt ? Date.now() - _startupSplashShownAt : 9999;
+  const minVisibleMs = 600;
+  const waitMs = immediate ? 0 : Math.max(0, minVisibleMs - elapsed);
+  _startupSplashDismissed = true;
+  if (_startupSplashFailsafeTimer) {
+    clearTimeout(_startupSplashFailsafeTimer);
+    _startupSplashFailsafeTimer = null;
+  }
+  setTimeout(() => {
+    splash.classList.add("is-hiding");
+    setTimeout(() => {
+      splash.classList.add("hidden");
+      splash.classList.remove("is-hiding");
+    }, 430);
+  }, waitMs);
+}
+
 function unlock_app() {
   const lockScreen = document.getElementById("authLockScreen");
   const appContainer = document.getElementById("appContainer");
   if (lockScreen) lockScreen.classList.add("hidden");
   if (appContainer) appContainer.classList.remove("hidden");
+  document.body.classList.add("app-opening-ready");
+  show_startup_splash();
 }
 
 const KNOWN_CODES_DEFAULT = [
@@ -1570,6 +1611,7 @@ function apply_language_ui(rerenderDashboard = false) {
       cached_fb_chi_tiet,
       cached_fb_tong
     );
+    dismiss_startup_splash();
   }
 }
 
@@ -2020,6 +2062,7 @@ function tai_du_lieu_thong_bao_ngam(force = false) {
           render_closing_rate_card(tinh_ty_le_chot_theo_ngay(current_start_date, current_end_date));
           if (Array.isArray(data_hien_tai) && data_hien_tai.length > 0 && cached_fb_chi_tiet && cached_fb_tong) {
             ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
+      dismiss_startup_splash();
           }
           const odModal = document.getElementById("orderDetailModal");
           if (odModal && !odModal.classList.contains("hidden") && current_od_mode === "all_table") {
@@ -6119,6 +6162,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       cached_fb_tong = fbResult.local_tong;
       // Vẽ NGAY bằng dữ liệu đang có, ẩn màn hình chờ; phần Sheet mới sẽ vẽ lại khi tải xong
       ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
+      dismiss_startup_splash();
       if (loadingOverlay) loadingOverlay.classList.add("hidden");
       const lastSyncSoft = document.getElementById("lastSyncText");
       if (lastSyncSoft) lastSyncSoft.textContent = "⏳ Đang làm mới dữ liệu ngầm...";
@@ -6141,6 +6185,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       cached_fb_chi_tiet,
       cached_fb_tong
     );
+    dismiss_startup_splash();
 
     if (!canReuseSheets && sheetRefreshOk) {
       const now = new Date();

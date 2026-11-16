@@ -188,6 +188,11 @@
           <div class="cards-list-frame" id="frameMkt">
             <div class="cards-list" id="containerMkt">
               <!-- MKT cards or MKT detail SP cards rendered here -->
+              <div class="skeleton-stack" aria-hidden="true">
+                <div class="skeleton-card"><div class="skeleton-line skeleton-w-45"></div><div class="skeleton-line skeleton-w-80"></div><div class="skeleton-line skeleton-w-60"></div></div>
+                <div class="skeleton-card"><div class="skeleton-line skeleton-w-50"></div><div class="skeleton-line skeleton-w-75"></div><div class="skeleton-line skeleton-w-55"></div></div>
+                <div class="skeleton-card"><div class="skeleton-line skeleton-w-40"></div><div class="skeleton-line skeleton-w-85"></div><div class="skeleton-line skeleton-w-65"></div></div>
+              </div>
             </div>
           </div>
         </section>
@@ -203,6 +208,11 @@
           <div class="cards-list-frame" id="frameSp">
             <div class="cards-list" id="listSp">
               <!-- Top 10 SP cards rendered here -->
+              <div class="skeleton-stack" aria-hidden="true">
+                <div class="skeleton-card"><div class="skeleton-line skeleton-w-55"></div><div class="skeleton-line skeleton-w-80"></div><div class="skeleton-line skeleton-w-45"></div></div>
+                <div class="skeleton-card"><div class="skeleton-line skeleton-w-45"></div><div class="skeleton-line skeleton-w-75"></div><div class="skeleton-line skeleton-w-60"></div></div>
+                <div class="skeleton-card"><div class="skeleton-line skeleton-w-50"></div><div class="skeleton-line skeleton-w-85"></div><div class="skeleton-line skeleton-w-55"></div></div>
+              </div>
             </div>
           </div>
         </section>
@@ -527,6 +537,22 @@
 
   <!-- Bottom-Right Corner Order Notification Popup Stack -->
   <div id="cornerPopupContainer" class="corner-popup-container" aria-live="assertive"></div>
+
+  <!-- Startup Opening Splash -->
+  <div id="startupSplash" class="startup-splash hidden" aria-hidden="true">
+    <div class="startup-splash-card">
+      <div class="startup-logo-wrap">
+        <span class="startup-pulse-ring"></span>
+        <span class="startup-pulse-ring startup-pulse-ring-2"></span>
+        <div class="startup-logo-badge">L</div>
+      </div>
+      <div class="startup-brand-title">APPLAM</div>
+      <div class="startup-brand-sub" id="startupSplashSub">Đang khởi tạo dữ liệu &amp; giao diện...</div>
+      <div class="startup-progress-track">
+        <div class="startup-progress-bar"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Loading Overlay with Gaussian Blur -->
   <div id="loadingOverlay" class="loading-overlay hidden" aria-busy="true">
