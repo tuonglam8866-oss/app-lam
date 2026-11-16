@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.180";
+const APP_FRONTEND_VERSION = "8.6.181";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3563,17 +3563,16 @@ function lay_danh_sach_don_trung_mkt() {
     if (!rowsByGroupId.has(gid)) rowsByGroupId.set(gid, []);
     rowsByGroupId.get(gid).push(o);
 
-    const hasCust = Boolean(o.ho_ten || o.sdt || o.dia_chi);
+    const hasCust = Boolean(o.sdt || o.dia_chi);
     if (!hasCust) continue;
 
     const mktDash = chuan_hoa_mkt_dashboard(o.mkt);
     const sdtRaw = chuan_hoa_sdt_so_sanh(o.sdt);
     const sdtKey = sdtRaw.length >= 9 && !/^0+$/.test(sdtRaw) ? sdtRaw : "";
-    const nameKey = chuan_hoa_ten_hoac_dia_chi_trung(o.ho_ten, 2, 4);
     const addrKey = chuan_hoa_ten_hoac_dia_chi_trung(o.dia_chi, 3, 10);
 
-    if (!sdtKey && !nameKey && !addrKey) continue;
-    custRows.push({ o, mktDash, sdtKey, nameKey, addrKey });
+    if (!sdtKey && !addrKey) continue;
+    custRows.push({ o, mktDash, sdtKey, addrKey });
   }
 
   const n = custRows.length;
@@ -3594,7 +3593,6 @@ function lay_danh_sach_don_trung_mkt() {
   };
 
   const bySdt = new Map();
-  const byName = new Map();
   const byAddr = new Map();
 
   for (let i = 0; i < n; i++) {
@@ -3602,10 +3600,6 @@ function lay_danh_sach_don_trung_mkt() {
     if (item.sdtKey) {
       if (bySdt.has(item.sdtKey)) union(bySdt.get(item.sdtKey), i);
       else bySdt.set(item.sdtKey, i);
-    }
-    if (item.nameKey) {
-      if (byName.has(item.nameKey)) union(byName.get(item.nameKey), i);
-      else byName.set(item.nameKey, i);
     }
     if (item.addrKey) {
       if (byAddr.has(item.addrKey)) union(byAddr.get(item.addrKey), i);
@@ -3632,19 +3626,16 @@ function lay_danh_sach_don_trung_mkt() {
     if (distinctMkts.size < 2) return;
 
     const sdtCounts = new Map();
-    const nameCounts = new Map();
     const addrCounts = new Map();
     let maxRowNum = 0;
     for (const it of items) {
       if ((it.o.row_num || 0) > maxRowNum) maxRowNum = it.o.row_num || 0;
       if (it.sdtKey) sdtCounts.set(it.sdtKey, (sdtCounts.get(it.sdtKey) || 0) + 1);
-      if (it.nameKey) nameCounts.set(it.nameKey, (nameCounts.get(it.nameKey) || 0) + 1);
       if (it.addrKey) addrCounts.set(it.addrKey, (addrCounts.get(it.addrKey) || 0) + 1);
     }
 
     const matchTypes = [];
     if (Array.from(sdtCounts.values()).some((c) => c > 1)) matchTypes.push("SĐT");
-    if (Array.from(nameCounts.values()).some((c) => c > 1)) matchTypes.push("Tên");
     if (Array.from(addrCounts.values()).some((c) => c > 1)) matchTypes.push("Địa chỉ");
     const reasonStr = matchTypes.length > 0 ? `Trùng ${matchTypes.join(", ")}` : "Trùng khách";
     const mktsList = Array.from(distinctMkts).join(" / ");

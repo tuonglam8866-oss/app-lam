@@ -1,22 +1,22 @@
 {
-    "version":  "8.6.180",
+    "version":  "8.6.181",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "c233623daf7ce175f2ec860d9c3dc2e44385fd4f33be54c93833599077927987",
-    "index.html_sha256":  "25d0453b2c460621f024d02ac89d5531e67ec4e8884f8248021533c19552e38b",
+    "exe_sha256":  "a69a7556edba4f37a72185a55932bfd608133985d9fd82b738a3d63977bbb16d",
+    "index.html_sha256":  "ed022c6d564fa98b90b3fad627fd31ccbbe546a78769005bd490ffc30d68266e",
     "styles.css_sha256":  "4095619333fdf2409dfb199b10b043ffddc8e1dc22e90a8d165414e16de235ad",
-    "app.js_sha256":  "2b81568f134f1f429a58dacfc2a0b33365800d8e427782322f6c5a11c071c3b8",
+    "app.js_sha256":  "10db606f08551613dec0962fb2f0ee52f53c990e83843fa12c1edae2d9f117a8",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "c233623daf7ce175f2ec860d9c3dc2e44385fd4f33be54c93833599077927987",
-                                     "size":  466432
+                                     "sha256":  "a69a7556edba4f37a72185a55932bfd608133985d9fd82b738a3d63977bbb16d",
+                                     "size":  465920
                                  },
                   "app.js":  {
-                                 "sha256":  "2b81568f134f1f429a58dacfc2a0b33365800d8e427782322f6c5a11c071c3b8",
-                                 "size":  224372
+                                 "sha256":  "10db606f08551613dec0962fb2f0ee52f53c990e83843fa12c1edae2d9f117a8",
+                                 "size":  223882
                              },
                   "index.html":  {
-                                     "sha256":  "25d0453b2c460621f024d02ac89d5531e67ec4e8884f8248021533c19552e38b",
-                                     "size":  33999
+                                     "sha256":  "ed022c6d564fa98b90b3fad627fd31ccbbe546a78769005bd490ffc30d68266e",
+                                     "size":  33993
                                  },
                   "styles.css":  {
                                      "sha256":  "4095619333fdf2409dfb199b10b043ffddc8e1dc22e90a8d165414e16de235ad",
