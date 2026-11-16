@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.136";
+const APP_FRONTEND_VERSION = "8.6.137";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -327,7 +327,7 @@ const TU_KHOA_LOAI_BO = new Set([
 const I18N = {
   vi: {
     mainTitle: "SỐ ĐƠN & DOANH SỐ",
-    liveBadge: "TRỰC CHIẾN 3S",
+    liveBadge: "Đang Online",
     initializing: "Đang khởi tạo...",
     lastSyncPrefix: "Cập nhật: ",
     spPlaceholder: "Mã SP...",
@@ -385,7 +385,7 @@ const I18N = {
     btnTestPopup: "🎉 Xem thử Popup",
     themeLight: "☀️ Sáng (Kem Cozy)",
     themeDark: "🌙 Tối (Nâu Be Cozy)",
-    scannerStatus: "Trực chiến: Đang quét đơn (3s/lần)",
+    scannerStatus: "Đang Online: Quét đơn (3s/lần)",
     knownCodesFmt: (n) => `Đang nhận diện: ${n} mã SP`,
     ctxCopyCp: "📋 Copy CP",
     toastCopiedCp: "Đã copy CP",
