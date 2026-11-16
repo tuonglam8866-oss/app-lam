@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.200";
+const APP_FRONTEND_VERSION = "8.6.201";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2036,29 +2036,39 @@ function tai_du_lieu_thong_bao_ngam(force = false) {
   return thong_bao_fetch_promise;
 }
 
+let background_sync_timer = null;
+
+function kich_hoat_tai_nen_sau_bang_chinh(delayMs = 150) {
+  if (background_sync_timer) clearTimeout(background_sync_timer);
+  background_sync_timer = setTimeout(() => {
+    background_sync_timer = null;
+    dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
+    tai_du_lieu_thong_bao_ngam(true).catch(() => {});
+    tai_du_lieu_pancake(true).catch(() => {});
+  }, delayMs);
+}
+
 async function tai_du_lieu_google_sheets() {
   doc_cau_hinh_tu_storage();
 
-  pending_nguon_tag_sync = dong_bo_ma_sp_tu_nguon_tag();
+  let hasCachedCodes = false;
+  try {
+    hasCachedCodes = Boolean(localStorage.getItem(STORAGE_KEY_SHEET_CODES));
+  } catch (e) {}
 
-  // Tải ngầm dữ liệu Pancake Page để đối chiếu Lỗi vào đơn
-  tai_du_lieu_pancake(true).catch(() => {});
-
-  // Tải ngầm bảng thông báo/tỉ lệ chốt song song, hoàn toàn không chặn màn hình tải
-  tai_du_lieu_thong_bao_ngam(true).catch(() => {});
-
-  // Giao diện chính chờ bảng thống kê và danh sách mã SP ở NGUỒN TAG song song
-  const [rowsThongKe] = await Promise.all([
-    fetch_csv_with_fallback(
-      CSV_URL_THONG_KE,
-      CSV_URL_THONG_KE_FALLBACK,
-      "thong_ke"
-    ),
-    pending_nguon_tag_sync,
-  ]);
+  // Ưu tiên tải xong ĐƠN TỔNG HỢP (gid=1227181736) trước để không tranh chấp khóa đọc Sheet trên Apps Script
+  const rowsThongKe = await fetch_csv_with_fallback(
+    CSV_URL_THONG_KE,
+    CSV_URL_THONG_KE_FALLBACK,
+    "thong_ke"
+  );
   if (rowsThongKe && rowsThongKe.length > 0) {
     data_hien_tai = rowsThongKe;
     rebuild_cust_first_mkt_index();
+    if (!hasCachedCodes) {
+      await dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
+    }
+    kich_hoat_tai_nen_sau_bang_chinh(150);
     return true;
   }
   return false;
@@ -6007,7 +6017,9 @@ let initial_load_success = false;
 let auto_retry_count = 0;
 let auto_retry_timer = null;
 
-async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
+const fb_range_cache = new Map();
+
+async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded = false) {
   const btnRefresh = document.getElementById("btnRefresh");
   const refreshIcon = document.getElementById("refreshIcon");
   const loadingOverlay = document.getElementById("loadingOverlay");
@@ -6016,11 +6028,6 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
 
   hide_all_popups();
 
-  // LUÔN LUÔN HIỂN THỊ MÀN HÌNH BLUR MỜ XOAY XOAY KHI ĐANG TẢI HOẶC CHỜ WI-FI
-  if (loadingOverlay) loadingOverlay.classList.remove("hidden");
-  if (btnRefresh) btnRefresh.disabled = true;
-  if (refreshIcon) refreshIcon.classList.add("spinning");
-
   if (current_start_date > current_end_date) {
     const tmp = current_start_date;
     current_start_date = current_end_date;
@@ -6028,14 +6035,45 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
     update_date_buttons_text();
   }
 
+  const canReuseSheets = Boolean(
+    skipSheetsIfLoaded && Array.isArray(data_hien_tai) && data_hien_tai.length > 0
+  );
+  const fbCacheKey = `${current_start_date}|${current_end_date}`;
+  const cachedFbEntry = fb_range_cache.get(fbCacheKey);
+  const canReuseFb = Boolean(
+    canReuseSheets && cachedFbEntry && Date.now() - cachedFbEntry.timeMs < 60000
+  );
+
+  // Nếu đã có dữ liệu Sheet và cache Ads trong 60s -> vẽ lại ngay lập tức không cần overlay xoay
+  if (!canReuseFb && loadingOverlay) loadingOverlay.classList.remove("hidden");
+  if (btnRefresh) btnRefresh.disabled = true;
+  if (refreshIcon) refreshIcon.classList.add("spinning");
+
   let gsSuccess = false;
   try {
-    if (loadingMainText) loadingMainText.textContent = "⏳ Đang tải dữ liệu...";
-    if (loadingSubText) loadingSubText.textContent = "Đang đồng bộ Google Sheets & Facebook Ads...";
+    if (!canReuseFb) {
+      if (loadingMainText) loadingMainText.textContent = "⏳ Đang tải dữ liệu...";
+      if (loadingSubText) {
+        loadingSubText.textContent = canReuseSheets
+          ? "Đang đồng bộ chi phí Facebook Ads theo khoảng ngày..."
+          : "Đang tải ĐƠN TỔNG HỢP & Facebook Ads...";
+      }
+    }
+
+    if (!canReuseSheets) {
+      fb_range_cache.clear();
+    }
+
+    const fbPromise = canReuseFb
+      ? Promise.resolve(cachedFbEntry.result)
+      : quet_chi_phi_facebook_helper(current_start_date, current_end_date).then((res) => {
+          fb_range_cache.set(fbCacheKey, { timeMs: Date.now(), result: res });
+          return res;
+        });
 
     const [gsResult, fbResult] = await Promise.all([
-      tai_du_lieu_google_sheets(),
-      quet_chi_phi_facebook_helper(current_start_date, current_end_date),
+      canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(),
+      fbPromise,
     ]);
     gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
     cached_fb_chi_tiet = fbResult.local_chi_tiet;
@@ -6048,16 +6086,18 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false) {
       cached_fb_tong
     );
 
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    const ss = String(now.getSeconds()).padStart(2, "0");
-    last_sync_time_str = `${hh}:${mm}:${ss}`;
+    if (!canReuseSheets) {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      last_sync_time_str = `${hh}:${mm}:${ss}`;
+    }
 
     const lastSyncEl = document.getElementById("lastSyncText");
     if (lastSyncEl) {
       if (gsSuccess) {
-        lastSyncEl.textContent = `${t().lastSyncPrefix}${last_sync_time_str}`;
+        lastSyncEl.textContent = `${t().lastSyncPrefix}${last_sync_time_str || ""}`;
       } else {
         lastSyncEl.textContent = "Đang chờ kết nối Wi-Fi...";
       }
@@ -6193,7 +6233,8 @@ function set_and_refresh(st, en) {
   } catch (e) {}
   update_date_buttons_text();
   hide_all_popups();
-  tai_va_cap_nhat_theo_ngay();
+  // Khi chỉ đổi khoảng ngày xem, không cần tải lại toàn bộ Google Sheets nếu đã có sẵn trong RAM
+  tai_va_cap_nhat_theo_ngay(false, true);
 }
 
 // ==============================================================
@@ -6984,7 +7025,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document
     .getElementById("btnRefresh")
-    ?.addEventListener("click", tai_va_cap_nhat_theo_ngay);
+    ?.addEventListener("click", () => tai_va_cap_nhat_theo_ngay(false, false));
 
   const btnSettings = document.getElementById("btnSettings");
   btnSettings?.addEventListener("click", (e) => {
