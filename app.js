@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.131";
+const APP_FRONTEND_VERSION = "8.6.132";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1025,10 +1025,6 @@ function apply_language_ui(rerenderDashboard = false) {
     setText("lastSyncText", dict.initializing);
   }
 
-  const entrySp = document.getElementById("entrySp");
-  if (entrySp) entrySp.placeholder = dict.spPlaceholder;
-
-  setText("btnThemSpText", dict.btnAddSp);
   setText("btnAllCodesText", dict.allCodesBtn);
   setText("crBadgeTitle", dict.crBadgeTitle);
   setText("crDescText", dict.crDescText);
@@ -4911,36 +4907,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     last_mouse_x = e.clientX;
     last_mouse_y = e.clientY;
   });
-
-  const entrySp = document.getElementById("entrySp");
-  const btnThemSp = document.getElementById("btnThemSp");
-
-  function xu_ly_them_sp() {
-    if (!entrySp) return;
-    const val = entrySp.value.trim().toUpperCase();
-    if (val && val !== "MÃ SP...") {
-      if (luu_sp_moi(val)) {
-        entrySp.value = "";
-        show_toast_copy(val, t().toastSavedCode(val));
-        tai_va_cap_nhat_theo_ngay();
-      } else {
-        show_toast_copy(val, t().toastExistingCode(val));
-      }
-    }
-    entrySp.blur();
-  }
-
-  if (entrySp) {
-    entrySp.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        xu_ly_them_sp();
-      }
-    });
-  }
-  if (btnThemSp) {
-    btnThemSp.addEventListener("click", xu_ly_them_sp);
-  }
 
   document.getElementById("btnToday")?.addEventListener("click", (e) => {
     e.stopPropagation();
