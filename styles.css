@@ -2706,9 +2706,9 @@ input::-ms-clear {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 108px;
-  min-width: 108px;
-  max-width: 108px;
+  width: 114px;
+  min-width: 114px;
+  max-width: 114px;
   flex-shrink: 0;
 }
 
@@ -2747,8 +2747,8 @@ input::-ms-clear {
 
 .od-search-input {
   width: 100%;
-  min-width: 108px;
-  max-width: 108px;
+  min-width: 114px;
+  max-width: 114px;
   height: 37px;
   padding: 0 22px 0 36px;
   font-size: 13px;
