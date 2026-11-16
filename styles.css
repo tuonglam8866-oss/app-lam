@@ -2629,7 +2629,7 @@ input::-ms-clear {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -2697,7 +2697,7 @@ input::-ms-clear {
 .od-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -2706,20 +2706,20 @@ input::-ms-clear {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 114px;
-  min-width: 114px;
-  max-width: 114px;
+  width: 98px;
+  min-width: 98px;
+  max-width: 98px;
   flex-shrink: 0;
 }
 
 .od-search-icon {
   position: absolute;
-  left: 6px;
+  left: 5px;
   top: 50%;
   transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   background: rgba(110, 79, 58, 0.11);
   display: inline-flex;
   align-items: center;
@@ -2747,17 +2747,17 @@ input::-ms-clear {
 
 .od-search-input {
   width: 100%;
-  min-width: 114px;
-  max-width: 114px;
-  height: 37px;
-  padding: 0 22px 0 36px;
-  font-size: 13px;
+  min-width: 98px;
+  max-width: 98px;
+  height: 34px;
+  padding: 0 14px 0 31px;
+  font-size: 12px;
   font-weight: 600;
   font-family: inherit;
   color: var(--choco-dark, #3D2314);
   background: linear-gradient(180deg, #FFFDF9 0%, #F5ECE0 100%);
   border: 1.5px solid #D5BFAA;
-  border-radius: 10px;
+  border-radius: 9px;
   outline: none;
   box-sizing: border-box;
   box-shadow: 0 2px 6px rgba(61, 35, 20, 0.06);
@@ -3991,15 +3991,19 @@ input::-ms-clear {
 }
 
 .od-reset-pill-btn {
-  height: 37px;
-  padding: 0 13px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 9px;
   border: 1.5px solid #F5A3A3;
   background: linear-gradient(180deg, #FFF1F2 0%, #FFE4E6 100%);
   color: #BE123C;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 800;
+  letter-spacing: -0.01em;
   cursor: pointer;
   white-space: nowrap;
   box-shadow: 0 2px 5px rgba(190, 18, 60, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -4021,19 +4025,40 @@ input::-ms-clear {
 }
 
 .od-no-mvd-btn {
-  height: 37px;
-  padding: 0 13px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 9px;
   border: 1.5px solid #D5BFAA;
   background: linear-gradient(180deg, #FFFDF9 0%, #F5ECE0 100%);
   color: #4E3423;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 800;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.16s ease;
   box-shadow: 0 2px 6px rgba(61, 35, 20, 0.06);
+}
+
+.od-header-actions .od-date-range-btn {
+  height: 34px;
+  padding: 0 9px 0 6px;
+  gap: 6px;
+  border-radius: 9px;
+}
+
+.od-header-actions .od-date-range-btn .cal-icon-badge {
+  width: 21px;
+  height: 21px;
+  border-radius: 6px;
+}
+
+.od-header-actions .od-date-range-btn .date-range-val {
+  font-size: 12px;
 }
 
 .od-no-mvd-btn:hover {
