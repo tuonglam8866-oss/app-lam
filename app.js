@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.190";
+const APP_FRONTEND_VERSION = "8.6.191";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -60,6 +60,223 @@ const FB_TOKEN_PROTECTED =
 
 function get_fb_token() {
   return decode_protected_token(FB_TOKEN_PROTECTED);
+}
+
+const PANCAKE_PAGES = [
+  {
+    pageId: "971169049409319",
+    mkt: "L\u00c2M",
+    mktSheet: "L\u00c2M",
+    tokenProtected:
+      "MCkTJz0UJioaOw8WZ0p7Bxs5EDwWPRd2NhEMaXtbQm4DExN2cTY8CSUIBhYEeVhdZh0NCm0cEQJlHREORX9mey0fCgYsGisRJTASCUhUdXAhMxoGaR4RIGAcAThLfnZjIh43f3EhdQ0QExAVVFZdRBkVET4PajcQMTYfCVp5YGIFCRguKxszEjQTIzsCe3tZ",
+  },
+];
+const PANCAKE_SHOP_PHONES = new Set(["0974566895", "0915519166"]);
+let data_pancake_orders = [];
+let pancake_last_fetch_ms = 0;
+let pancake_fetch_promise = null;
+const pancake_conv_msg_cache = new Map();
+
+function parse_pancake_utc_to_vn(isoStr) {
+  const s = String(isoStr || "").trim();
+  if (!s) return { ymd: "", dmy: "", timeMs: 0 };
+  const hasTz = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(s);
+  const dt = new Date(hasTz ? s : s + "Z");
+  if (Number.isNaN(dt.getTime())) return { ymd: "", dmy: "", timeMs: 0 };
+  const vnMs = dt.getTime() + 7 * 3600 * 1000;
+  const vn = new Date(vnMs);
+  const yyyy = vn.getUTCFullYear();
+  const mm = String(vn.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(vn.getUTCDate()).padStart(2, "0");
+  return {
+    ymd: `${yyyy}-${mm}-${dd}`,
+    dmy: `${dd}/${mm}/${yyyy}`,
+    timeMs: vnMs,
+  };
+}
+
+function get_pancake_valid_phones(conv) {
+  const out = [];
+  const seen = new Set();
+  const rawList = Array.isArray(conv && conv.recent_phone_numbers) ? conv.recent_phone_numbers : [];
+  for (const item of rawList) {
+    const raw = item && (item.phone_number || item.captured || item);
+    const norm = chuan_hoa_sdt_so_sanh(raw);
+    if (!norm || !/^0[35789]\d{8}$/.test(norm)) continue;
+    if (PANCAKE_SHOP_PHONES.has(norm) || seen.has(norm)) continue;
+    seen.add(norm);
+    out.push(norm);
+  }
+  return out;
+}
+
+async function fetch_json_with_timeout(url, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
+  if (!Array.isArray(msgs) || msgs.length === 0) return [];
+  const phones = get_pancake_valid_phones(conv);
+  if (phones.length === 0) return [];
+
+  const cutoffMs = Date.now() + 7 * 3600 * 1000 - 14 * 86400 * 1000;
+  let hasCustMsg = false;
+  let custWentOffice = false;
+  const pkeMap = new Map();
+  let expressHit = null;
+  let bestPrice = 0;
+
+  for (const msg of msgs) {
+    const isPage = Boolean(msg && msg.from && String(msg.from.id || "") === pageCfg.pageId);
+    const txt = String((msg && (msg.original_message || msg.message)) || "").trim();
+    const tInfo = parse_pancake_utc_to_vn(msg && msg.inserted_at);
+    if (tInfo.timeMs && tInfo.timeMs < cutoffMs) continue;
+
+    if (!isPage) {
+      if (txt && !/^\s*(?:<div>\s*<\/div>)?\s*$/i.test(txt)) hasCustMsg = true;
+      if (/qua đi thử|tự qua|ghé shop|đến tận nơi/i.test(txt)) custWentOffice = true;
+      continue;
+    }
+
+    const priceVal = parse_gia_ghi_chu_sale(txt);
+    if (priceVal > bestPrice) bestPrice = priceVal;
+
+    const mPke = txt.match(/Đơn\s*hàng\s+(PKE\d{6,})\s+đã\s+được\s+tạo/i);
+    if (mPke) {
+      const code = mPke[1].toUpperCase();
+      if (!pkeMap.has(code)) {
+        pkeMap.set(code, { code, ...tInfo });
+      }
+      continue;
+    }
+
+    const isQuestionOrReturn = /\?|được không|không ạ|nếu không thì|hoàn lại tiền|gửi về địa chỉ|xin lại mvđ|hủy đơn/i.test(txt);
+    if (
+      !isQuestionOrReturn &&
+      /em lên đơn cho mình|em đã lên đơn|đã lên đơn cho mình|em book ship|ship lấy hàng rồi|đã đặt ship|gửi hỏa tốc|cảm ơn.*đã đặt hàng|em xác nhận lại cho mình/i.test(txt)
+    ) {
+      expressHit = { ...tInfo, snippet: txt };
+    }
+  }
+
+  if (custWentOffice || !hasCustMsg) return [];
+  const custName = String((conv.page_customer && conv.page_customer.name) || (conv.from && conv.from.name) || "").trim();
+  const results = [];
+
+  if (pkeMap.size > 0) {
+    pkeMap.forEach((info) => {
+      results.push({
+        convId: conv.id,
+        pageId: pageCfg.pageId,
+        mkt: pageCfg.mkt,
+        mktSheet: pageCfg.mktSheet,
+        custName,
+        phones,
+        pkeCode: info.code,
+        ymd: info.ymd,
+        dmy: info.dmy,
+        timeMs: info.timeMs,
+        giaBan: bestPrice,
+      });
+    });
+  } else if (expressHit) {
+    results.push({
+      convId: conv.id,
+      pageId: pageCfg.pageId,
+      mkt: pageCfg.mkt,
+      mktSheet: pageCfg.mktSheet,
+      custName,
+      phones,
+      pkeCode: "",
+      ymd: expressHit.ymd,
+      dmy: expressHit.dmy,
+      timeMs: expressHit.timeMs,
+      giaBan: bestPrice,
+    });
+  }
+
+  return results;
+}
+
+async function tai_du_lieu_pancake(force = false) {
+  const now = Date.now();
+  if (!force && data_pancake_orders.length > 0 && now - pancake_last_fetch_ms < 120000) {
+    return data_pancake_orders;
+  }
+  if (pancake_fetch_promise) return pancake_fetch_promise;
+
+  pancake_fetch_promise = (async () => {
+    const allOrders = [];
+    const cutoffMs = now + 7 * 3600 * 1000 - 14 * 86400 * 1000;
+
+    for (const pageCfg of PANCAKE_PAGES) {
+      const token = decode_protected_token(pageCfg.tokenProtected);
+      if (!token) continue;
+
+      const convs = [];
+      let lastId = "";
+      for (let pg = 0; pg < 5; pg++) {
+        let url =
+          `https://pages.fm/api/public_api/v2/pages/${pageCfg.pageId}/conversations` +
+          `?page_access_token=${encodeURIComponent(token)}&page_size=60`;
+        if (lastId) url += `&last_conversation_id=${encodeURIComponent(lastId)}`;
+
+        const json = await fetch_json_with_timeout(url, 10000);
+        const batch = json && Array.isArray(json.conversations) ? json.conversations : [];
+        if (batch.length === 0) break;
+
+        convs.push(...batch);
+        lastId = batch[batch.length - 1].id || "";
+        const oldestInfo = parse_pancake_utc_to_vn(batch[batch.length - 1].updated_at);
+        if (!lastId || (oldestInfo.timeMs && oldestInfo.timeMs < cutoffMs)) break;
+      }
+
+      const phoneConvs = convs.filter((c) => get_pancake_valid_phones(c).length > 0);
+      const BATCH_SIZE = 8;
+      for (let i = 0; i < phoneConvs.length; i += BATCH_SIZE) {
+        const chunk = phoneConvs.slice(i, i + BATCH_SIZE);
+        const chunkOrders = await Promise.all(
+          chunk.map(async (conv) => {
+            const cacheKey = `${conv.id}|${conv.updated_at || ""}`;
+            if (pancake_conv_msg_cache.has(cacheKey)) {
+              return pancake_conv_msg_cache.get(cacheKey);
+            }
+            const msgUrl =
+              `https://pages.fm/api/public_api/v1/pages/${pageCfg.pageId}/conversations/${encodeURIComponent(conv.id)}/messages` +
+              `?page_access_token=${encodeURIComponent(token)}&current_count=0`;
+            const msgJson = await fetch_json_with_timeout(msgUrl, 8000);
+            const msgs = msgJson && (Array.isArray(msgJson.messages) ? msgJson.messages : msgJson.data);
+            const extracted = extract_confirmed_pancake_orders(conv, msgs || [], pageCfg);
+            pancake_conv_msg_cache.set(cacheKey, extracted);
+            return extracted;
+          })
+        );
+        chunkOrders.forEach((arr) => {
+          if (Array.isArray(arr) && arr.length > 0) allOrders.push(...arr);
+        });
+      }
+    }
+
+    data_pancake_orders = allOrders;
+    pancake_last_fetch_ms = Date.now();
+    return data_pancake_orders;
+  })();
+
+  try {
+    return await pancake_fetch_promise;
+  } finally {
+    pancake_fetch_promise = null;
+  }
 }
 
 function bo_dau_tieng_viet(str) {
@@ -1538,6 +1755,9 @@ async function tai_du_lieu_google_sheets() {
   doc_cau_hinh_tu_storage();
 
   pending_nguon_tag_sync = dong_bo_ma_sp_tu_nguon_tag();
+
+  // Tải ngầm dữ liệu Pancake Page để đối chiếu Lỗi vào đơn
+  tai_du_lieu_pancake(true).catch(() => {});
 
   // Tải ngầm bảng thông báo/tỉ lệ chốt song song, hoàn toàn không chặn màn hình tải
   fetch_csv_with_fallback(
@@ -3827,6 +4047,130 @@ function lay_danh_sach_don_khong_mkt() {
   return results;
 }
 
+function lay_danh_sach_don_pancake_loi_mkt() {
+  const thList = Array.isArray(current_od_raw_list) ? current_od_raw_list : [];
+  const pkOrders = Array.isArray(data_pancake_orders) ? data_pancake_orders : [];
+  if (pkOrders.length === 0) return [];
+
+  const dupMktRowNums = new Set(lay_danh_sach_don_trung_mkt().map((r) => r.row_num));
+  const thBySdt = new Map();
+  const thByMvd = new Map();
+  for (const o of thList) {
+    const sdtKey = chuan_hoa_sdt_so_sanh(o.sdt || o.parent_sdt);
+    if (sdtKey) {
+      if (!thBySdt.has(sdtKey)) thBySdt.set(sdtKey, []);
+      thBySdt.get(sdtKey).push(o);
+    }
+    const mvd = String(o.ma_van_don || o.parent_ma_van_don || "").trim().toUpperCase();
+    if (mvd && mvd !== "-" && mvd !== "—") {
+      if (!thByMvd.has(mvd)) thByMvd.set(mvd, []);
+      thByMvd.get(mvd).push(o);
+    }
+  }
+
+  const getSignedDays = (thYmd, pkYmd) => {
+    if (!thYmd || !pkYmd) return null;
+    return (parse_ymd_date(thYmd).getTime() - parse_ymd_date(pkYmd).getTime()) / 86400000;
+  };
+  const isMatchedWindow = (thYmd, pkYmd) => {
+    const signed = getSignedDays(thYmd, pkYmd);
+    return signed === null || (signed >= -2 && signed <= 14);
+  };
+
+  const results = [];
+  const addedThRowNums = new Set();
+  const addedSyntheticKeys = new Set();
+  let syntheticId = 950000;
+
+  for (const pk of pkOrders) {
+    const expectedNorm = chuan_hoa_mkt_so_sanh(pk.mkt);
+    const matchedMap = new Map();
+
+    if (pk.pkeCode && thByMvd.has(pk.pkeCode)) {
+      for (const o of thByMvd.get(pk.pkeCode)) matchedMap.set(o.row_num, o);
+    }
+    if (matchedMap.size === 0) {
+      for (const ph of pk.phones) {
+        const listForPh = thBySdt.get(ph) || [];
+        for (const o of listForPh) {
+          if (isMatchedWindow(parse_order_ymd(o), pk.ymd)) {
+            matchedMap.set(o.row_num, o);
+          }
+        }
+      }
+    }
+
+    const matchedRows = Array.from(matchedMap.values());
+    if (matchedRows.length === 0) {
+      const dedupKey = pk.pkeCode || `${pk.convId}|${pk.ymd}`;
+      if (addedSyntheticKeys.has(dedupKey)) continue;
+      addedSyntheticKeys.add(dedupKey);
+      syntheticId += 1;
+      results.push({
+        row_num: syntheticId,
+        group_id: syntheticId,
+        thoi_gian: pk.dmy || pk.ymd,
+        ngay_only: pk.dmy || pk.ymd,
+        ma_van_don: pk.pkeCode || "",
+        ho_ten: pk.custName || "",
+        sdt: pk.phones[0] || "",
+        dia_chi: "",
+        dong_sp: "",
+        mau_sac: "",
+        size: "",
+        gia_ban: pk.giaBan || 0,
+        gia_ban_str: pk.giaBan > 0 ? format_tien_vnd(pk.giaBan) : "",
+        phi_ship: 0,
+        phi_ship_str: "",
+        nen_tang: "PANCAKE",
+        sale: "",
+        mkt: pk.mktSheet || pk.mkt,
+        trang_thai: "CHƯA VÀO BẢNG TH",
+        so_luong: "1",
+        so_luong_num: 1,
+        ghi_chu: pk.pkeCode
+          ? `Pancake Page ${pk.mktSheet} (${pk.pkeCode}) chưa vào bảng TH`
+          : `Khách chốt trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`,
+      });
+      continue;
+    }
+
+    // Không can thiệp các đơn đã đánh dấu LANDING PAGE (đã kiểm tra theo TỔNG ĐƠN UPYO)
+    const hasLanding = matchedRows.some((o) => String(o.nen_tang || "").toUpperCase().includes("LANDING"));
+    if (hasLanding) continue;
+
+    const hasValidMkt = matchedRows.some((o) => chuan_hoa_mkt_so_sanh(o.mkt) === expectedNorm);
+    if (hasValidMkt) continue;
+
+    for (const mRow of matchedRows) {
+      if (addedThRowNums.has(mRow.row_num)) continue;
+      const ttNoDau = bo_dau_tieng_viet(String(mRow.trang_thai || "")).toUpperCase();
+      if (ttNoDau.includes("HUY") || ttNoDau.includes("TRUNG") || ttNoDau.includes("TEST")) continue;
+
+      const mktThNorm = chuan_hoa_mkt_so_sanh(mRow.mkt);
+      if (!mktThNorm) {
+        addedThRowNums.add(mRow.row_num);
+        results.push({
+          ...mRow,
+          mkt: `CHƯA ĐIỀN (Đúng: ${pk.mktSheet})`,
+          trang_thai: mRow.trang_thai || "CHƯA ĐIỀN MKT",
+          ghi_chu: [mRow.ghi_chu, `Pancake Page ${pk.mktSheet} • MKT đúng: ${pk.mktSheet}`].filter(Boolean).join(" • "),
+        });
+      } else if (mktThNorm !== expectedNorm && !dupMktRowNums.has(mRow.row_num)) {
+        addedThRowNums.add(mRow.row_num);
+        results.push({
+          ...mRow,
+          mkt: `${mRow.mkt} (Đúng: ${pk.mktSheet})`,
+          trang_thai: mRow.trang_thai ? `${mRow.trang_thai} • SAI MKT` : "SAI MKT",
+          ghi_chu: [mRow.ghi_chu, `Sai MKT (Pancake Page: ${pk.mktSheet})`].filter(Boolean).join(" • "),
+        });
+      }
+    }
+  }
+
+  return results;
+}
+
 function lay_danh_sach_don_loi_vao_don() {
   const byRowNum = new Map();
 
@@ -3844,6 +4188,14 @@ function lay_danh_sach_don_loi_vao_don() {
 
   // 3. Đơn không điền MKT nhưng từng đặt của 1 MKT trước đó (bổ sung gợi ý nếu thiếu hoặc chưa nằm trong list)
   for (const row of lay_danh_sach_don_khong_mkt()) {
+    const existing = byRowNum.get(row.row_num);
+    if (!existing || existing.mkt === "CHƯA ĐIỀN MKT") {
+      byRowNum.set(row.row_num, row);
+    }
+  }
+
+  // 4. Đối chiếu đơn chốt trên Pancake Page (POS + Hỏa tốc)
+  for (const row of lay_danh_sach_don_pancake_loi_mkt()) {
     const existing = byRowNum.get(row.row_num);
     if (!existing || existing.mkt === "CHƯA ĐIỀN MKT") {
       byRowNum.set(row.row_num, row);
@@ -6323,7 +6675,16 @@ window.addEventListener("DOMContentLoaded", async () => {
     od_only_landing_mkt_issue = !od_only_landing_mkt_issue;
     if (od_only_landing_mkt_issue) {
       clearOtherQuickFilters("landing_missing");
-      await ensureTongDonUpyoLoaded();
+      const btnEl = e.currentTarget;
+      const origLabel = btnEl ? btnEl.textContent : "Lỗi vào đơn";
+      if (btnEl && (!Array.isArray(data_pancake_orders) || Date.now() - pancake_last_fetch_ms >= 120000)) {
+        btnEl.textContent = "Đang tải...";
+      }
+      await Promise.all([
+        ensureTongDonUpyoLoaded(),
+        tai_du_lieu_pancake(false).catch(() => {}),
+      ]);
+      if (btnEl) btnEl.textContent = origLabel;
     }
     apply_od_filters_and_render(true);
   });
