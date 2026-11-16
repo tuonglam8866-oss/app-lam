@@ -2697,7 +2697,9 @@ input::-ms-clear {
 .od-header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .od-search-box {
@@ -2707,7 +2709,7 @@ input::-ms-clear {
 }
 
 .od-search-input {
-  width: 270px;
+  width: 235px;
   height: 36px;
   padding: 0 32px 0 14px;
   font-size: 13px;
@@ -2724,7 +2726,7 @@ input::-ms-clear {
 .od-search-input:focus {
   border-color: #8C5D36;
   box-shadow: 0 0 0 3px rgba(140, 93, 54, 0.18);
-  width: 310px;
+  width: 265px;
   background: #FFFFFF;
 }
 

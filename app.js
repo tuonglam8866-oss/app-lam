@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.137";
+const APP_FRONTEND_VERSION = "8.6.138";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3097,6 +3097,7 @@ let od_xl_pending_values = []; // [{ val, label, count, checked }]
 let od_date_start = null; // "YYYY-MM-DD" or null
 let od_date_end = null;   // "YYYY-MM-DD" or null
 let od_only_missing_tracking = false;
+let od_only_landing_mkt_issue = false;
 
 const OD_XL_COL_META = {
   ngay_only: { title: "Thời gian", isDate: true },
@@ -3124,8 +3125,249 @@ function get_status_pill_cls(statusRaw) {
   if (s.includes("GIAO THANG")) return "pill-status-direct";
   if (s.includes("DOI HANG")) return "pill-status-exchange";
   if (s.includes("TEST")) return "pill-status-test";
-  if (s.includes("HUY") || s.includes("HOAN") || s.includes("TRUNG")) return "pill-status-cancel";
+  if (
+    s.includes("HUY") ||
+    s.includes("HOAN") ||
+    s.includes("TRUNG") ||
+    s.includes("CHUA VAO") ||
+    s.includes("SAI MKT") ||
+    s.includes("CHUA DIEN")
+  )
+    return "pill-status-cancel";
   return "pill-status-default";
+}
+
+function chuan_hoa_sdt_so_sanh(raw) {
+  let d = String(raw || "").replace(/\D+/g, "");
+  if (!d) return "";
+  if (d.startsWith("84") && d.length >= 11) {
+    d = "0" + d.slice(2);
+  }
+  if (d.length === 9 && !d.startsWith("0")) {
+    d = "0" + d;
+  }
+  return d;
+}
+
+function chuan_hoa_mkt_so_sanh(raw) {
+  const m = bo_dau_tieng_viet(String(raw || "").trim()).toUpperCase();
+  if (!m || ["MKT", "MARKETER", "TEN MKT", "SALE", "KHAC", "—", "-"].includes(m)) {
+    return "";
+  }
+  if (m.includes("THANH") || m.includes("TH.LAM") || m.includes("TH LAM")) {
+    return "THANH LÂM";
+  }
+  if (m.includes("LAM")) return "LÂM";
+  if (m.includes("PHUC")) return "PHÚC";
+  if (m.includes("TAM")) return "TÂM";
+  if (m.includes("SAN")) return "SAN";
+  if (m.includes("DUNG")) return "DŨNG";
+  return String(raw || "").trim().toUpperCase();
+}
+
+function parse_gia_ghi_chu_sale(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return 0;
+  const mk = s.match(/(\d+(?:[.,]\d+)?)\s*k\b/i);
+  if (mk) {
+    const num = parseFloat(mk[1].replace(",", "."));
+    if (!Number.isNaN(num) && num > 0) return Math.round(num * 1000);
+  }
+  const v = parse_gia_tien(s);
+  return v >= 100000 ? v : 0;
+}
+
+function lay_danh_sach_don_landing_loi_mkt() {
+  const thList = Array.isArray(current_od_raw_list) ? current_od_raw_list : [];
+  const tdRows = Array.isArray(data_tong_don_upyo) ? data_tong_don_upyo : [];
+
+  const thBySdt = new Map();
+  for (const o of thList) {
+    const sdtKey = chuan_hoa_sdt_so_sanh(o.sdt || o.parent_sdt);
+    if (!sdtKey) continue;
+    if (!thBySdt.has(sdtKey)) thBySdt.set(sdtKey, []);
+    thBySdt.get(sdtKey).push(o);
+  }
+
+  let colTg = 0;
+  let colHoTen = 1;
+  let colSdt = 2;
+  let colMauSac = 3;
+  let colDiaChi = 5;
+  let colMkt = 6;
+  let colDongSp = 7;
+  let colSize = 10;
+  let colGhiChuSale = 20;
+  let colDaChot = 24;
+
+  if (tdRows.length > 0) {
+    const headerRow = tdRows[0];
+    for (let i = 0; i < headerRow.length; i++) {
+      const h = bo_dau_tieng_viet(String(headerRow[i] || "").trim()).toLowerCase();
+      if (h === "ho ten") colHoTen = i;
+      else if (h === "so dien thoai" || h === "sdt") colSdt = i;
+      else if (h === "mau sac") colMauSac = i;
+      else if (h === "dia chi") colDiaChi = i;
+      else if (h === "mkt" || h === "marketer") colMkt = i;
+      else if (h === "dong sp" || h === "san pham") colDongSp = i;
+      else if (h === "size") colSize = i;
+      else if (h === "ghi chu sale") colGhiChuSale = i;
+      else if (h === "don da chot") colDaChot = i;
+    }
+  }
+
+  const results = [];
+  const addedThRowNums = new Set();
+  const tdMktBySdt = new Map();
+  let syntheticId = 900000;
+
+  for (let i = 0; i < tdRows.length; i++) {
+    const r = tdRows[i];
+    if (!Array.isArray(r) || r.length <= colSdt) continue;
+    const tgRaw = String(r[colTg] || "").trim();
+    const c0 = bo_dau_tieng_viet(tgRaw).toUpperCase();
+    if (i === 0 && (c0.includes("THOI GIAN") || c0 === "STT")) continue;
+
+    const sdtNorm = chuan_hoa_sdt_so_sanh(r[colSdt]);
+    if (!sdtNorm) continue;
+
+    const mktTdRaw = r.length > colMkt ? String(r[colMkt] || "").trim() : "";
+    const mktTdNorm = chuan_hoa_mkt_so_sanh(mktTdRaw);
+
+    let ymd = "";
+    let dmy = "";
+    const dt = parse_datetime_vn(tgRaw);
+    if (dt) {
+      ymd = format_ymd_date(dt);
+      const dd = String(dt.getDate()).padStart(2, "0");
+      const mm = String(dt.getMonth() + 1).padStart(2, "0");
+      dmy = `${dd}/${mm}/${dt.getFullYear()}`;
+    } else {
+      const token = tgRaw.split(/\s+/)[0] || "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(token)) {
+        ymd = token;
+        const p = token.split("-");
+        dmy = `${p[2]}/${p[1]}/${p[0]}`;
+      } else {
+        dmy = token;
+        ymd = parse_order_ymd({ ngay_only: token });
+      }
+    }
+
+    if (mktTdNorm && !tdMktBySdt.has(sdtNorm)) {
+      tdMktBySdt.set(sdtNorm, { mktNorm: mktTdNorm, mktRaw: mktTdRaw, ymd });
+    }
+
+    const chot = r.length > colDaChot ? parseInt(String(r[colDaChot] || "0").trim(), 10) || 0 : 0;
+    if (chot <= 0) continue;
+
+    const candidates = thBySdt.get(sdtNorm) || [];
+    let matchedTh = candidates.filter((o) => {
+      const oYmd = parse_order_ymd(o);
+      if (!ymd || !oYmd) return true;
+      const diffDays = Math.abs(parse_ymd_date(ymd).getTime() - parse_ymd_date(oYmd).getTime()) / 86400000;
+      return diffDays <= 5;
+    });
+    if (matchedTh.length === 0 && candidates.length > 0 && !ymd) {
+      matchedTh = candidates;
+    }
+
+    if (matchedTh.length === 0) {
+      // Đơn đã chốt bên TỔNG ĐƠN UPYO nhưng chưa điền sang bảng ĐƠN TỔNG HỢP
+      const ghiChuSale = r.length > colGhiChuSale ? String(r[colGhiChuSale] || "").trim() : "";
+      const giaBan = parse_gia_ghi_chu_sale(ghiChuSale);
+      const mauRaw = r.length > colMauSac ? String(r[colMauSac] || "").trim().replace(/^màu\s+/i, "") : "";
+      syntheticId += 1;
+      results.push({
+        row_num: syntheticId,
+        group_id: syntheticId,
+        thoi_gian: dmy || tgRaw,
+        ngay_only: dmy || ymd,
+        ma_van_don: "",
+        ho_ten: r.length > colHoTen ? String(r[colHoTen] || "").trim() : "",
+        sdt: sdtNorm,
+        dia_chi: r.length > colDiaChi ? String(r[colDiaChi] || "").trim() : "",
+        dong_sp: r.length > colDongSp ? String(r[colDongSp] || "").trim().toUpperCase() : "",
+        mau_sac: mauRaw.toUpperCase(),
+        size: r.length > colSize ? String(r[colSize] || "").trim() : "",
+        gia_ban: giaBan,
+        gia_ban_str: giaBan > 0 ? format_tien_vnd(giaBan) : "",
+        phi_ship: 0,
+        phi_ship_str: "",
+        nen_tang: "LANDING PAGE",
+        sale: "",
+        mkt: mktTdNorm || mktTdRaw || "CHƯA RÕ",
+        mkt_raw: mktTdRaw,
+        trang_thai: "CHƯA VÀO BẢNG TH",
+        so_luong: "1",
+        so_luong_num: 1,
+        ghi_chu: ghiChuSale ? `Chưa vào bảng TH (${ghiChuSale})` : "Chưa điền vào bảng Đơn Tổng Hợp",
+      });
+    } else {
+      for (const mRow of matchedTh) {
+        if (addedThRowNums.has(mRow.row_num)) continue;
+        const mktThNorm = chuan_hoa_mkt_so_sanh(mRow.mkt);
+        if (!mktThNorm) {
+          addedThRowNums.add(mRow.row_num);
+          results.push({
+            ...mRow,
+            mkt: mktTdNorm ? `CHƯA ĐIỀN (Đúng: ${mktTdNorm})` : "CHƯA ĐIỀN MKT",
+            trang_thai: mRow.trang_thai || "CHƯA ĐIỀN MKT",
+            ghi_chu: [mRow.ghi_chu, mktTdNorm ? `MKT đúng: ${mktTdNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
+          });
+        } else if (mktTdNorm && mktThNorm !== mktTdNorm) {
+          addedThRowNums.add(mRow.row_num);
+          results.push({
+            ...mRow,
+            mkt: `${mRow.mkt} (Đúng: ${mktTdNorm})`,
+            trang_thai: mRow.trang_thai ? `${mRow.trang_thai} • SAI MKT` : "SAI MKT",
+            ghi_chu: [mRow.ghi_chu, `Sai MKT (Tổng đơn: ${mktTdNorm})`].filter(Boolean).join(" • "),
+          });
+        }
+      }
+    }
+  }
+
+  // Kiểm tra thêm các dòng trong ĐƠN TỔNG HỢP có Nền tảng LANDING PAGE (hoặc khớp SĐT bên Tổng đơn) mà để trống / sai MKT
+  for (const o of thList) {
+    if (addedThRowNums.has(o.row_num)) continue;
+    const hasCust = Boolean(o.ma_van_don || o.ho_ten || o.sdt || o.dia_chi);
+    if (!hasCust) continue;
+
+    const ntUpper = String(o.nen_tang || "").trim().toUpperCase();
+    const sdtNorm = chuan_hoa_sdt_so_sanh(o.sdt);
+    const tdInfo = sdtNorm ? tdMktBySdt.get(sdtNorm) : null;
+    const isLandingRow = ntUpper.includes("LANDING") || (!ntUpper && Boolean(tdInfo));
+    if (!isLandingRow) continue;
+
+    const mktThNorm = chuan_hoa_mkt_so_sanh(o.mkt);
+    if (!mktThNorm) {
+      addedThRowNums.add(o.row_num);
+      results.push({
+        ...o,
+        mkt: tdInfo?.mktNorm ? `CHƯA ĐIỀN (Đúng: ${tdInfo.mktNorm})` : "CHƯA ĐIỀN MKT",
+        trang_thai: o.trang_thai || "CHƯA ĐIỀN MKT",
+        ghi_chu: [o.ghi_chu, tdInfo?.mktNorm ? `MKT đúng: ${tdInfo.mktNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
+      });
+    } else if (tdInfo?.mktNorm && mktThNorm !== tdInfo.mktNorm) {
+      const oYmd = parse_order_ymd(o);
+      const samePeriod =
+        !oYmd ||
+        !tdInfo.ymd ||
+        Math.abs(parse_ymd_date(oYmd).getTime() - parse_ymd_date(tdInfo.ymd).getTime()) / 86400000 <= 5;
+      if (samePeriod) {
+        addedThRowNums.add(o.row_num);
+        results.push({
+          ...o,
+          mkt: `${o.mkt} (Đúng: ${tdInfo.mktNorm})`,
+          trang_thai: o.trang_thai ? `${o.trang_thai} • SAI MKT` : "SAI MKT",
+          ghi_chu: [o.ghi_chu, `Sai MKT (Tổng đơn: ${tdInfo.mktNorm})`].filter(Boolean).join(" • "),
+        });
+      }
+    }
+  }
+
+  return results;
 }
 
 function get_od_col_filter_value(order, colKey) {
@@ -3198,6 +3440,7 @@ function update_od_date_btn_ui() {
 function set_od_modal_layout_mode(isAllTableMode) {
   const cardEl = document.getElementById("orderDetailCard");
   const noTrackingBtn = document.getElementById("btnOdNoTracking");
+  const landingMktBtn = document.getElementById("btnOdLandingMktCheck");
   const dateBtn = document.getElementById("btnOdDateRange");
   const countBadge = document.getElementById("odCountBadge");
   const qtyBadge = document.getElementById("odQtyBadge");
@@ -3209,6 +3452,7 @@ function set_od_modal_layout_mode(isAllTableMode) {
 
   if (cardEl) cardEl.classList.toggle("od-wide-mode", isAllTableMode);
   if (noTrackingBtn) noTrackingBtn.classList.toggle("hidden", !isAllTableMode);
+  if (landingMktBtn) landingMktBtn.classList.toggle("hidden", !isAllTableMode);
   if (dateBtn) dateBtn.classList.toggle("hidden", !isAllTableMode);
   if (countBadge) countBadge.classList.toggle("hidden", isAllTableMode);
   if (qtyBadge) qtyBadge.classList.add("hidden");
@@ -3235,11 +3479,18 @@ function update_od_xl_header_indicators() {
     noTrackingBtn.setAttribute("aria-pressed", od_only_missing_tracking ? "true" : "false");
   }
 
+  const landingMktBtn = document.getElementById("btnOdLandingMktCheck");
+  if (landingMktBtn) {
+    landingMktBtn.classList.toggle("active", Boolean(od_only_landing_mkt_issue));
+    landingMktBtn.setAttribute("aria-pressed", od_only_landing_mkt_issue ? "true" : "false");
+  }
+
   const activeCount =
     Object.keys(od_excel_filters).length +
     (od_excel_sort.col ? 1 : 0) +
     (od_date_start && od_date_end ? 1 : 0) +
-    (od_only_missing_tracking ? 1 : 0);
+    (od_only_missing_tracking ? 1 : 0) +
+    (od_only_landing_mkt_issue ? 1 : 0);
   const btnResetFilters = document.getElementById("btnResetOdColFilters");
   if (btnResetFilters) {
     if (current_od_mode === "all_table" && activeCount > 0) {
@@ -3426,6 +3677,7 @@ function hien_thi_bang_loc_don_tong_hop() {
   od_date_start = null;
   od_date_end = null;
   od_only_missing_tracking = false;
+  od_only_landing_mkt_issue = false;
 
   set_od_modal_layout_mode(true);
   update_od_date_btn_ui();
@@ -3487,6 +3739,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   od_date_start = null;
   od_date_end = null;
   od_only_missing_tracking = false;
+  od_only_landing_mkt_issue = false;
 
   set_od_modal_layout_mode(false);
   update_od_date_btn_ui();
@@ -3579,9 +3832,14 @@ function apply_od_filters_and_render(resetLimit = false) {
 
   update_od_xl_header_indicators();
 
-  let baseList = (current_od_mode === "all_table" && od_sort_newest_first)
-    ? current_od_raw_list.slice().sort((a, b) => ((b.group_id || b.row_num || 0) - (a.group_id || a.row_num || 0)) || ((a.row_num || 0) - (b.row_num || 0)))
-    : current_od_raw_list.slice();
+  let baseList;
+  if (current_od_mode === "all_table" && od_only_landing_mkt_issue) {
+    baseList = lay_danh_sach_don_landing_loi_mkt();
+  } else {
+    baseList = (current_od_mode === "all_table" && od_sort_newest_first)
+      ? current_od_raw_list.slice().sort((a, b) => ((b.group_id || b.row_num || 0) - (a.group_id || a.row_num || 0)) || ((a.row_num || 0) - (b.row_num || 0)))
+      : current_od_raw_list.slice();
+  }
 
   const activeFilterKeys = current_od_mode === "all_table" ? Object.keys(od_excel_filters) : [];
   const hasDateFilter = current_od_mode === "all_table" && Boolean(od_date_start && od_date_end);
@@ -5404,6 +5662,23 @@ window.addEventListener("DOMContentLoaded", async () => {
     e.stopPropagation();
     close_od_excel_filter();
     od_only_missing_tracking = !od_only_missing_tracking;
+    if (od_only_missing_tracking) od_only_landing_mkt_issue = false;
+    apply_od_filters_and_render(true);
+  });
+
+  document.getElementById("btnOdLandingMktCheck")?.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    close_od_excel_filter();
+    od_only_landing_mkt_issue = !od_only_landing_mkt_issue;
+    if (od_only_landing_mkt_issue) {
+      od_only_missing_tracking = false;
+      if (!Array.isArray(data_tong_don_upyo) || data_tong_don_upyo.length === 0) {
+        try {
+          const rows = await fetch_csv_with_fallback(CSV_URL_THONG_BAO, CSV_URL_THONG_BAO_FALLBACK, "thong_bao");
+          if (rows && rows.length > 0) data_tong_don_upyo = rows;
+        } catch (err) {}
+      }
+    }
     apply_od_filters_and_render(true);
   });
 
@@ -5420,6 +5695,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     od_date_start = null;
     od_date_end = null;
     od_only_missing_tracking = false;
+    od_only_landing_mkt_issue = false;
     update_od_date_btn_ui();
     close_od_excel_filter();
     apply_od_filters_and_render(true);
