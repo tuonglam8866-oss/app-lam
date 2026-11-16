@@ -124,6 +124,104 @@ async function fetch_json_with_timeout(url, timeoutMs = 10000) {
   }
 }
 
+function parse_gia_tin_nhan_pancake(raw) {
+  let s = String(raw || "").trim();
+  if (!s) return 0;
+  // Loại bỏ URL, email và chuỗi >= 7 chữ số (ID bài viết FB, comment_id, SĐT, mã vận đơn)
+  s = s.replace(/https?:\/\/\S+/gi, " ").replace(/\b\d{7,}\b/g, " ");
+  let best = 0;
+  const reK = /(\d+(?:[.,]\d+)?)\s*k\b/gi;
+  let mK;
+  while ((mK = reK.exec(s)) !== null) {
+    const num = parseFloat(mK[1].replace(",", "."));
+    if (!Number.isNaN(num)) {
+      const v = Math.round(num * 1000);
+      if (v >= 100000 && v <= 10000000 && v > best) best = v;
+    }
+  }
+  const reVnd = /\b(\d{1,3}(?:[.,]\d{3})+)\b/g;
+  let mV;
+  while ((mV = reVnd.exec(s)) !== null) {
+    const v = parseInt(mV[1].replace(/[.,]/g, ""), 10);
+    if (!Number.isNaN(v) && v >= 100000 && v <= 10000000 && v > best) best = v;
+  }
+  return best;
+}
+
+function is_pancake_bot_admin(name) {
+  const u = String(name || "").trim().toUpperCase();
+  return !u || ["POS", "BOTCAKE", "PANCAKE", "ADMIN", "PAGE", "SYSTEM", "AUTO"].includes(u) || u.startsWith("UPYO");
+}
+
+function parse_pancake_receipt_attachment(msg, convPhones) {
+  const atts = Array.isArray(msg && msg.attachments) ? msg.attachments : [];
+  const phoneSet = new Set(Array.isArray(convPhones) ? convPhones : []);
+  for (const att of atts) {
+    const pl = att && att.type === "template" && att.payload;
+    if (!pl || pl.template_type !== "receipt") continue;
+
+    const hoTen = String(pl.recipient_name || "").trim();
+    const addr = pl.address || {};
+    const addrParts = [];
+    for (const rawPart of [addr.street_1, addr.city, addr.country, addr.state, addr.street_2]) {
+      const p = String(rawPart || "").trim();
+      if (!p || p === "-") continue;
+      const pNorm = chuan_hoa_sdt_so_sanh(p);
+      if (pNorm && (phoneSet.has(pNorm) || PANCAKE_SHOP_PHONES.has(pNorm) || /^0[35789]\d{8}$/.test(pNorm))) continue;
+      if (!addrParts.includes(p)) addrParts.push(p);
+    }
+
+    const elements = Array.isArray(pl.elements) ? pl.elements : [];
+    const spList = [];
+    const mauList = [];
+    const sizeList = [];
+    let totalQty = 0;
+    let elemPriceSum = 0;
+
+    for (const el of elements) {
+      if (!el) continue;
+      const qty = Math.max(1, parseInt(el.quantity, 10) || 1);
+      totalQty += qty;
+      const unitOrLinePrice = Number(el.price) || 0;
+      if (unitOrLinePrice > 0) elemPriceSum += unitOrLinePrice;
+
+      const rawTitle = String(el.title || "").trim();
+      if (rawTitle) {
+        const spNorm = chuan_hoa_sp_so_sanh(rawTitle);
+        const spFinal = spNorm || rawTitle.toUpperCase();
+        if (spFinal && !spList.includes(spFinal)) spList.push(spFinal);
+      }
+
+      const sub = String(el.subtitle || "").trim();
+      if (sub) {
+        const mMau = sub.match(/Màu\s*:\s*([^,\n|]+)/i);
+        if (mMau) {
+          const mau = mMau[1].trim().replace(/^-+\s*/, "");
+          if (mau && !mauList.includes(mau)) mauList.push(mau);
+        }
+        const mSize = sub.match(/Size\s*:\s*([^,\n|]+)/i);
+        if (mSize) {
+          const sz = mSize[1].trim().replace(/^-+\s*/, "");
+          if (sz && !sizeList.includes(sz)) sizeList.push(sz);
+        }
+      }
+    }
+
+    const summaryCost = Number(pl.summary && pl.summary.total_cost) || 0;
+    const giaBan = summaryCost > 0 ? summaryCost : elemPriceSum;
+    return {
+      hoTen,
+      diaChi: addrParts.join(", "),
+      dongSp: spList.join(", "),
+      mauSac: mauList.join(", "),
+      size: sizeList.join(", "),
+      soLuong: totalQty || 1,
+      giaBan,
+    };
+  }
+  return null;
+}
+
 function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
   if (!Array.isArray(msgs) || msgs.length === 0) return [];
   const phones = get_pancake_valid_phones(conv);
@@ -134,7 +232,13 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
   let custWentOffice = false;
   const pkeMap = new Map();
   let expressHit = null;
+  let receiptHit = null;
   let bestPrice = 0;
+  let bestSale = "";
+  let bestSaleMs = -1;
+  let chatDongSp = "";
+  let chatSize = "";
+  const sortedKnownSp = typeof KNOWN_CODES !== "undefined" ? [...KNOWN_CODES].sort((a, b) => b.length - a.length) : [];
 
   for (const msg of msgs) {
     const isPage = Boolean(msg && msg.from && String(msg.from.id || "") === pageCfg.pageId);
@@ -142,13 +246,41 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
     const tInfo = parse_pancake_utc_to_vn(msg && msg.inserted_at);
     if (tInfo.timeMs && tInfo.timeMs < cutoffMs) continue;
 
+    if (!chatSize && txt) {
+      const mSz = txt.match(/\bsize\s*[:=]?\s*(3[5-9]|4[0-6])\b/i);
+      if (mSz) chatSize = mSz[1];
+    }
+
     if (!isPage) {
       if (txt && !/^\s*(?:<div>\s*<\/div>)?\s*$/i.test(txt)) hasCustMsg = true;
       if (/qua đi thử|tự qua|ghé shop|đến tận nơi/i.test(txt)) custWentOffice = true;
       continue;
     }
 
-    const priceVal = parse_gia_ghi_chu_sale(txt);
+    const adminName = String((msg && msg.from && msg.from.admin_name) || "").trim();
+    if (!is_pancake_bot_admin(adminName) && (tInfo.timeMs || 0) >= bestSaleMs) {
+      bestSale = adminName;
+      bestSaleMs = tInfo.timeMs || 0;
+    }
+
+    const receipt = parse_pancake_receipt_attachment(msg, phones);
+    if (receipt && (!receiptHit || (tInfo.timeMs || 0) >= (receiptHit.timeMs || 0))) {
+      receiptHit = { ...receipt, ...tInfo };
+    }
+
+    if (!chatDongSp && txt && sortedKnownSp.length > 0) {
+      const txtUp = txt.replace(/https?:\/\/\S+/gi, " ").toUpperCase();
+      const txtTokens = new Set(txtUp.split(/[^A-Z0-9À-Ỹ]+/i).filter(Boolean));
+      for (const code of sortedKnownSp) {
+        if (!code || code.length < 2) continue;
+        if (/^[A-Z0-9À-Ỹ]+$/i.test(code) ? txtTokens.has(code) : txtUp.includes(code)) {
+          chatDongSp = code;
+          break;
+        }
+      }
+    }
+
+    const priceVal = parse_gia_tin_nhan_pancake(txt);
     if (priceVal > bestPrice) bestPrice = priceVal;
 
     const mPke = txt.match(/Đơn\s*hàng\s+(PKE\d{6,})\s+đã\s+được\s+tạo/i);
@@ -169,8 +301,24 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
     }
   }
 
+  if (!bestSale) {
+    const fallbackAdmin = String((conv && conv.last_sent_by && conv.last_sent_by.admin_name) || "").trim();
+    if (!is_pancake_bot_admin(fallbackAdmin)) bestSale = fallbackAdmin;
+  }
+
   if (custWentOffice || !hasCustMsg) return [];
   const custName = String((conv.page_customer && conv.page_customer.name) || (conv.from && conv.from.name) || "").trim();
+  const detailFields = {
+    hoTen: (receiptHit && receiptHit.hoTen) || custName,
+    diaChi: (receiptHit && receiptHit.diaChi) || "",
+    dongSp: (receiptHit && receiptHit.dongSp) || chatDongSp || "",
+    mauSac: (receiptHit && receiptHit.mauSac) || "",
+    size: (receiptHit && receiptHit.size) || chatSize || "",
+    soLuong: (receiptHit && receiptHit.soLuong) || 1,
+    sale: bestSale || "",
+    giaBan: (receiptHit && receiptHit.giaBan > 0) ? receiptHit.giaBan : bestPrice,
+    hasReceipt: Boolean(receiptHit),
+  };
   const results = [];
 
   if (pkeMap.size > 0) {
@@ -186,8 +334,22 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
         ymd: info.ymd,
         dmy: info.dmy,
         timeMs: info.timeMs,
-        giaBan: bestPrice,
+        ...detailFields,
       });
+    });
+  } else if (receiptHit) {
+    results.push({
+      convId: conv.id,
+      pageId: pageCfg.pageId,
+      mkt: pageCfg.mkt,
+      mktSheet: pageCfg.mktSheet,
+      custName,
+      phones,
+      pkeCode: "",
+      ymd: receiptHit.ymd,
+      dmy: receiptHit.dmy,
+      timeMs: receiptHit.timeMs,
+      ...detailFields,
     });
   } else if (expressHit) {
     results.push({
@@ -201,7 +363,7 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
       ymd: expressHit.ymd,
       dmy: expressHit.dmy,
       timeMs: expressHit.timeMs,
-      giaBan: bestPrice,
+      ...detailFields,
     });
   }
 
@@ -4106,30 +4268,33 @@ function lay_danh_sach_don_pancake_loi_mkt() {
       if (addedSyntheticKeys.has(dedupKey)) continue;
       addedSyntheticKeys.add(dedupKey);
       syntheticId += 1;
+      const qtyVal = pk.soLuong || 1;
       results.push({
         row_num: syntheticId,
         group_id: syntheticId,
         thoi_gian: pk.dmy || pk.ymd,
         ngay_only: pk.dmy || pk.ymd,
         ma_van_don: pk.pkeCode || "",
-        ho_ten: pk.custName || "",
+        ho_ten: pk.hoTen || pk.custName || "",
         sdt: pk.phones[0] || "",
-        dia_chi: "",
-        dong_sp: "",
-        mau_sac: "",
-        size: "",
+        dia_chi: pk.diaChi || "",
+        dong_sp: pk.dongSp || "",
+        mau_sac: pk.mauSac || "",
+        size: pk.size || "",
         gia_ban: pk.giaBan || 0,
         gia_ban_str: pk.giaBan > 0 ? format_tien_vnd(pk.giaBan) : "",
         phi_ship: 0,
         phi_ship_str: "",
         nen_tang: "PANCAKE",
-        sale: "",
+        sale: pk.sale || "",
         mkt: pk.mktSheet || pk.mkt,
         trang_thai: "CHƯA VÀO BẢNG TH",
-        so_luong: "1",
-        so_luong_num: 1,
+        so_luong: String(qtyVal),
+        so_luong_num: qtyVal,
         ghi_chu: pk.pkeCode
           ? `Pancake Page ${pk.mktSheet} (${pk.pkeCode}) chưa vào bảng TH`
+          : pk.hasReceipt
+          ? `Đơn POS trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`
           : `Khách chốt trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`,
       });
       continue;
