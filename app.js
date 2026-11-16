@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.139";
+const APP_FRONTEND_VERSION = "8.6.160";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3216,8 +3216,14 @@ function lay_danh_sach_don_landing_loi_mkt() {
 
   const results = [];
   const addedThRowNums = new Set();
-  const tdMktBySdt = new Map();
-  let syntheticId = 900000;
+  const matchedValidThRowNums = new Set();
+  const tdRecords = [];
+  const tdRecordsBySdt = new Map();
+
+  const getDiffDays = (ymdA, ymdB) => {
+    if (!ymdA || !ymdB) return null;
+    return Math.abs(parse_ymd_date(ymdA).getTime() - parse_ymd_date(ymdB).getTime()) / 86400000;
+  };
 
   for (let i = 0; i < tdRows.length; i++) {
     const r = tdRows[i];
@@ -3252,26 +3258,37 @@ function lay_danh_sach_don_landing_loi_mkt() {
       }
     }
 
-    if (mktTdNorm && !tdMktBySdt.has(sdtNorm)) {
-      tdMktBySdt.set(sdtNorm, { mktNorm: mktTdNorm, mktRaw: mktTdRaw, ymd });
-    }
-
     const chot = r.length > colDaChot ? parseInt(String(r[colDaChot] || "0").trim(), 10) || 0 : 0;
-    if (chot <= 0) continue;
+    const rec = {
+      rowIdx: i,
+      r,
+      tgRaw,
+      ymd,
+      dmy,
+      sdtNorm,
+      mktRaw: mktTdRaw,
+      mktNorm: mktTdNorm,
+      dongSp: r.length > colDongSp ? String(r[colDongSp] || "").trim().toUpperCase() : "",
+      chot,
+    };
+    tdRecords.push(rec);
+    if (!tdRecordsBySdt.has(sdtNorm)) tdRecordsBySdt.set(sdtNorm, []);
+    tdRecordsBySdt.get(sdtNorm).push(rec);
+  }
 
-    const candidates = thBySdt.get(sdtNorm) || [];
-    let matchedTh = candidates.filter((o) => {
-      const oYmd = parse_order_ymd(o);
-      if (!ymd || !oYmd) return true;
-      const diffDays = Math.abs(parse_ymd_date(ymd).getTime() - parse_ymd_date(oYmd).getTime()) / 86400000;
-      return diffDays <= 5;
+  let syntheticId = 900000;
+  for (const rec of tdRecords) {
+    if (rec.chot <= 0) continue;
+
+    const candidates = thBySdt.get(rec.sdtNorm) || [];
+    const candidatesInWindow = candidates.filter((o) => {
+      const diff = getDiffDays(rec.ymd, parse_order_ymd(o));
+      return diff === null || diff <= 2;
     });
-    if (matchedTh.length === 0 && candidates.length > 0 && !ymd) {
-      matchedTh = candidates;
-    }
 
-    if (matchedTh.length === 0) {
+    if (candidatesInWindow.length === 0) {
       // Đơn đã chốt bên TỔNG ĐƠN UPYO nhưng chưa điền sang bảng ĐƠN TỔNG HỢP
+      const r = rec.r;
       const ghiChuSale = r.length > colGhiChuSale ? String(r[colGhiChuSale] || "").trim() : "";
       const giaBan = parse_gia_ghi_chu_sale(ghiChuSale);
       const mauRaw = r.length > colMauSac ? String(r[colMauSac] || "").trim().replace(/^màu\s+/i, "") : "";
@@ -3279,13 +3296,13 @@ function lay_danh_sach_don_landing_loi_mkt() {
       results.push({
         row_num: syntheticId,
         group_id: syntheticId,
-        thoi_gian: dmy || tgRaw,
-        ngay_only: dmy || ymd,
+        thoi_gian: rec.dmy || rec.tgRaw,
+        ngay_only: rec.dmy || rec.ymd,
         ma_van_don: "",
         ho_ten: r.length > colHoTen ? String(r[colHoTen] || "").trim() : "",
-        sdt: sdtNorm,
+        sdt: rec.sdtNorm,
         dia_chi: r.length > colDiaChi ? String(r[colDiaChi] || "").trim() : "",
-        dong_sp: r.length > colDongSp ? String(r[colDongSp] || "").trim().toUpperCase() : "",
+        dong_sp: rec.dongSp,
         mau_sac: mauRaw.toUpperCase(),
         size: r.length > colSize ? String(r[colSize] || "").trim() : "",
         gia_ban: giaBan,
@@ -3294,72 +3311,89 @@ function lay_danh_sach_don_landing_loi_mkt() {
         phi_ship_str: "",
         nen_tang: "LANDING PAGE",
         sale: "",
-        mkt: mktTdNorm || mktTdRaw || "CHƯA RÕ",
-        mkt_raw: mktTdRaw,
+        mkt: rec.mktNorm || rec.mktRaw || "CHƯA RÕ",
+        mkt_raw: rec.mktRaw,
         trang_thai: "CHƯA VÀO BẢNG TH",
         so_luong: "1",
         so_luong_num: 1,
         ghi_chu: ghiChuSale ? `Chưa vào bảng TH (${ghiChuSale})` : "Chưa điền vào bảng Đơn Tổng Hợp",
       });
-    } else {
-      for (const mRow of matchedTh) {
-        if (addedThRowNums.has(mRow.row_num)) continue;
-        const mktThNorm = chuan_hoa_mkt_so_sanh(mRow.mkt);
-        if (!mktThNorm) {
-          addedThRowNums.add(mRow.row_num);
-          results.push({
-            ...mRow,
-            mkt: mktTdNorm ? `CHƯA ĐIỀN (Đúng: ${mktTdNorm})` : "CHƯA ĐIỀN MKT",
-            trang_thai: mRow.trang_thai || "CHƯA ĐIỀN MKT",
-            ghi_chu: [mRow.ghi_chu, mktTdNorm ? `MKT đúng: ${mktTdNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
-          });
-        } else if (mktTdNorm && mktThNorm !== mktTdNorm) {
-          addedThRowNums.add(mRow.row_num);
-          results.push({
-            ...mRow,
-            mkt: `${mRow.mkt} (Đúng: ${mktTdNorm})`,
-            trang_thai: mRow.trang_thai ? `${mRow.trang_thai} • SAI MKT` : "SAI MKT",
-            ghi_chu: [mRow.ghi_chu, `Sai MKT (Tổng đơn: ${mktTdNorm})`].filter(Boolean).join(" • "),
-          });
-        }
+      continue;
+    }
+
+    // Nếu trong cửa sổ ngày đã có dòng khớp đúng tên MKT thì đơn này hợp lệ
+    const exactMatched = candidatesInWindow.filter((o) => {
+      const mktThNorm = chuan_hoa_mkt_so_sanh(o.mkt);
+      return rec.mktNorm ? mktThNorm === rec.mktNorm : Boolean(mktThNorm);
+    });
+    if (exactMatched.length > 0) {
+      exactMatched.forEach((o) => matchedValidThRowNums.add(o.row_num));
+      continue;
+    }
+
+    for (const mRow of candidatesInWindow) {
+      if (addedThRowNums.has(mRow.row_num) || matchedValidThRowNums.has(mRow.row_num)) continue;
+      const mktThNorm = chuan_hoa_mkt_so_sanh(mRow.mkt);
+      if (!mktThNorm) {
+        addedThRowNums.add(mRow.row_num);
+        results.push({
+          ...mRow,
+          mkt: rec.mktNorm ? `CHƯA ĐIỀN (Đúng: ${rec.mktNorm})` : "CHƯA ĐIỀN MKT",
+          trang_thai: mRow.trang_thai || "CHƯA ĐIỀN MKT",
+          ghi_chu: [mRow.ghi_chu, rec.mktNorm ? `MKT đúng: ${rec.mktNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
+        });
+      } else if (rec.mktNorm && mktThNorm !== rec.mktNorm) {
+        addedThRowNums.add(mRow.row_num);
+        results.push({
+          ...mRow,
+          mkt: `${mRow.mkt} (Đúng: ${rec.mktNorm})`,
+          trang_thai: mRow.trang_thai ? `${mRow.trang_thai} • SAI MKT` : "SAI MKT",
+          ghi_chu: [mRow.ghi_chu, `Sai MKT (Tổng đơn: ${rec.mktNorm})`].filter(Boolean).join(" • "),
+        });
       }
     }
   }
 
-  // Kiểm tra thêm các dòng trong ĐƠN TỔNG HỢP có Nền tảng LANDING PAGE (hoặc khớp SĐT bên Tổng đơn) mà để trống / sai MKT
+  // Kiểm tra thêm các dòng trong ĐƠN TỔNG HỢP có Nền tảng LANDING PAGE mà để trống / sai MKT
   for (const o of thList) {
-    if (addedThRowNums.has(o.row_num)) continue;
+    if (addedThRowNums.has(o.row_num) || matchedValidThRowNums.has(o.row_num)) continue;
     const hasCust = Boolean(o.ma_van_don || o.ho_ten || o.sdt || o.dia_chi);
     if (!hasCust) continue;
 
     const ntUpper = String(o.nen_tang || "").trim().toUpperCase();
     const sdtNorm = chuan_hoa_sdt_so_sanh(o.sdt);
-    const tdInfo = sdtNorm ? tdMktBySdt.get(sdtNorm) : null;
-    const isLandingRow = ntUpper.includes("LANDING") || (!ntUpper && Boolean(tdInfo));
+    const oYmd = parse_order_ymd(o);
+    const allTdForSdt = sdtNorm ? (tdRecordsBySdt.get(sdtNorm) || []) : [];
+    const tdInWindow = allTdForSdt
+      .filter((rec) => {
+        const diff = getDiffDays(oYmd, rec.ymd);
+        return diff === null || diff <= 2;
+      })
+      .sort((a, b) => (getDiffDays(oYmd, a.ymd) ?? 999) - (getDiffDays(oYmd, b.ymd) ?? 999));
+
+    const isLandingRow = ntUpper.includes("LANDING") || (!ntUpper && tdInWindow.length > 0);
     if (!isLandingRow) continue;
 
+    const closestWithMkt = tdInWindow.find((rec) => Boolean(rec.mktNorm)) || null;
     const mktThNorm = chuan_hoa_mkt_so_sanh(o.mkt);
+
     if (!mktThNorm) {
       addedThRowNums.add(o.row_num);
       results.push({
         ...o,
-        mkt: tdInfo?.mktNorm ? `CHƯA ĐIỀN (Đúng: ${tdInfo.mktNorm})` : "CHƯA ĐIỀN MKT",
+        mkt: closestWithMkt ? `CHƯA ĐIỀN (Đúng: ${closestWithMkt.mktNorm})` : "CHƯA ĐIỀN MKT",
         trang_thai: o.trang_thai || "CHƯA ĐIỀN MKT",
-        ghi_chu: [o.ghi_chu, tdInfo?.mktNorm ? `MKT đúng: ${tdInfo.mktNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
+        ghi_chu: [o.ghi_chu, closestWithMkt ? `MKT đúng: ${closestWithMkt.mktNorm}` : "Chưa điền MKT"].filter(Boolean).join(" • "),
       });
-    } else if (tdInfo?.mktNorm && mktThNorm !== tdInfo.mktNorm) {
-      const oYmd = parse_order_ymd(o);
-      const samePeriod =
-        !oYmd ||
-        !tdInfo.ymd ||
-        Math.abs(parse_ymd_date(oYmd).getTime() - parse_ymd_date(tdInfo.ymd).getTime()) / 86400000 <= 5;
-      if (samePeriod) {
+    } else if (tdInWindow.some((rec) => Boolean(rec.mktNorm))) {
+      const hasAnyMatchingMkt = tdInWindow.some((rec) => rec.mktNorm === mktThNorm);
+      if (!hasAnyMatchingMkt && closestWithMkt) {
         addedThRowNums.add(o.row_num);
         results.push({
           ...o,
-          mkt: `${o.mkt} (Đúng: ${tdInfo.mktNorm})`,
+          mkt: `${o.mkt} (Đúng: ${closestWithMkt.mktNorm})`,
           trang_thai: o.trang_thai ? `${o.trang_thai} • SAI MKT` : "SAI MKT",
-          ghi_chu: [o.ghi_chu, `Sai MKT (Tổng đơn: ${tdInfo.mktNorm})`].filter(Boolean).join(" • "),
+          ghi_chu: [o.ghi_chu, `Sai MKT (Tổng đơn: ${closestWithMkt.mktNorm})`].filter(Boolean).join(" • "),
         });
       }
     }
