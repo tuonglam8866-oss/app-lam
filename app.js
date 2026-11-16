@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.204";
+const APP_FRONTEND_VERSION = "8.6.205";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -698,6 +698,7 @@ function show_auth_lock_screen() {
   const appContainer = document.getElementById("appContainer");
   const eyeOpen = document.getElementById("eyeIconOpen");
   const eyeClosed = document.getElementById("eyeIconClosed");
+  document.documentElement.classList.remove("app-pre-unlocked");
   if (appContainer) appContainer.classList.add("hidden");
   if (errMsg) errMsg.classList.add("hidden");
   if (pwdInput) {
@@ -741,9 +742,11 @@ function unlock_app() {
   if (lockScreen) lockScreen.classList.add("hidden");
   if (appContainer) appContainer.classList.remove("hidden");
   _shouldAnimateOpeningCards = true;
-  document.body.classList.remove("app-opening-ready");
-  void document.body.offsetWidth;
-  document.body.classList.add("app-opening-ready");
+  if (!document.documentElement.classList.contains("app-pre-unlocked")) {
+    document.body.classList.remove("app-opening-ready");
+    void document.body.offsetWidth;
+    document.body.classList.add("app-opening-ready");
+  }
 }
 
 const KNOWN_CODES_DEFAULT = [
