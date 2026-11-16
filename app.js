@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.138";
+const APP_FRONTEND_VERSION = "8.6.139";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1883,15 +1883,13 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
     const diaChi = r.length > 4 ? String(r[4] || "").trim() : "";
     const dongSp = r.length > 5 ? String(r[5] || "").trim() : "";
     const giaBanVal = r.length > 8 ? parse_gia_tien(r[8]) : 0;
-    const trangThaiRaw = r.length > 13 ? String(r[13] || "").trim() : "";
 
-    const hasCustomerInfo = Boolean(maVanDon || hoTen || sdtRaw || diaChi);
-    const hasOrderItemInfo = Boolean(dongSp || trangThaiRaw || giaBanVal > 0);
-
-    // Bỏ qua các dòng mẫu trống ở cuối Sheet (chỉ có sẵn ngày, chưa có khách lẫn SP/giá/trạng thái)
-    if (!hasCustomerInfo && !hasOrderItemInfo) {
+    // Bỏ qua các dòng không có sản phẩm và không có giá bán (dòng mẫu trống chỉ điền sẵn ngày/nền tảng/trạng thái)
+    if (!dongSp && giaBanVal <= 0) {
       continue;
     }
+
+    const hasCustomerInfo = Boolean(maVanDon || hoTen || sdtRaw || diaChi);
 
     const mapped = map_sheet_row_a_to_p(r, i + 1, null);
     if (hasCustomerInfo) {
@@ -3709,7 +3707,7 @@ function hien_thi_bang_loc_don_tong_hop() {
 
   if (searchInput) {
     searchInput.value = "";
-    searchInput.placeholder = "🔍 Tìm tên, SĐT, mã vận đơn, địa chỉ, ghi chú...";
+    searchInput.placeholder = "🔍 Tìm kiếm";
   }
   if (clearBtn) clearBtn.classList.add("hidden");
 
@@ -3797,7 +3795,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
 
   if (searchInput) {
     searchInput.value = "";
-    searchInput.placeholder = "🔍 Tìm tên, SĐT, mã vận đơn, địa chỉ...";
+    searchInput.placeholder = "🔍 Tìm kiếm";
   }
   if (clearBtn) clearBtn.classList.add("hidden");
 

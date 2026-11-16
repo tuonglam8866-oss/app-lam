@@ -1,25 +1,25 @@
 {
-    "version":  "8.6.138",
+    "version":  "8.6.139",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "6e9cf232cf6ce427c894a70a9c06628be5db0cd5f3d8facde38fc70339f32e7b",
-    "index.html_sha256":  "9c8c60c0157ffde0883e8211c31a9687672bd2b2386179fcb6f942ffc94ba72b",
-    "styles.css_sha256":  "46ddd07bf96c7a9334cd8412d16d8644226b17337f53cb41659449bdd6f83afa",
-    "app.js_sha256":  "65ad6f0a626cfd2775adb0250302e67efbd712d300a39fcf6112320b12bad1a9",
+    "exe_sha256":  "ef790733ee15e8a47d9201165a485bfd84cec6c473160f7128204e3eec81fb62",
+    "index.html_sha256":  "0c0c63f7027a89fc22157aaa9e539ecf32890d25f3575421ac28f91498218a9c",
+    "styles.css_sha256":  "d64c9f3a0e326ff9f713d45dd4193bf89ab1e7aa2f9fe114a89fbccd0746c5f1",
+    "app.js_sha256":  "36889a5f7264e48e755d18904779bdb033491a0c360384c2068a89908225531f",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "6e9cf232cf6ce427c894a70a9c06628be5db0cd5f3d8facde38fc70339f32e7b",
+                                     "sha256":  "ef790733ee15e8a47d9201165a485bfd84cec6c473160f7128204e3eec81fb62",
                                      "size":  452096
                                  },
                   "app.js":  {
-                                 "sha256":  "65ad6f0a626cfd2775adb0250302e67efbd712d300a39fcf6112320b12bad1a9",
-                                 "size":  212495
+                                 "sha256":  "36889a5f7264e48e755d18904779bdb033491a0c360384c2068a89908225531f",
+                                 "size":  212265
                              },
                   "index.html":  {
-                                     "sha256":  "9c8c60c0157ffde0883e8211c31a9687672bd2b2386179fcb6f942ffc94ba72b",
-                                     "size":  33390
+                                     "sha256":  "0c0c63f7027a89fc22157aaa9e539ecf32890d25f3575421ac28f91498218a9c",
+                                     "size":  33356
                                  },
                   "styles.css":  {
-                                     "sha256":  "46ddd07bf96c7a9334cd8412d16d8644226b17337f53cb41659449bdd6f83afa",
+                                     "sha256":  "d64c9f3a0e326ff9f713d45dd4193bf89ab1e7aa2f9fe114a89fbccd0746c5f1",
                                      "size":  98580
                                  }
               }

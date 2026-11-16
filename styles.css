@@ -2709,7 +2709,7 @@ input::-ms-clear {
 }
 
 .od-search-input {
-  width: 235px;
+  width: 155px;
   height: 36px;
   padding: 0 32px 0 14px;
   font-size: 13px;
@@ -2726,7 +2726,7 @@ input::-ms-clear {
 .od-search-input:focus {
   border-color: #8C5D36;
   box-shadow: 0 0 0 3px rgba(140, 93, 54, 0.18);
-  width: 265px;
+  width: 215px;
   background: #FFFFFF;
 }
 
