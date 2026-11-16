@@ -169,14 +169,17 @@
       <div class="dashboard-columns" id="contentBox">
         <!-- Left Column: Marketer Report / Marketer Detail -->
         <section class="dashboard-col col-mkt" id="colMkt">
-          <div class="col-header-row">
-            <div class="cozy-header-card section-header-card" id="headerMktCard">
-              <span class="section-icon" id="headerMktIcon">🏆</span>
-              <span id="headerMktText">BÁO CÁO MKT (Chuột phải Copy CP)</span>
+          <div class="col-sticky-top" id="colMktStickyTop">
+            <div class="col-header-row">
+              <div class="cozy-header-card section-header-card" id="headerMktCard">
+                <span class="section-icon" id="headerMktIcon">🏆</span>
+                <span id="headerMktText">BÁO CÁO MKT (Chuột phải Copy CP)</span>
+              </div>
+              <button type="button" id="btnBackMkt" class="rounded-btn btn-default btn-back hidden">
+                <span id="btnBackMktText">← Quay lại</span>
+              </button>
             </div>
-            <button type="button" id="btnBackMkt" class="rounded-btn btn-default btn-back hidden">
-              <span id="btnBackMktText">← Quay lại</span>
-            </button>
+            <div id="mktDetailBannerSlot" class="mkt-detail-banner-slot hidden"></div>
           </div>
           <div class="cards-list" id="containerMkt">
             <!-- MKT cards or MKT detail SP cards rendered here -->

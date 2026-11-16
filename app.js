@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.188";
+const APP_FRONTEND_VERSION = "8.6.189";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -4784,13 +4784,20 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   render_closing_rate_card(tinh_ty_le_chot_theo_ngay(start_str, end_str));
 
   // 2. Cột MKT (Danh sách hoặc Chi tiết)
+  const colMkt = document.getElementById("colMkt");
   const containerMkt = document.getElementById("containerMkt");
+  const mktDetailBannerSlot = document.getElementById("mktDetailBannerSlot");
   const headerMktText = document.getElementById("headerMktText");
   const headerMktIcon = document.getElementById("headerMktIcon");
   const btnBackMkt = document.getElementById("btnBackMkt");
 
   function ve_danh_sach_top_mkt() {
     current_mkt_detail = null;
+    if (colMkt) colMkt.classList.remove("is-mkt-detail");
+    if (mktDetailBannerSlot) {
+      mktDetailBannerSlot.innerHTML = "";
+      mktDetailBannerSlot.classList.add("hidden");
+    }
     btnBackMkt.classList.add("hidden");
     if (headerMktIcon) headerMktIcon.textContent = "🏆";
     headerMktText.textContent = dict.mktReportHeader;
@@ -4863,6 +4870,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
 
   function xem_chi_tiet_mkt_inline(ten_mkt) {
     current_mkt_detail = ten_mkt;
+    if (colMkt) colMkt.classList.add("is-mkt-detail");
     btnBackMkt.classList.remove("hidden");
     btnBackMkt.onclick = ve_danh_sach_top_mkt;
     if (headerMktIcon) headerMktIcon.textContent = "📊";
@@ -4880,7 +4888,13 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     banner.querySelector("button").addEventListener("click", () => {
       hien_thi_bang_don_hang_chi_tiet(ten_mkt, null);
     });
-    containerMkt.appendChild(banner);
+    if (mktDetailBannerSlot) {
+      mktDetailBannerSlot.innerHTML = "";
+      mktDetailBannerSlot.appendChild(banner);
+      mktDetailBannerSlot.classList.remove("hidden");
+    } else {
+      containerMkt.appendChild(banner);
+    }
 
     const chi_tiet_fb = fb_chi_tiet_map[ten_mkt] || {};
     const don_cua_mkt = stats_mkt_sp_don[ten_mkt] || {};
