@@ -4719,9 +4719,9 @@ input::-ms-clear {
 }
 
 /* =========================================================
-   v8.6.204: iOS-style Spring Unlock & Staggered Card Cascade
+   v8.6.207: Unified Apple-style Spring Opening & Zero Layout Shift
    ========================================================= */
-/* Skeleton placeholder cards inside empty #containerMkt / #listSp before data arrives */
+/* Skeleton placeholder cards inside empty #badgeHolder / #containerMkt / #listSp */
 .skeleton-stack {
   display: flex;
   flex-direction: column;
@@ -4730,18 +4730,26 @@ input::-ms-clear {
 }
 
 .skeleton-card {
-  padding: 16px 18px;
+  min-height: 98px;
+  padding: 16px 20px;
   border-radius: 16px;
-  background: rgba(255, 253, 249, 0.85);
-  border: 1px solid rgba(200, 117, 51, 0.14);
+  background: rgba(255, 253, 249, 0.88);
+  border: 1.5px solid rgba(200, 117, 51, 0.14);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: center;
+  gap: 11px;
 }
 
 [data-theme="dark"] .skeleton-card {
-  background: rgba(48, 34, 26, 0.78);
+  background: rgba(44, 32, 26, 0.85);
   border-color: rgba(200, 117, 51, 0.18);
+}
+
+.skeleton-company-card {
+  justify-content: center;
+  gap: 14px;
+  cursor: default;
 }
 
 .skeleton-line {
@@ -4749,7 +4757,7 @@ input::-ms-clear {
   border-radius: 999px;
   background: linear-gradient(90deg,
     rgba(200, 117, 51, 0.08) 25%,
-    rgba(200, 117, 51, 0.2) 50%,
+    rgba(200, 117, 51, 0.19) 50%,
     rgba(200, 117, 51, 0.08) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.45s ease-in-out infinite;
@@ -4773,56 +4781,64 @@ input::-ms-clear {
 .skeleton-w-80 { width: 80%; }
 .skeleton-w-85 { width: 85%; }
 
-/* iPhone-style spring cascade when unlock_app() opens the dashboard */
+/* Keep container invisible cleanly while waiting up to ~450ms for cache render */
+body.app-awaiting-reveal #appContainer {
+  opacity: 0;
+}
+
+/* During background sync re-render, update numbers silently without replaying card entrance */
+#appContainer.is-silent-rerender .cozy-card,
+body:not(.app-opening-ready) .cozy-card {
+  animation: none !important;
+}
+
+/* Unified GPU-composited Apple Expo cascade when dashboard reveals */
 body.app-opening-ready .header-left-group {
-  animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.02s both;
+  animation: apple-glide-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0ms both;
 }
 
 body.app-opening-ready .header-right-cards {
-  animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.07s both;
+  animation: apple-glide-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.035s both;
 }
 
 body.app-opening-ready .toolbar-left {
-  animation: ios-spring-pop 0.46s cubic-bezier(0.18, 1.15, 0.32, 1) 0.11s both;
+  animation: apple-glide-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
 
 body.app-opening-ready .toolbar-right {
-  animation: ios-spring-pop 0.46s cubic-bezier(0.18, 1.15, 0.32, 1) 0.14s both;
+  animation: apple-glide-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.085s both;
 }
 
-body.app-opening-ready #badgeHolder {
-  animation: ios-spring-pop 0.48s cubic-bezier(0.18, 1.15, 0.32, 1) 0.17s both;
+body.app-opening-ready .col-header-row {
+  animation: apple-glide-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.09s both;
 }
 
-body.app-opening-ready #colMkt {
-  animation: ios-spring-pop 0.52s cubic-bezier(0.18, 1.14, 0.32, 1) 0.2s both;
+/* Unified card cascade: company badge (delay ~60ms) -> MKT & Top 10 SP cards (85ms + index*36ms) */
+body.app-opening-ready .cozy-card {
+  animation: apple-card-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(60ms + var(--card-index, 0) * 34ms);
+  backface-visibility: hidden;
 }
 
-body.app-opening-ready #colSp {
-  animation: ios-spring-pop 0.52s cubic-bezier(0.18, 1.14, 0.32, 1) 0.25s both;
-}
-
-/* Individual cards inside #containerMkt & #listSp pop out one by one like iOS unlock */
-.ios-card-pop {
-  animation: ios-card-spring 0.46s cubic-bezier(0.18, 1.16, 0.32, 1) calc(var(--card-idx, 0) * 34ms) both;
-  will-change: transform, opacity;
+body.app-opening-ready .skeleton-company-card {
+  animation: apple-card-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
 
 body.app-opening-ready .skeleton-card:nth-child(1) {
-  animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.22s both;
+  animation: apple-card-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
 
 body.app-opening-ready .skeleton-card:nth-child(2) {
-  animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.27s both;
+  animation: apple-card-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both;
 }
 
 body.app-opening-ready .skeleton-card:nth-child(3) {
-  animation: ios-card-spring 0.44s cubic-bezier(0.18, 1.16, 0.32, 1) 0.32s both;
+  animation: apple-card-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
 }
 
 /* Upgraded Loading Overlay modal feel */
 .loading-overlay:not(.hidden) .status-box {
-  animation: ios-spring-pop 0.32s cubic-bezier(0.18, 1.15, 0.32, 1) both;
+  animation: apple-glide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .loading-overlay .spinner-ring {
@@ -4830,25 +4846,25 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   border-right-color: rgba(200, 117, 51, 0.35);
 }
 
-@keyframes ios-spring-pop {
+@keyframes apple-glide-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.92);
+    transform: translate3d(0, 10px, 0) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
-@keyframes ios-card-spring {
+@keyframes apple-card-in {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.88);
+    transform: translate3d(0, 16px, 0) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -4859,15 +4875,14 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 
 @media (prefers-reduced-motion: reduce) {
   .skeleton-line,
-  .ios-card-pop,
+  body.app-opening-ready .cozy-card,
   body.app-opening-ready .header-left-group,
   body.app-opening-ready .header-right-cards,
   body.app-opening-ready .toolbar-left,
   body.app-opening-ready .toolbar-right,
-  body.app-opening-ready #badgeHolder,
-  body.app-opening-ready #colMkt,
-  body.app-opening-ready #colSp,
+  body.app-opening-ready .col-header-row,
   body.app-opening-ready .skeleton-card,
+  body.app-opening-ready .skeleton-company-card,
   .loading-overlay:not(.hidden) .status-box {
     animation: none !important;
     transition: none !important;

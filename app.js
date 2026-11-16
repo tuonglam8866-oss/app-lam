@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.206";
+const APP_FRONTEND_VERSION = "8.6.207";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -715,25 +715,21 @@ function show_auth_lock_screen() {
   }
 }
 
-let _shouldAnimateOpeningCards = false;
+let _openingRevealDone = false;
+let _openingRevealFailsafe = null;
 
-function animate_dashboard_cards_pop() {
-  if (!_shouldAnimateOpeningCards) return;
-  _shouldAnimateOpeningCards = false;
-  const lists = ["containerMkt", "listSp"];
-  lists.forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const children = el.children;
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      if (!child || child.classList.contains("skeleton-stack")) continue;
-      child.style.setProperty("--card-idx", String(Math.min(i, 12)));
-      child.classList.remove("ios-card-pop");
-      void child.offsetWidth;
-      child.classList.add("ios-card-pop");
-    }
-  });
+function trigger_opening_reveal() {
+  if (_openingRevealDone) return;
+  _openingRevealDone = true;
+  if (_openingRevealFailsafe) {
+    clearTimeout(_openingRevealFailsafe);
+    _openingRevealFailsafe = null;
+  }
+  document.body.classList.remove("app-awaiting-reveal");
+  document.body.classList.remove("app-opening-ready");
+  void document.body.offsetWidth;
+  document.body.classList.add("app-opening-ready");
+  requestAnimationFrame(() => notify_native_ui_ready());
 }
 
 let _nativeUiReadySent = false;
@@ -747,16 +743,22 @@ function notify_native_ui_ready() {
   } catch (e) {}
 }
 
-function unlock_app() {
+function unlock_app(deferReveal) {
   const lockScreen = document.getElementById("authLockScreen");
   const appContainer = document.getElementById("appContainer");
   if (lockScreen) lockScreen.classList.add("hidden");
   if (appContainer) appContainer.classList.remove("hidden");
-  _shouldAnimateOpeningCards = true;
-  document.body.classList.remove("app-opening-ready");
-  void document.body.offsetWidth;
-  document.body.classList.add("app-opening-ready");
-  requestAnimationFrame(() => notify_native_ui_ready());
+
+  if (deferReveal && !_openingRevealDone) {
+    document.body.classList.add("app-awaiting-reveal");
+    if (_openingRevealFailsafe) clearTimeout(_openingRevealFailsafe);
+    // Nếu máy mới chưa có cache, sau 420ms vẫn hiện skeleton đủ khung (kèm khung Tổng Công Ty) để tránh đợi lâu
+    _openingRevealFailsafe = setTimeout(() => {
+      trigger_opening_reveal();
+    }, 420);
+  } else {
+    trigger_opening_reveal();
+  }
 }
 
 const KNOWN_CODES_DEFAULT = [
@@ -1344,8 +1346,8 @@ function trigger_confetti_burst(customX, customY) {
 function animate_number(el, targetVal, formatter, duration = 560) {
   if (!el) return;
   const target = Number(targetVal) || 0;
-  if (target === 0) {
-    el.textContent = formatter(0);
+  if (target === 0 || window._silentDashboardRerender) {
+    el.textContent = formatter(target);
     return;
   }
   const startTime = performance.now();
@@ -2104,6 +2106,35 @@ function doc_cache_thong_ke() {
     if (!raw) return null;
     const obj = JSON.parse(raw);
     if (obj && Array.isArray(obj.rows) && obj.rows.length > 0) return obj.rows;
+  } catch (e) {}
+  return null;
+}
+
+const CACHE_KEY_FB_LAST = "applam_cache_fb_last_v1";
+
+function luu_cache_fb_last(start_str, end_str, fbRes) {
+  try {
+    if (!fbRes || !fbRes.local_chi_tiet || !fbRes.local_tong) return;
+    localStorage.setItem(
+      CACHE_KEY_FB_LAST,
+      JSON.stringify({
+        k: `${start_str}|${end_str}`,
+        t: Date.now(),
+        local_chi_tiet: fbRes.local_chi_tiet,
+        local_tong: fbRes.local_tong,
+      })
+    );
+  } catch (e) {}
+}
+
+function doc_cache_fb_last(start_str, end_str) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_FB_LAST);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (obj && obj.k === `${start_str}|${end_str}` && obj.local_chi_tiet && obj.local_tong) {
+      return { local_chi_tiet: obj.local_chi_tiet, local_tong: obj.local_tong };
+    }
   } catch (e) {}
   return null;
 }
@@ -6069,7 +6100,6 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   }
   const frameSp = document.getElementById("frameSp");
   if (frameSp) frameSp.classList.toggle("is-scrolled", listSp.scrollTop > 4);
-  animate_dashboard_cards_pop();
 }
 
 // ==============================================================
@@ -6146,24 +6176,56 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       ? Promise.resolve(cachedFbEntry.result)
       : quet_chi_phi_facebook_helper(current_start_date, current_end_date).then((res) => {
           fb_range_cache.set(fbCacheKey, { timeMs: Date.now(), result: res });
+          luu_cache_fb_last(current_start_date, current_end_date, res);
           return res;
         });
 
     let gsResult;
     let fbResult;
+    const appContainerEl = document.getElementById("appContainer");
+    const runSilentDashboardRender = () => {
+      if (appContainerEl) appContainerEl.classList.add("is-silent-rerender");
+      window._silentDashboardRerender = true;
+      try {
+        ve_noi_dung_dashboard(
+          current_start_date,
+          current_end_date,
+          cached_fb_chi_tiet,
+          cached_fb_tong
+        );
+      } finally {
+        window._silentDashboardRerender = false;
+        requestAnimationFrame(() => {
+          if (appContainerEl) appContainerEl.classList.remove("is-silent-rerender");
+        });
+      }
+    };
+
     if (softMode) {
       const sheetsPromise = tai_du_lieu_google_sheets();
-      fbResult = await fbPromise;
-      cached_fb_chi_tiet = fbResult.local_chi_tiet;
-      cached_fb_tong = fbResult.local_tong;
-      // Vẽ NGAY bằng dữ liệu đang có, ẩn màn hình chờ; phần Sheet mới sẽ vẽ lại khi tải xong
+      const instantFb =
+        (cachedFbEntry && cachedFbEntry.result) ||
+        doc_cache_fb_last(current_start_date, current_end_date);
+      if (instantFb) {
+        cached_fb_chi_tiet = instantFb.local_chi_tiet;
+        cached_fb_tong = instantFb.local_tong;
+      }
+      // Vẽ NGAY ở khung hình đầu tiên bằng cache có sẵn trước khi mở cửa sổ -> Tổng Công Ty + 2 cột đồng bộ 100%, không nháy nhảy!
       ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
+      trigger_opening_reveal();
       if (loadingOverlay) loadingOverlay.classList.add("hidden");
       const lastSyncSoft = document.getElementById("lastSyncText");
       if (lastSyncSoft) lastSyncSoft.textContent = "⏳ Đang làm mới dữ liệu ngầm...";
+
+      fbResult = await fbPromise;
+      cached_fb_chi_tiet = fbResult.local_chi_tiet;
+      cached_fb_tong = fbResult.local_tong;
+      runSilentDashboardRender();
+
       gsResult = await sheetsPromise;
       sheetRefreshOk = Boolean(gsResult);
       gsSuccess = Boolean(data_hien_tai && data_hien_tai.length > 0);
+      runSilentDashboardRender();
     } else {
       [gsResult, fbResult] = await Promise.all([
         canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(),
@@ -6172,14 +6234,14 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
+      ve_noi_dung_dashboard(
+        current_start_date,
+        current_end_date,
+        cached_fb_chi_tiet,
+        cached_fb_tong
+      );
+      trigger_opening_reveal();
     }
-
-    ve_noi_dung_dashboard(
-      current_start_date,
-      current_end_date,
-      cached_fb_chi_tiet,
-      cached_fb_tong
-    );
 
     if (!canReuseSheets && sheetRefreshOk) {
       const now = new Date();
@@ -7740,7 +7802,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     show_auth_lock_screen();
     requestAnimationFrame(() => notify_native_ui_ready());
   } else {
-    unlock_app();
+    unlock_app(true);
     await tai_va_cap_nhat_theo_ngay();
   }
 
