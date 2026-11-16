@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.130";
+const APP_FRONTEND_VERSION = "8.6.131";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2779,7 +2779,7 @@ function toggle_avg_call_time_popup(anchorEl) {
   pop.classList.remove("hidden");
 
   const rect = anchorEl.getBoundingClientRect();
-  const w = Math.min(280, window.innerWidth - 24);
+  const w = Math.min(262, window.innerWidth - 24);
   let left = rect.right - w;
   if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
   if (left < 12) left = 12;
