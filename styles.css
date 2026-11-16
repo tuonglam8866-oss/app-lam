@@ -4786,10 +4786,14 @@ body.app-awaiting-reveal #appContainer {
   opacity: 0;
 }
 
-/* During background sync re-render, update numbers silently without replaying card entrance */
+/* During background sync re-render, update numbers & share bars silently without replaying animations */
 #appContainer.is-silent-rerender .cozy-card,
 body:not(.app-opening-ready) .cozy-card {
   animation: none !important;
+}
+
+#appContainer.is-silent-rerender .card-share-bar-fill {
+  transition: none !important;
 }
 
 /* Unified GPU-composited Apple Expo cascade when dashboard reveals */

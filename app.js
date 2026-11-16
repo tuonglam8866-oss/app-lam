@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.208";
+const APP_FRONTEND_VERSION = "8.6.209";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2059,7 +2059,7 @@ function tai_du_lieu_thong_bao_ngam(force = false) {
         try {
           render_closing_rate_card(tinh_ty_le_chot_theo_ngay(current_start_date, current_end_date));
           if (Array.isArray(data_hien_tai) && data_hien_tai.length > 0 && cached_fb_chi_tiet && cached_fb_tong) {
-            ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
+            run_silent_dashboard_rerender();
           }
           const odModal = document.getElementById("orderDetailModal");
           if (odModal && !odModal.classList.contains("hidden") && current_od_mode === "all_table") {
@@ -3907,13 +3907,17 @@ function create_mkt_table_card(
     maxCount > 0 ? Math.min(100, Math.round((count / maxCount) * 100)) : 0;
   const barTrack = document.createElement("div");
   barTrack.className = "card-share-bar-track";
-  barTrack.innerHTML = `<div class="card-share-bar-fill" style="width: 0%; background: ${barColor}"></div>`;
+  const isSilentBar = Boolean(window._silentDashboardRerender);
+  const initWidth = isSilentBar ? sharePct : 0;
+  barTrack.innerHTML = `<div class="card-share-bar-fill" style="width: ${initWidth}%; background: ${barColor}"></div>`;
   card.appendChild(barTrack);
 
-  requestAnimationFrame(() => {
-    const fill = barTrack.querySelector(".card-share-bar-fill");
-    if (fill) fill.style.width = `${sharePct}%`;
-  });
+  if (!isSilentBar) {
+    requestAnimationFrame(() => {
+      const fill = barTrack.querySelector(".card-share-bar-fill");
+      if (fill) fill.style.width = `${sharePct}%`;
+    });
+  }
 
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
@@ -5805,13 +5809,17 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
     maxCount > 0 ? Math.min(100, Math.round((count / maxCount) * 100)) : 0;
   const barTrack = document.createElement("div");
   barTrack.className = "card-share-bar-track";
-  barTrack.innerHTML = `<div class="card-share-bar-fill" style="width: 0%; background: ${barColor}"></div>`;
+  const isSilentBar = Boolean(window._silentDashboardRerender);
+  const initWidth = isSilentBar ? sharePct : 0;
+  barTrack.innerHTML = `<div class="card-share-bar-fill" style="width: ${initWidth}%; background: ${barColor}"></div>`;
   card.appendChild(barTrack);
 
-  requestAnimationFrame(() => {
-    const fill = barTrack.querySelector(".card-share-bar-fill");
-    if (fill) fill.style.width = `${sharePct}%`;
-  });
+  if (!isSilentBar) {
+    requestAnimationFrame(() => {
+      const fill = barTrack.querySelector(".card-share-bar-fill");
+      if (fill) fill.style.width = `${sharePct}%`;
+    });
+  }
 
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
@@ -6113,6 +6121,25 @@ const fb_range_cache = new Map();
 let _isFirstDashboardSync = true;
 let _isDashboardSyncRunning = false;
 
+function run_silent_dashboard_rerender() {
+  const appContainerEl = document.getElementById("appContainer");
+  if (appContainerEl) appContainerEl.classList.add("is-silent-rerender");
+  window._silentDashboardRerender = true;
+  try {
+    ve_noi_dung_dashboard(
+      current_start_date,
+      current_end_date,
+      cached_fb_chi_tiet,
+      cached_fb_tong
+    );
+  } finally {
+    window._silentDashboardRerender = false;
+    requestAnimationFrame(() => {
+      if (appContainerEl) appContainerEl.classList.remove("is-silent-rerender");
+    });
+  }
+}
+
 async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded = false) {
   const isStartupSync = _isFirstDashboardSync;
   _isFirstDashboardSync = false;
@@ -6188,24 +6215,6 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
 
     let gsResult;
     let fbResult;
-    const appContainerEl = document.getElementById("appContainer");
-    const runSilentDashboardRender = () => {
-      if (appContainerEl) appContainerEl.classList.add("is-silent-rerender");
-      window._silentDashboardRerender = true;
-      try {
-        ve_noi_dung_dashboard(
-          current_start_date,
-          current_end_date,
-          cached_fb_chi_tiet,
-          cached_fb_tong
-        );
-      } finally {
-        window._silentDashboardRerender = false;
-        requestAnimationFrame(() => {
-          if (appContainerEl) appContainerEl.classList.remove("is-silent-rerender");
-        });
-      }
-    };
 
     if (softMode) {
       const instantFb =
@@ -6233,12 +6242,12 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       fbResult = await fbPromise;
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
-      runSilentDashboardRender();
+      run_silent_dashboard_rerender();
 
       gsResult = await sheetsPromise;
       sheetRefreshOk = Boolean(gsResult);
       gsSuccess = Boolean(data_hien_tai && data_hien_tai.length > 0);
-      runSilentDashboardRender();
+      run_silent_dashboard_rerender();
     } else {
       const fbPromise = buildFbPromise();
       [gsResult, fbResult] = await Promise.all([
