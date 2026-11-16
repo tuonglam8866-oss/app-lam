@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.134";
+const APP_FRONTEND_VERSION = "8.6.135";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -51,6 +51,9 @@ const CSV_URL_THONG_KE_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SEC
 
 const CSV_URL_THONG_BAO = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=0`;
 const CSV_URL_THONG_BAO_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=0`;
+
+const CSV_URL_NGUON_TAG = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1400554532`;
+const CSV_URL_NGUON_TAG_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1400554532`;
 
 const FB_TOKEN_PROTECTED =
   "EBEYFxhqLA5jKj0KcGNBBmIBMCcTEQcGbBV1Gn0FA30jJS4DZxwfADwkNwVxemh1ByMDDT4ZFBo/agENdXNqWWIXKypnGw4FLQAHb2tqcV8hJyh/OgITLCwIBzRgAV5ZYx0ofGgQCiA5ESs9RHpxcwYALSFnMCEmNgsrOFpgU3AWBwsJMGQUCGUlBxVRaVxsFwlvOSUSDBIFMA4nd2pxDhcTLn0HOQcNDTwPCGRxdmwWJG16J2ZzJBEaNxBECAdaJB0yKAUXHwc=";
@@ -586,6 +589,7 @@ const I18N = {
 };
 
 const STORAGE_KEY_EXTRA_CODES = "applam_extra_sp_codes_v8618";
+const STORAGE_KEY_SHEET_CODES = "applam_sheet_sp_codes_v86135";
 const STORAGE_KEY_VOICE = "applam_bat_thong_bao_gtts_v8618";
 const STORAGE_KEY_POPUP = "applam_bat_popup_thong_bao_v8618";
 const STORAGE_KEY_FIREWORKS = "applam_bat_phao_hoa_v8618";
@@ -908,7 +912,14 @@ function doc_cau_hinh_tu_storage() {
         .map((s) => String(s).trim().toUpperCase())
         .filter(Boolean);
     }
-    KNOWN_CODES = Array.from(new Set([...KNOWN_CODES_DEFAULT, ...extraSp]));
+    const rawSheet = localStorage.getItem(STORAGE_KEY_SHEET_CODES);
+    let sheetSp = [];
+    if (rawSheet) {
+      sheetSp = JSON.parse(rawSheet)
+        .map((s) => String(s).trim().toUpperCase())
+        .filter(Boolean);
+    }
+    KNOWN_CODES = Array.from(new Set([...KNOWN_CODES_DEFAULT, ...sheetSp, ...extraSp]));
   } catch (e) {
     KNOWN_CODES = [...KNOWN_CODES_DEFAULT];
   }
@@ -1258,7 +1269,8 @@ function trich_xuat_ten_mau_thong_minh(raw_text) {
   const text_up = String(raw_text || "").trim().toUpperCase();
   if (!text_up) return "CHƯA XÁC ĐỊNH";
 
-  for (const code of KNOWN_CODES) {
+  const sortedCodes = [...KNOWN_CODES].sort((a, b) => b.length - a.length);
+  for (const code of sortedCodes) {
     if (text_up.includes(code)) return code;
   }
 
@@ -1489,8 +1501,43 @@ async function fetch_csv_with_fallback(primaryUrl, fallbackUrl, apiType) {
   return null;
 }
 
+let pending_nguon_tag_sync = null;
+
+async function dong_bo_ma_sp_tu_nguon_tag() {
+  try {
+    const rows = await fetch_csv_with_fallback(
+      CSV_URL_NGUON_TAG,
+      CSV_URL_NGUON_TAG_FALLBACK,
+      "nguon_tag"
+    );
+    if (!rows || rows.length === 0) return false;
+
+    const headerSet = new Set(["DÒNG SP", "DONG SP", "MÃ SP", "MA SP", "SẢN PHẨM", "SAN PHAM", "SP"]);
+    const sheetCodes = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r || r.length === 0) continue;
+      const val = String(r[0] || "").trim().toUpperCase();
+      if (!val || (i === 0 && headerSet.has(val)) || headerSet.has(val)) continue;
+      sheetCodes.push(val);
+    }
+
+    if (sheetCodes.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY_SHEET_CODES, JSON.stringify(sheetCodes));
+      } catch (e) {}
+      doc_cau_hinh_tu_storage();
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function tai_du_lieu_google_sheets() {
   doc_cau_hinh_tu_storage();
+
+  pending_nguon_tag_sync = dong_bo_ma_sp_tu_nguon_tag();
 
   // Tải ngầm bảng thông báo/tỉ lệ chốt song song, hoàn toàn không chặn màn hình tải
   fetch_csv_with_fallback(
@@ -1506,12 +1553,15 @@ async function tai_du_lieu_google_sheets() {
     }
   }).catch(() => {});
 
-  // Giao diện chính chỉ cần chờ bảng thống kê (Doanh số, Đơn, MKT - cực nhẹ, tải dưới 0.5s)
-  const rowsThongKe = await fetch_csv_with_fallback(
-    CSV_URL_THONG_KE,
-    CSV_URL_THONG_KE_FALLBACK,
-    "thong_ke"
-  );
+  // Giao diện chính chờ bảng thống kê và danh sách mã SP ở NGUỒN TAG song song
+  const [rowsThongKe] = await Promise.all([
+    fetch_csv_with_fallback(
+      CSV_URL_THONG_KE,
+      CSV_URL_THONG_KE_FALLBACK,
+      "thong_ke"
+    ),
+    pending_nguon_tag_sync,
+  ]);
   if (rowsThongKe && rowsThongKe.length > 0) {
     data_hien_tai = rowsThongKe;
     return true;
@@ -1541,6 +1591,8 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
     }
   }
 
+  const rawFbSpends = [];
+
   await Promise.all(
     uniqueAccounts.map(async (actId) => {
       let url =
@@ -1568,28 +1620,7 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
             const camp_name = String(item.campaign_name || "").trim();
             const spend = parseFloat(item.spend || 0.0);
             if (!spend || spend <= 0) continue;
-
-            const ten_mau = trich_xuat_ten_mau_thong_minh(camp_name);
-            const campUpper = camp_name.toUpperCase();
-            const campNoDau = bo_dau_tieng_viet(camp_name).toUpperCase();
-
-            let targetMkt = null;
-            if (actId === "act_1333165132087237") {
-              if (campNoDau.includes("DUNG")) {
-                targetMkt = "D\u0168NG";
-              } else if (campUpper.includes("LS")) {
-                targetMkt = "SAN";
-              }
-            } else {
-              const found = LIST_MKT_FB.find((m) => m.id === actId);
-              if (found) targetMkt = found.ten;
-            }
-
-            if (targetMkt && local_chi_tiet[targetMkt]) {
-              local_chi_tiet[targetMkt][ten_mau] =
-                (local_chi_tiet[targetMkt][ten_mau] || 0.0) + spend;
-              local_tong[targetMkt] += spend;
-            }
+            rawFbSpends.push({ actId, camp_name, spend });
           }
 
           if (res.paging && res.paging.next) {
@@ -1603,6 +1634,37 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
       }
     })
   );
+
+  // Đảm bảo đã đồng bộ danh sách mã SP từ tab NGUỒN TAG trước khi tách tên SP từ chiến dịch Ads
+  if (pending_nguon_tag_sync) {
+    try {
+      await pending_nguon_tag_sync;
+    } catch (e) {}
+  }
+
+  for (const { actId, camp_name, spend } of rawFbSpends) {
+    const ten_mau = trich_xuat_ten_mau_thong_minh(camp_name);
+    const campUpper = camp_name.toUpperCase();
+    const campNoDau = bo_dau_tieng_viet(camp_name).toUpperCase();
+
+    let targetMkt = null;
+    if (actId === "act_1333165132087237") {
+      if (campNoDau.includes("DUNG")) {
+        targetMkt = "D\u0168NG";
+      } else if (campUpper.includes("LS")) {
+        targetMkt = "SAN";
+      }
+    } else {
+      const found = LIST_MKT_FB.find((m) => m.id === actId);
+      if (found) targetMkt = found.ten;
+    }
+
+    if (targetMkt && local_chi_tiet[targetMkt]) {
+      local_chi_tiet[targetMkt][ten_mau] =
+        (local_chi_tiet[targetMkt][ten_mau] || 0.0) + spend;
+      local_tong[targetMkt] += spend;
+    }
+  }
 
   return { local_chi_tiet, local_tong };
 }
