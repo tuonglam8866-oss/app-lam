@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.199";
+const APP_FRONTEND_VERSION = "8.6.200";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -607,15 +607,63 @@ function sha256_fallback(ascii) {
   return result;
 }
 
+function sync_auth_session_file(hashVal) {
+  try {
+    if (!window.location.protocol.startsWith("http")) return;
+    fetch("/api/auth-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hash: hashVal || "" }),
+    }).catch(() => {});
+  } catch (e) {}
+}
+
 function is_app_authenticated() {
   try {
-    const token =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    return token === APP_AUTH_HASH;
+    const lsToken = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (lsToken && lsToken !== APP_AUTH_HASH) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+    const ssToken = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    if (ssToken && ssToken !== APP_AUTH_HASH) {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+    return lsToken === APP_AUTH_HASH || ssToken === APP_AUTH_HASH;
   } catch (e) {
     return false;
   }
+}
+
+async function check_persisted_auth_session() {
+  if (is_app_authenticated()) {
+    try {
+      if (localStorage.getItem(AUTH_STORAGE_KEY) === APP_AUTH_HASH) {
+        sync_auth_session_file(APP_AUTH_HASH);
+      }
+    } catch (e) {}
+    return true;
+  }
+  try {
+    if (!window.location.protocol.startsWith("http")) return false;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 1500);
+    const res = await fetch("/api/auth-session", { cache: "no-store", signal: ctrl.signal }).catch(() => null);
+    clearTimeout(t);
+    if (!res || !res.ok) return false;
+    const data = await res.json().catch(() => null);
+    const savedHash = String((data && data.hash) || "").trim().toLowerCase();
+    if (savedHash === APP_AUTH_HASH) {
+      try {
+        localStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
+      } catch (e) {}
+      return true;
+    }
+    if (savedHash) {
+      // Mật khẩu đã thay đổi ở bản mới -> xóa phiên cũ để yêu cầu đăng nhập lại
+      sync_auth_session_file("");
+    }
+  } catch (e) {}
+  return false;
 }
 
 function set_app_authenticated(remember) {
@@ -623,9 +671,11 @@ function set_app_authenticated(remember) {
     if (remember) {
       localStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      sync_auth_session_file(APP_AUTH_HASH);
     } else {
       sessionStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
       localStorage.removeItem(AUTH_STORAGE_KEY);
+      sync_auth_session_file("");
     }
   } catch (e) {}
 }
@@ -636,6 +686,7 @@ function lock_app() {
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem("app_lam_auth_token");
     sessionStorage.removeItem("app_lam_auth_token");
+    sync_auth_session_file("");
   } catch (e) {}
   show_auth_lock_screen();
 }
@@ -7545,8 +7596,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Kiểm tra trạng thái đăng nhập khi mở app
-  if (!is_app_authenticated()) {
+  // Kiểm tra trạng thái đăng nhập khi mở app (giữ phiên qua các lần cập nhật trừ khi đổi mật khẩu mới)
+  const isAuthed = await check_persisted_auth_session();
+  if (!isAuthed) {
     show_auth_lock_screen();
   } else {
     unlock_app();
