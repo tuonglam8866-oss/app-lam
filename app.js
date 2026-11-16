@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.198";
+const APP_FRONTEND_VERSION = "8.6.199";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1885,12 +1885,18 @@ async function fetch_csv_with_fallback(primaryUrl, fallbackUrl, apiType) {
   if (window.location.protocol.startsWith("http")) {
     urlsToTry.push(`/api/csv?type=${apiType}&t=${ts}`);
   }
-  urlsToTry.push(`${primaryUrl}&t=${ts}`, `${fallbackUrl}&t=${ts}`);
+  const seenRemote = new Set();
+  for (const rawU of [primaryUrl, fallbackUrl]) {
+    const cleanU = String(rawU || "").trim();
+    if (!cleanU || seenRemote.has(cleanU)) continue;
+    seenRemote.add(cleanU);
+    urlsToTry.push(`${cleanU}&t=${ts}`);
+  }
 
   for (const url of urlsToTry) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 60000);
+      const timer = setTimeout(() => controller.abort(), 45000);
       const res = await fetch(url, {
         cache: "no-store",
         signal: controller.signal,
@@ -7214,10 +7220,74 @@ window.addEventListener("DOMContentLoaded", async () => {
     await tai_du_lieu_thong_bao_ngam(false).catch(() => {});
   };
 
+  const resetQuickFilterBtnLabels = () => {
+    const b1 = document.getElementById("btnOdLandingMktCheck");
+    const b2 = document.getElementById("btnOdDupMktCheck");
+    if (b1) b1.textContent = "Lỗi vào đơn";
+    if (b2) b2.textContent = "Đơn trùng MKT";
+  };
+
+  const handleQuickCheckWithBgRefresh = async (modeKey) => {
+    const isLandingErr = modeKey === "landing_missing";
+    const isActive = isLandingErr ? od_only_landing_mkt_issue : od_only_dup_mkt;
+    if (!isActive) {
+      resetQuickFilterBtnLabels();
+      apply_od_filters_and_render(true);
+      return;
+    }
+
+    clearOtherQuickFilters(modeKey);
+    // Hiển thị ngay kết quả từ dữ liệu hiện có trong RAM, đồng thời cập nhật ngầm nếu thiếu hoặc cũ
+    apply_od_filters_and_render(true);
+
+    const needThongBao =
+      Boolean(thong_bao_fetch_promise) ||
+      !Array.isArray(data_tong_don_upyo) ||
+      data_tong_don_upyo.length === 0 ||
+      Date.now() - thong_bao_last_fetch_ms >= 120000;
+    const needPancake =
+      Boolean(pancake_fetch_promise) ||
+      !Array.isArray(data_pancake_orders) ||
+      data_pancake_orders.length === 0 ||
+      Date.now() - pancake_last_fetch_ms >= 120000;
+
+    if (!needThongBao && !needPancake) {
+      resetQuickFilterBtnLabels();
+      return;
+    }
+
+    const activeBtn = document.getElementById(isLandingErr ? "btnOdLandingMktCheck" : "btnOdDupMktCheck");
+    const defaultLabel = isLandingErr ? "Lỗi vào đơn" : "Đơn trùng MKT";
+    const hasNoDataYet =
+      !Array.isArray(data_tong_don_upyo) ||
+      data_tong_don_upyo.length === 0 ||
+      !Array.isArray(data_pancake_orders);
+    if (activeBtn && hasNoDataYet) {
+      activeBtn.textContent = "Đang tải...";
+    }
+
+    try {
+      const waitBg = Promise.all([
+        needThongBao ? ensureTongDonUpyoLoaded() : Promise.resolve(),
+        needPancake ? tai_du_lieu_pancake(false).catch(() => {}) : Promise.resolve(),
+      ]);
+      const failSafe = new Promise((resolve) => setTimeout(resolve, 45000));
+      await Promise.race([waitBg, failSafe]);
+    } finally {
+      if (activeBtn) activeBtn.textContent = defaultLabel;
+    }
+
+    const stillActive = isLandingErr ? od_only_landing_mkt_issue : od_only_dup_mkt;
+    if (stillActive) {
+      apply_od_filters_and_render(false);
+    }
+  };
+
   const clearOtherQuickFilters = (keepKey) => {
     if (keepKey !== "no_tracking") od_only_missing_tracking = false;
     if (keepKey !== "landing_missing") od_only_landing_mkt_issue = false;
     if (keepKey !== "dup_mkt") od_only_dup_mkt = false;
+    resetQuickFilterBtnLabels();
   };
 
   document.getElementById("btnOdNoTracking")?.addEventListener("click", (e) => {
@@ -7228,54 +7298,18 @@ window.addEventListener("DOMContentLoaded", async () => {
     apply_od_filters_and_render(true);
   });
 
-  document.getElementById("btnOdLandingMktCheck")?.addEventListener("click", async (e) => {
+  document.getElementById("btnOdLandingMktCheck")?.addEventListener("click", (e) => {
     e.stopPropagation();
     close_od_excel_filter();
     od_only_landing_mkt_issue = !od_only_landing_mkt_issue;
-    if (od_only_landing_mkt_issue) {
-      clearOtherQuickFilters("landing_missing");
-      const btnEl = e.currentTarget;
-      const origLabel = btnEl ? btnEl.textContent : "Lỗi vào đơn";
-      const needLoad =
-        Boolean(thong_bao_fetch_promise) ||
-        !Array.isArray(data_tong_don_upyo) ||
-        data_tong_don_upyo.length === 0 ||
-        Date.now() - thong_bao_last_fetch_ms >= 120000 ||
-        !Array.isArray(data_pancake_orders) ||
-        Date.now() - pancake_last_fetch_ms >= 120000;
-      if (btnEl && needLoad) btnEl.textContent = "Đang tải...";
-      await Promise.all([
-        ensureTongDonUpyoLoaded(),
-        tai_du_lieu_pancake(false).catch(() => {}),
-      ]);
-      if (btnEl) btnEl.textContent = origLabel;
-    }
-    apply_od_filters_and_render(true);
+    handleQuickCheckWithBgRefresh("landing_missing");
   });
 
-  document.getElementById("btnOdDupMktCheck")?.addEventListener("click", async (e) => {
+  document.getElementById("btnOdDupMktCheck")?.addEventListener("click", (e) => {
     e.stopPropagation();
     close_od_excel_filter();
     od_only_dup_mkt = !od_only_dup_mkt;
-    if (od_only_dup_mkt) {
-      clearOtherQuickFilters("dup_mkt");
-      const btnEl = e.currentTarget;
-      const origLabel = btnEl ? btnEl.textContent : "Đơn trùng MKT";
-      const needLoad =
-        Boolean(thong_bao_fetch_promise) ||
-        !Array.isArray(data_tong_don_upyo) ||
-        data_tong_don_upyo.length === 0 ||
-        Date.now() - thong_bao_last_fetch_ms >= 120000 ||
-        !Array.isArray(data_pancake_orders) ||
-        Date.now() - pancake_last_fetch_ms >= 120000;
-      if (btnEl && needLoad) btnEl.textContent = "Đang tải...";
-      await Promise.all([
-        ensureTongDonUpyoLoaded(),
-        tai_du_lieu_pancake(false).catch(() => {}),
-      ]);
-      if (btnEl) btnEl.textContent = origLabel;
-    }
-    apply_od_filters_and_render(true);
+    handleQuickCheckWithBgRefresh("dup_mkt");
   });
 
   document.getElementById("btnOdDateRange")?.addEventListener("click", (e) => {
