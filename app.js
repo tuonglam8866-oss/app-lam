@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.192";
+const APP_FRONTEND_VERSION = "8.6.193";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -4513,6 +4513,83 @@ function get_od_col_filter_value(order, colKey) {
   return raw ? raw : "__EMPTY__";
 }
 
+function add_mkt_token_variants(set, rawToken) {
+  const clean = String(rawToken || "").trim();
+  if (!clean) return;
+  set.add(clean);
+  set.add(clean.toUpperCase());
+  const canonical = chuan_hoa_mkt_so_sanh(clean);
+  if (canonical) set.add(canonical);
+}
+
+function get_od_row_mkt_dropdown_tokens(order) {
+  if (!order) return ["__EMPTY__"];
+  const raw = String(order.mkt || "").trim();
+  if (!raw) return ["__EMPTY__"];
+
+  const out = new Set();
+  const mParen = raw.match(/^(.+?)\s*\(\s*(?:Đúng|Tính)\s*:\s*(.+?)\s*\)$/i);
+  if (mParen) {
+    const left = mParen[1].trim();
+    const right = mParen[2].trim();
+    if (/^CHƯA ĐIỀN/i.test(left)) {
+      out.add("__EMPTY__");
+    } else if (left) {
+      out.add(chuan_hoa_mkt_so_sanh(left) || left.toUpperCase());
+    }
+    if (right) {
+      out.add(chuan_hoa_mkt_so_sanh(right) || right.toUpperCase());
+    }
+    return out.size > 0 ? Array.from(out) : ["__EMPTY__"];
+  }
+
+  if (/^CHƯA ĐIỀN/i.test(raw)) return ["__EMPTY__"];
+  return [chuan_hoa_mkt_so_sanh(raw) || raw.toUpperCase()];
+}
+
+function get_od_row_mkt_match_tokens(order) {
+  if (!order) return ["__EMPTY__"];
+  const raw = String(order.mkt || "").trim();
+  if (!raw) return ["__EMPTY__"];
+
+  const out = new Set([raw, raw.toUpperCase()]);
+  const mParen = raw.match(/^(.+?)\s*\(\s*(?:Đúng|Tính)\s*:\s*(.+?)\s*\)$/i);
+  if (mParen) {
+    const left = mParen[1].trim();
+    const right = mParen[2].trim();
+    if (/^CHƯA ĐIỀN/i.test(left)) {
+      out.add("__EMPTY__");
+      out.add("CHƯA ĐIỀN MKT");
+    } else {
+      add_mkt_token_variants(out, left);
+    }
+    add_mkt_token_variants(out, right);
+  } else if (/^CHƯA ĐIỀN/i.test(raw)) {
+    out.add("__EMPTY__");
+    out.add("CHƯA ĐIỀN MKT");
+  } else {
+    add_mkt_token_variants(out, raw);
+  }
+  return Array.from(out);
+}
+
+function matches_od_col_filter(order, colKey, allowedSet) {
+  if (!allowedSet) return true;
+  if (colKey === "mkt") {
+    const tokens = get_od_row_mkt_match_tokens(order);
+    for (const tok of tokens) {
+      if (allowedSet.has(tok)) return true;
+    }
+    for (const sel of allowedSet) {
+      if (sel === "__EMPTY__") continue;
+      const selCanon = chuan_hoa_mkt_so_sanh(sel);
+      if (selCanon && tokens.includes(selCanon)) return true;
+    }
+    return false;
+  }
+  return allowedSet.has(get_od_col_filter_value(order, colKey));
+}
+
 function get_od_col_sort_value(order, colKey) {
   if (!order) return "";
   if (colKey === "gia_ban") return order.gia_ban || 0;
@@ -4729,8 +4806,14 @@ function open_od_excel_filter(colKey, anchorEl) {
   const otherKeys = Object.keys(od_excel_filters).filter((k) => k !== colKey);
   const hasDateFilter = Boolean(od_date_start && od_date_end);
   const counts = new Map();
+  const filterSource =
+    current_od_mode === "all_table" && od_only_landing_mkt_issue
+      ? lay_danh_sach_don_loi_vao_don()
+      : current_od_mode === "all_table" && od_only_dup_mkt
+      ? lay_danh_sach_don_trung_mkt()
+      : current_od_raw_list;
 
-  for (const o of current_od_raw_list) {
+  for (const o of filterSource) {
     if (hasDateFilter) {
       const ymd = parse_order_ymd(o);
       if (!ymd || ymd < od_date_start || ymd > od_date_end) continue;
@@ -4738,15 +4821,21 @@ function open_od_excel_filter(colKey, anchorEl) {
     let ok = true;
     for (const k of otherKeys) {
       const allowedSet = od_excel_filters[k];
-      if (allowedSet && !allowedSet.has(get_od_col_filter_value(o, k))) {
+      if (allowedSet && !matches_od_col_filter(o, k, allowedSet)) {
         ok = false;
         break;
       }
     }
     if (!ok) continue;
 
-    const v = get_od_col_filter_value(o, colKey);
-    counts.set(v, (counts.get(v) || 0) + 1);
+    if (colKey === "mkt") {
+      for (const v of get_od_row_mkt_dropdown_tokens(o)) {
+        counts.set(v, (counts.get(v) || 0) + 1);
+      }
+    } else {
+      const v = get_od_col_filter_value(o, colKey);
+      counts.set(v, (counts.get(v) || 0) + 1);
+    }
   }
 
   const entries = Array.from(counts.entries());
@@ -4772,12 +4861,24 @@ function open_od_excel_filter(colKey, anchorEl) {
   });
 
   const existingSet = od_excel_filters[colKey];
-  od_xl_pending_values = entries.map(([val, cnt]) => ({
-    val,
-    label: val === "__EMPTY__" ? "(Trống)" : val,
-    count: cnt,
-    checked: existingSet ? existingSet.has(val) : true,
-  }));
+  od_xl_pending_values = entries.map(([val, cnt]) => {
+    let isChecked = true;
+    if (existingSet) {
+      if (existingSet.has(val)) {
+        isChecked = true;
+      } else if (colKey === "mkt" && val !== "__EMPTY__") {
+        isChecked = Array.from(existingSet).some((s) => s !== "__EMPTY__" && chuan_hoa_mkt_so_sanh(s) === val);
+      } else {
+        isChecked = false;
+      }
+    }
+    return {
+      val,
+      label: val === "__EMPTY__" ? "(Trống)" : val,
+      count: cnt,
+      checked: isChecked,
+    };
+  });
 
   render_od_xl_list();
 
@@ -5004,7 +5105,7 @@ function apply_od_filters_and_render(resetLimit = false) {
     }
     for (const colKey of activeFilterKeys) {
       const allowedSet = od_excel_filters[colKey];
-      if (allowedSet && !allowedSet.has(get_od_col_filter_value(o, colKey))) {
+      if (allowedSet && !matches_od_col_filter(o, colKey, allowedSet)) {
         return false;
       }
     }
