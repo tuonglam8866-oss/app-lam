@@ -4029,7 +4029,7 @@ input::-ms-clear {
   align-items: center;
   justify-content: center;
   height: 34px;
-  padding: 0 9px;
+  padding: 0 8px;
   border-radius: 9px;
   border: 1.5px solid #D5BFAA;
   background: linear-gradient(180deg, #FFFDF9 0%, #F5ECE0 100%);
