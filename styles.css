@@ -1549,9 +1549,9 @@ html, body {
 
 .popup-panel {
   position: fixed;
-  background: rgba(255, 253, 249, 0.97);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(255, 253, 249, 0.98);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 2px solid var(--border-soft);
   border-radius: 14px;
   box-shadow:
@@ -2078,9 +2078,9 @@ html, body {
 .loading-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(250, 245, 237, 0.55);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
+  background-color: rgba(250, 245, 237, 0.68);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2445,9 +2445,9 @@ html, body {
   position: fixed;
   inset: 0;
   z-index: 999999;
-  background: radial-gradient(circle at 50% 35%, rgba(61, 35, 20, 0.94) 0%, rgba(28, 21, 17, 0.98) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: radial-gradient(circle at 50% 35%, rgba(61, 35, 20, 0.95) 0%, rgba(28, 21, 17, 0.98) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2686,9 +2686,7 @@ input::-ms-clear {
   position: fixed;
   inset: 0;
   z-index: 10005;
-  background: rgba(30, 18, 10, 0.58);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(30, 18, 10, 0.68);
   display: flex;
   align-items: center;
   justify-content: center;

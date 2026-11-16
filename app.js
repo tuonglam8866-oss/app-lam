@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.209";
+const APP_FRONTEND_VERSION = "8.6.210";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -61,6 +61,77 @@ const FB_TOKEN_PROTECTED =
 function get_fb_token() {
   return decode_protected_token(FB_TOKEN_PROTECTED);
 }
+
+// IndexedDB helper bất đồng bộ để lưu dữ liệu lớn (Sheet & Pancake) không làm đơ UI thread
+const IDB_CACHE_NAME = "applam_fast_cache_v1";
+const IDB_CACHE_STORE = "kv";
+let _idbOpenPromise = null;
+
+function open_fast_cache_db() {
+  if (_idbOpenPromise) return _idbOpenPromise;
+  _idbOpenPromise = new Promise((resolve) => {
+    try {
+      if (typeof indexedDB === "undefined") {
+        resolve(null);
+        return;
+      }
+      const req = indexedDB.open(IDB_CACHE_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        try {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(IDB_CACHE_STORE)) {
+            db.createObjectStore(IDB_CACHE_STORE);
+          }
+        } catch (err) {}
+      };
+      req.onsuccess = (e) => resolve(e.target.result);
+      req.onerror = () => resolve(null);
+    } catch (e) {
+      resolve(null);
+    }
+  });
+  return _idbOpenPromise;
+}
+
+async function idb_cache_get(key) {
+  try {
+    const db = await open_fast_cache_db();
+    if (!db) return null;
+    return await new Promise((resolve) => {
+      try {
+        const tx = db.transaction(IDB_CACHE_STORE, "readonly");
+        const req = tx.objectStore(IDB_CACHE_STORE).get(key);
+        req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
+        req.onerror = () => resolve(null);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+async function idb_cache_set(key, val) {
+  try {
+    const db = await open_fast_cache_db();
+    if (!db) return false;
+    return await new Promise((resolve) => {
+      try {
+        const tx = db.transaction(IDB_CACHE_STORE, "readwrite");
+        tx.objectStore(IDB_CACHE_STORE).put(val, key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+let _pancakeConvCacheHydrated = false;
 
 const PANCAKE_PAGES = [
   {
@@ -394,6 +465,19 @@ async function tai_du_lieu_pancake(force = false) {
   if (pancake_fetch_promise) return pancake_fetch_promise;
 
   pancake_fetch_promise = (async () => {
+    if (!_pancakeConvCacheHydrated) {
+      _pancakeConvCacheHydrated = true;
+      const savedConvs = await idb_cache_get("pancake_conv_map");
+      if (Array.isArray(savedConvs)) {
+        for (const pair of savedConvs) {
+          if (Array.isArray(pair) && pair.length === 2 && !pancake_conv_msg_cache.has(pair[0])) {
+            pancake_conv_msg_cache.set(pair[0], pair[1]);
+          }
+        }
+      }
+    }
+
+    let hasNewConvCached = false;
     const allOrders = [];
     const cutoffMs = now + 7 * 3600 * 1000 - 14 * 86400 * 1000;
 
@@ -441,6 +525,7 @@ async function tai_du_lieu_pancake(force = false) {
             }
             const extracted = extract_confirmed_pancake_orders(conv, msgs, pageCfg);
             pancake_conv_msg_cache.set(cacheKey, extracted);
+            hasNewConvCached = true;
             return extracted;
           })
         );
@@ -448,6 +533,12 @@ async function tai_du_lieu_pancake(force = false) {
           if (Array.isArray(arr) && arr.length > 0) allOrders.push(...arr);
         });
       }
+    }
+
+    if (hasNewConvCached) {
+      const entries = Array.from(pancake_conv_msg_cache.entries());
+      const trimmed = entries.length > 800 ? entries.slice(entries.length - 800) : entries;
+      idb_cache_set("pancake_conv_map", trimmed).catch(() => {});
     }
 
     data_pancake_orders = allOrders;
@@ -2092,12 +2183,12 @@ const CACHE_KEY_THONG_KE = "applam_cache_thong_ke_v1";
 
 function luu_cache_thong_ke(rows) {
   try {
-    localStorage.setItem(CACHE_KEY_THONG_KE, JSON.stringify({ t: Date.now(), rows }));
-  } catch (e) {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    idb_cache_set("thong_ke_rows", { t: Date.now(), rows }).catch(() => {});
     try {
       localStorage.removeItem(CACHE_KEY_THONG_KE);
     } catch (e2) {}
-  }
+  } catch (e) {}
 }
 
 function doc_cache_thong_ke() {
@@ -2108,6 +2199,16 @@ function doc_cache_thong_ke() {
     if (obj && Array.isArray(obj.rows) && obj.rows.length > 0) return obj.rows;
   } catch (e) {}
   return null;
+}
+
+async function doc_cache_thong_ke_async() {
+  try {
+    const idbObj = await idb_cache_get("thong_ke_rows");
+    if (idbObj && Array.isArray(idbObj.rows) && idbObj.rows.length > 0) {
+      return idbObj.rows;
+    }
+  } catch (e) {}
+  return doc_cache_thong_ke();
 }
 
 const CACHE_KEY_FB_LAST = "applam_cache_fb_last_v1";
@@ -2192,13 +2293,19 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
 
   await Promise.all(
     uniqueAccounts.map(async (actId) => {
-      let url =
+      const fbFilterParam = encodeURIComponent(
+        JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: 0 }])
+      );
+      const baseInsightsUrl =
         "https://graph.facebook.com/v19.0/" +
         actId +
         "/insights?level=campaign&fields=campaign_name,spend&time_range=" +
         encodeURIComponent(time_range) +
-        "&limit=100&access_token=" +
+        "&limit=500&access_token=" +
         get_fb_token();
+
+      let usedFilter = true;
+      let url = baseInsightsUrl + "&filtering=" + fbFilterParam;
 
       while (url) {
         try {
@@ -2209,6 +2316,11 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
 
           const res = await response.json();
           if (!res || res.error) {
+            if (usedFilter) {
+              usedFilter = false;
+              url = baseInsightsUrl;
+              continue;
+            }
             break;
           }
 
@@ -5936,6 +6048,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
       containerMkt.appendChild(empty);
     } else {
       const maxCount = Math.max(...mkt_hien_thi.map((x) => x.don), 1);
+      const fragMkt = document.createDocumentFragment();
       mkt_hien_thi.forEach((item, idx) => {
         const card = create_mkt_table_card(
           idx + 1,
@@ -5946,8 +6059,9 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
           maxCount,
           xem_chi_tiet_mkt_inline
         );
-        containerMkt.appendChild(card);
+        fragMkt.appendChild(card);
       });
+      containerMkt.appendChild(fragMkt);
     }
   }
 
@@ -6007,6 +6121,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
         ...tat_ca_ma.map((m) => don_cua_mkt[m] || 0),
         1
       );
+      const fragDetail = document.createDocumentFragment();
       tat_ca_ma.forEach((ma, idx) => {
         const tien = chi_tiet_fb[ma] || 0.0;
         const don = don_cua_mkt[ma] || 0;
@@ -6019,8 +6134,9 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
           doanh_so_ma,
           maxCount
         );
-        containerMkt.appendChild(card);
+        fragDetail.appendChild(card);
       });
+      containerMkt.appendChild(fragDetail);
     }
   }
 
@@ -6094,6 +6210,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     listSp.appendChild(empty);
   } else {
     const maxSpCount = Math.max(...top_10_sp.map((x) => x.don), 1);
+    const fragSp = document.createDocumentFragment();
     top_10_sp.forEach((item, idx) => {
       const card = create_top_sp_card(
         idx + 1,
@@ -6103,8 +6220,9 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
         item.doanh_so,
         maxSpCount
       );
-      listSp.appendChild(card);
+      fragSp.appendChild(card);
     });
+    listSp.appendChild(fragSp);
   }
   const frameSp = document.getElementById("frameSp");
   if (frameSp) frameSp.classList.toggle("is-scrolled", listSp.scrollTop > 4);
@@ -6172,7 +6290,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
   let softMode = false;
   if (!canReuseSheets && !isAutoRetry) {
     if (!(Array.isArray(data_hien_tai) && data_hien_tai.length > 0)) {
-      const cachedRows = doc_cache_thong_ke();
+      const cachedRows = doc_cache_thong_ke() || (await doc_cache_thong_ke_async());
       if (cachedRows) {
         data_hien_tai = cachedRows;
         try {
