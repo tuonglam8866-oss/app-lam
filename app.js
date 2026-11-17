@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.211";
+const APP_FRONTEND_VERSION = "8.6.212";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -839,6 +839,9 @@ function unlock_app(deferReveal) {
   const appContainer = document.getElementById("appContainer");
   if (lockScreen) lockScreen.classList.add("hidden");
   if (appContainer) appContainer.classList.remove("hidden");
+  if (native_exe_mode) {
+    fetch("/api/session-unlocked", { method: "POST" }).catch(() => {});
+  }
 
   if (deferReveal && !_openingRevealDone) {
     document.body.classList.add("app-awaiting-reveal");
