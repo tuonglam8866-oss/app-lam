@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.214";
+const APP_FRONTEND_VERSION = "8.6.215";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1289,26 +1289,21 @@ function start_confetti_loop(canvas, ctx) {
 
       const fade = Math.max(0, p.alpha);
       if (p.shape === "spark") {
-        const pulse = 0.72 + 0.28 * Math.sin(ts * 0.02 + (p.twinkle || 0));
-        ctx.lineCap = "round";
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = Math.max(1.2, p.size * 0.44);
-        ctx.globalAlpha = fade * 0.42;
-        ctx.beginPath();
-        ctx.moveTo(p.prevX, p.prevY);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-
+        const pulse = 0.78 + 0.22 * Math.sin(ts * 0.02 + (p.twinkle || 0));
+        const r = p.size * 0.55;
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = fade * 0.22;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 1.12, 0, Math.PI * 2);
-        ctx.fill();
-
         ctx.globalAlpha = fade * pulse;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.48, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
         ctx.fill();
+
+        if (r >= 2.2) {
+          ctx.fillStyle = "#FFFAEB";
+          ctx.globalAlpha = fade * pulse * 0.85;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r * 0.42, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else {
         const flutter = 0.35 + 0.65 * Math.abs(Math.cos((p.rotation * Math.PI) / 180));
         ctx.save();
