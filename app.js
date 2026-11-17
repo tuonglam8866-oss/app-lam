@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.218";
+const APP_FRONTEND_VERSION = "8.6.219";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1237,6 +1237,9 @@ const confettiParticles = [];
 let confettiAnimId = null;
 
 function spawn_firework_explosion(cx, cy, colors, count = 42) {
+  if (confettiParticles.length > 220) {
+    confettiParticles.splice(0, confettiParticles.length - 220);
+  }
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.25;
     const speed = 3.5 + Math.random() * 9.5;
@@ -1246,10 +1249,11 @@ function spawn_firework_explosion(cx, cy, colors, count = 42) {
       y: cy,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 1.2,
-      size: isCircleSpark ? 4 + Math.random() * 4 : 6 + Math.random() * 6,
+      size: isCircleSpark ? 4.5 + Math.random() * 4 : 6 + Math.random() * 6,
       color: colors[Math.floor(Math.random() * colors.length)],
       rotation: Math.random() * 360,
       vRot: (Math.random() - 0.5) * 14,
+      twinkle: Math.random() * Math.PI * 2,
       alpha: 1,
       gravity: isCircleSpark ? 0.18 : 0.28,
       decay: isCircleSpark ? 0.014 : 0.011,
@@ -1260,39 +1264,54 @@ function spawn_firework_explosion(cx, cy, colors, count = 42) {
 
 function start_confetti_loop(canvas, ctx) {
   if (confettiAnimId) return;
-  function renderConfetti() {
+  let lastFrameTs = 0;
+  function renderConfetti(ts) {
+    const dtScale = lastFrameTs ? Math.min(2.2, Math.max(0.4, (ts - lastFrameTs) / 16.67)) : 1;
+    lastFrameTs = ts;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let i = confettiParticles.length - 1; i >= 0; i--) {
       const p = confettiParticles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += p.gravity ?? 0.3;
-      p.vx *= 0.985;
-      p.rotation += p.vRot;
-      p.alpha -= p.decay ?? 0.012;
+      p.x += p.vx * dtScale;
+      p.y += p.vy * dtScale;
+      p.vy += (p.gravity ?? 0.3) * dtScale;
+      p.vx *= Math.pow(0.985, dtScale);
+      p.rotation += p.vRot * dtScale;
+      p.alpha -= (p.decay ?? 0.012) * dtScale;
 
       if (p.alpha <= 0 || p.y > canvas.height + 40) {
         confettiParticles.splice(i, 1);
         continue;
       }
 
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, p.alpha);
-      ctx.translate(p.x, p.y);
+      const fade = Math.max(0, p.alpha);
       if (p.shape === "spark") {
-        ctx.beginPath();
-        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+        const pulse = 0.78 + 0.22 * Math.sin(ts * 0.02 + (p.twinkle || 0));
+        const r = p.size * 0.54;
         ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 8;
+        ctx.globalAlpha = fade * pulse;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
         ctx.fill();
+
+        if (r >= 2.2) {
+          ctx.fillStyle = "#FFFAEB";
+          ctx.globalAlpha = fade * pulse * 0.85;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r * 0.42, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else {
+        const flutter = 0.35 + 0.65 * Math.abs(Math.cos((p.rotation * Math.PI) / 180));
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(p.x, p.y);
         ctx.rotate((p.rotation * Math.PI) / 180);
         ctx.fillStyle = p.color;
-        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+        ctx.fillRect(-p.size / 2, (-p.size * 0.65 * flutter) / 2, p.size, p.size * 0.65 * flutter);
+        ctx.restore();
       }
-      ctx.restore();
     }
+    ctx.globalAlpha = 1;
 
     if (confettiParticles.length > 0) {
       confettiAnimId = requestAnimationFrame(renderConfetti);
@@ -3356,12 +3375,15 @@ function hien_thi_popup_goc_man_hinh(
   if (!bat_popup_thong_bao && !force) return;
 
   if (notifyNative && window.location.protocol.startsWith("http")) {
-    trigger_confetti_burst();
     fetch("/api/popup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, message, force, voice: voiceText }),
-    }).catch(() => {});
+    })
+      .then(() => {
+        trigger_confetti_burst();
+      })
+      .catch(() => {});
   } else {
     trigger_confetti_burst();
   }
