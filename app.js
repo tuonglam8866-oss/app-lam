@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.213";
+const APP_FRONTEND_VERSION = "8.6.218";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -3356,15 +3356,12 @@ function hien_thi_popup_goc_man_hinh(
   if (!bat_popup_thong_bao && !force) return;
 
   if (notifyNative && window.location.protocol.startsWith("http")) {
+    trigger_confetti_burst();
     fetch("/api/popup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, message, force, voice: voiceText }),
-    })
-      .then(() => {
-        trigger_confetti_burst();
-      })
-      .catch(() => {});
+    }).catch(() => {});
   } else {
     trigger_confetti_burst();
   }
@@ -7106,7 +7103,7 @@ async function quet_don_dinh_ky() {
                 hien_thi_bang_chuc_mung_cap_nhat(cleanVer);
               }
             }
-            if (ev.toast || ev.newOrder) {
+            if ((ev.toast || ev.newOrder) && !ev.fireworksHandled) {
               trigger_confetti_burst();
             }
             if (ev.voice && !ev.voiceHandled && bat_thong_bao_gtts) {
