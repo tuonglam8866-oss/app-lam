@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.216";
+const APP_FRONTEND_VERSION = "8.6.213";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1237,9 +1237,6 @@ const confettiParticles = [];
 let confettiAnimId = null;
 
 function spawn_firework_explosion(cx, cy, colors, count = 42) {
-  if (confettiParticles.length > 240) {
-    confettiParticles.splice(0, confettiParticles.length - 240);
-  }
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.25;
     const speed = 3.5 + Math.random() * 9.5;
@@ -1247,15 +1244,12 @@ function spawn_firework_explosion(cx, cy, colors, count = 42) {
     confettiParticles.push({
       x: cx,
       y: cy,
-      prevX: cx,
-      prevY: cy,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 1.2,
       size: isCircleSpark ? 4 + Math.random() * 4 : 6 + Math.random() * 6,
       color: colors[Math.floor(Math.random() * colors.length)],
       rotation: Math.random() * 360,
       vRot: (Math.random() - 0.5) * 14,
-      twinkle: Math.random() * Math.PI * 2,
       alpha: 1,
       gravity: isCircleSpark ? 0.18 : 0.28,
       decay: isCircleSpark ? 0.014 : 0.011,
@@ -1266,56 +1260,39 @@ function spawn_firework_explosion(cx, cy, colors, count = 42) {
 
 function start_confetti_loop(canvas, ctx) {
   if (confettiAnimId) return;
-  let lastFrameTs = 0;
-  function renderConfetti(ts) {
-    const dtScale = lastFrameTs ? Math.min(2.2, Math.max(0.4, (ts - lastFrameTs) / 16.67)) : 1;
-    lastFrameTs = ts;
+  function renderConfetti() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let i = confettiParticles.length - 1; i >= 0; i--) {
       const p = confettiParticles[i];
-      p.prevX = p.x;
-      p.prevY = p.y;
-      p.x += p.vx * dtScale;
-      p.y += p.vy * dtScale;
-      p.vy += (p.gravity ?? 0.3) * dtScale;
-      p.vx *= Math.pow(0.985, dtScale);
-      p.rotation += p.vRot * dtScale;
-      p.alpha -= (p.decay ?? 0.012) * dtScale;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity ?? 0.3;
+      p.vx *= 0.985;
+      p.rotation += p.vRot;
+      p.alpha -= p.decay ?? 0.012;
 
       if (p.alpha <= 0 || p.y > canvas.height + 40) {
         confettiParticles.splice(i, 1);
         continue;
       }
 
-      const fade = Math.max(0, p.alpha);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      ctx.translate(p.x, p.y);
       if (p.shape === "spark") {
-        const pulse = 0.78 + 0.22 * Math.sin(ts * 0.02 + (p.twinkle || 0));
-        const r = p.size * 0.55;
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = fade * pulse;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
         ctx.fill();
-
-        if (r >= 2.2) {
-          ctx.fillStyle = "#FFFAEB";
-          ctx.globalAlpha = fade * pulse * 0.85;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r * 0.42, 0, Math.PI * 2);
-          ctx.fill();
-        }
       } else {
-        const flutter = 0.35 + 0.65 * Math.abs(Math.cos((p.rotation * Math.PI) / 180));
-        ctx.save();
-        ctx.globalAlpha = fade;
-        ctx.translate(p.x, p.y);
         ctx.rotate((p.rotation * Math.PI) / 180);
         ctx.fillStyle = p.color;
-        ctx.fillRect(-p.size / 2, (-p.size * 0.65 * flutter) / 2, p.size, p.size * 0.65 * flutter);
-        ctx.restore();
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
       }
+      ctx.restore();
     }
-    ctx.globalAlpha = 1;
 
     if (confettiParticles.length > 0) {
       confettiAnimId = requestAnimationFrame(renderConfetti);
