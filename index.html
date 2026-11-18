@@ -104,7 +104,10 @@
               <div class="cr-title-group">
                 <span class="cr-badge-title" id="actBadgeTitle">THỜI GIAN GỌI TB</span>
               </div>
-              <span class="cr-badge-desc" id="actDescText">Trừ giờ nghỉ</span>
+              <div class="cr-desc-row">
+                <span class="cr-badge-desc" id="actDescText">Trừ giờ nghỉ</span>
+                <span class="cr-hover-hint" id="actSubHint">Chi tiết →</span>
+              </div>
             </div>
             <div class="cr-divider-v"></div>
             <span class="cpds-pill val-muted cr-rate-pill" id="actValTime">--</span>
@@ -192,6 +195,9 @@
                 <span id="headerMktText">BÁO CÁO MKT (Chuột phải Copy CP)</span>
               </div>
               <div class="col-header-right-actions">
+                <button type="button" id="btnMktViewCampInline" class="rounded-btn btn-mkt-view-camp-pill hidden" title="Xem danh sách chiến dịch (Camp) đang chạy của MKT này">
+                  📢 Xem Camp
+                </button>
                 <button type="button" id="btnMktViewAllInline" class="rounded-btn btn-mkt-view-all-pill hidden" title="Xem danh sách tất cả đơn hàng của MKT này">
                   📋 Xem 0 đơn →
                 </button>
@@ -432,6 +438,89 @@
 
   <!-- Cursor Copy Toast -->
   <div id="cursorToast" class="cursor-toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Modal Xem Camp MKT (v8.6.224) -->
+  <div id="mktCampModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Danh sách Camp đang chạy">
+    <div class="order-detail-card mkt-camp-card" id="mktCampCard">
+      <div class="od-header">
+        <div class="od-header-info">
+          <div class="od-tag-row">
+            <span class="od-tag-pill" id="mcMktBadge">MKT</span>
+            <span class="od-tag-sp" id="mcCampCountBadge">0 Camp</span>
+            <span class="od-tag-count" id="mcTotalResultBadge">0 kết quả</span>
+          </div>
+          <h2 class="od-title" id="mcTitleText">DANH SÁCH CAMP ĐANG CHẠY</h2>
+          <div class="od-meta-row">
+            <span class="od-meta-item" id="mcDateRangeText">Ngày ...</span>
+            <span class="od-meta-divider">•</span>
+            <span class="od-meta-item" id="mcTotalSpendText">Tổng tiêu: 0 đ</span>
+          </div>
+        </div>
+        <div class="od-header-actions">
+          <button type="button" id="btnMcDateRange" class="rounded-btn btn-date-picker btn-date-range-unified od-date-range-btn" aria-haspopup="dialog" title="Chọn khoảng thời gian xem Camp">
+            <span class="cal-icon-badge" aria-hidden="true">
+              <svg class="cal-svg-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1.75" y="3" width="12.5" height="11.25" rx="2.75" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M1.75 6.5H14.25" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M5 1.5V3.75M11 1.5V3.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="5.3" cy="9.4" r="1" fill="currentColor"/>
+                <circle cx="8" cy="9.4" r="1" fill="currentColor"/>
+                <circle cx="10.7" cy="9.4" r="1" fill="currentColor"/>
+              </svg>
+            </span>
+            <span id="mcDateStartText" class="date-range-val">Hôm nay</span>
+            <span id="mcDateSep" class="date-range-sep hidden">→</span>
+            <span id="mcDateEndText" class="date-range-val hidden"></span>
+          </button>
+          <div class="od-search-box mc-search-box">
+            <span class="od-search-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="7" cy="7" r="4.75" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M10.75 10.75L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <input type="text" id="mcSearchInput" class="od-search-input" placeholder="Tìm tên / ID Camp..." title="Tìm kiếm Camp" aria-label="Tìm kiếm Camp" autocomplete="off" />
+            <button type="button" id="btnClearMcSearch" class="od-search-clear hidden" title="Xóa tìm kiếm">✕</button>
+          </div>
+          <button type="button" id="btnCloseMktCamp" class="od-close-btn" aria-label="Đóng" title="Đóng (Esc)">✕</button>
+        </div>
+      </div>
+
+      <div class="od-table-wrapper" id="mcTableWrapper">
+        <table class="od-table mc-table" id="mcTable">
+          <thead>
+            <tr>
+              <th class="mc-col-stt">STT</th>
+              <th class="mc-col-name">Tên Camp</th>
+              <th class="mc-col-result">Kết quả</th>
+              <th class="mc-col-spend">Tiền tiêu</th>
+              <th class="mc-col-cpm">CPM</th>
+              <th class="mc-col-ctr">CTR</th>
+              <th class="mc-col-cpc">CPC</th>
+            </tr>
+          </thead>
+          <tbody id="mcTableBody"></tbody>
+          <tfoot id="mcTableFoot"></tfoot>
+        </table>
+        <div id="mcEmptyState" class="od-empty-state hidden">
+          <div class="od-empty-icon">📢</div>
+          <div class="od-empty-title">Chưa có chiến dịch nào phát sinh chi phí</div>
+          <div class="od-empty-desc">Không tìm thấy chiến dịch (Camp) nào của MKT này trong khoảng ngày đang chọn.</div>
+        </div>
+      </div>
+
+      <div class="od-footer">
+        <div class="od-footer-summary" id="mcFooterSummary">
+          Hiển thị 0 chiến dịch
+        </div>
+        <div class="od-footer-actions">
+          <button type="button" id="btnDismissMktCamp" class="rounded-btn btn-choco" style="padding: 7px 22px; font-weight: 700;">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Chi Tiết & Lọc Đơn Hàng Tổng Hợp Cột A -> P (v8.6.106) -->
   <div id="orderDetailModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Chi tiết đơn hàng">

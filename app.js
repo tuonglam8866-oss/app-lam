@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.221";
+const APP_FRONTEND_VERSION = "8.6.226";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -43,7 +43,7 @@ function decode_protected_token(encodedB64, keyStr = "UPYO_SECURE_2026") {
 }
 
 const APPS_SCRIPT_BASE_URL =
-  "https://script.google.com/macros/s/AKfycbzF7CL11KBrt5dnB4qOv5z4mn9nCbCwWTUZySbMbBsuWaUqBoZUspP_k5_uqT0uvw-U/exec";
+  "https://script.google.com/macros/s/AKfycbxCZ-Dv4-ywGIyfoB7Vm5RHmKWlpi4T3S5pdkeyl5iN656CbTj7LHtr1EjXTIYUJGLr/exec";
 const APPS_SCRIPT_SECRET_KEY = decode_protected_token("AAAAAAAfBA4KYHVtBA==");
 
 const CSV_URL_THONG_KE = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1227181736`;
@@ -1206,9 +1206,15 @@ let data_hien_tai = [];
 let data_tong_don_upyo = [];
 let cached_fb_chi_tiet = {};
 let cached_fb_tong = {};
+let cached_fb_camps = {};
 let current_start_date = "";
 let current_end_date = "";
 let current_mkt_detail = null;
+let current_mc_mkt = null;
+let mc_date_start = "";
+let mc_date_end = "";
+let mc_custom_camps_map = null;
+let mc_is_loading_fb = false;
 
 // Calendar state
 let current_cal_target = null;
@@ -1653,6 +1659,7 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("crSubHint", dict.crSubHint);
   setText("actBadgeTitle", dict.actBadgeTitle);
   setText("actDescText", dict.actDescText);
+  setText("actSubHint", dict.crSubHint);
   setText("crLblClosed", dict.crLblClosed);
   setText("crLblTotal", dict.crLblTotal);
   setText("crLblUnclosed", dict.crLblUnclosed);
@@ -2179,6 +2186,10 @@ function tai_du_lieu_thong_bao_ngam(force = false) {
           if (odModal && !odModal.classList.contains("hidden") && current_od_mode === "all_table") {
             apply_od_filters_and_render(false);
           }
+          const mcModal = document.getElementById("mktCampModal");
+          if (mcModal && !mcModal.classList.contains("hidden") && current_mc_mkt) {
+            render_mc_table_rows();
+          }
         } catch (e) {}
       }
       return data_tong_don_upyo;
@@ -2234,7 +2245,7 @@ async function doc_cache_thong_ke_async() {
   return doc_cache_thong_ke();
 }
 
-const CACHE_KEY_FB_LAST = "applam_cache_fb_last_v1";
+const CACHE_KEY_FB_LAST = "applam_cache_fb_last_v2";
 
 function luu_cache_fb_last(start_str, end_str, fbRes) {
   try {
@@ -2246,6 +2257,7 @@ function luu_cache_fb_last(start_str, end_str, fbRes) {
         t: Date.now(),
         local_chi_tiet: fbRes.local_chi_tiet,
         local_tong: fbRes.local_tong,
+        local_camps: fbRes.local_camps || {},
       })
     );
   } catch (e) {}
@@ -2257,7 +2269,11 @@ function doc_cache_fb_last(start_str, end_str) {
     if (!raw) return null;
     const obj = JSON.parse(raw);
     if (obj && obj.k === `${start_str}|${end_str}` && obj.local_chi_tiet && obj.local_tong) {
-      return { local_chi_tiet: obj.local_chi_tiet, local_tong: obj.local_tong };
+      return {
+        local_chi_tiet: obj.local_chi_tiet,
+        local_tong: obj.local_tong,
+        local_camps: obj.local_camps || {},
+      };
     }
   } catch (e) {}
   return null;
@@ -2296,14 +2312,16 @@ async function tai_du_lieu_google_sheets() {
 async function quet_chi_phi_facebook_helper(start_str, end_str) {
   const local_chi_tiet = {};
   const local_tong = {};
+  const local_camps = {};
   for (const m of LIST_MKT_FB) {
     local_chi_tiet[m.ten] = {};
     local_tong[m.ten] = 0.0;
+    local_camps[m.ten] = [];
   }
 
   const time_range = JSON.stringify({ since: start_str, until: end_str });
 
-    const uniqueAccounts = [];
+  const uniqueAccounts = [];
   const seenActs = new Set();
   for (const m of LIST_MKT_FB) {
     if (!seenActs.has(m.id)) {
@@ -2322,7 +2340,7 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
       const baseInsightsUrl =
         "https://graph.facebook.com/v19.0/" +
         actId +
-        "/insights?level=campaign&fields=campaign_name,spend&time_range=" +
+        "/insights?level=campaign&fields=campaign_id,campaign_name,spend,impressions,cpm,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,clicks,ctr,cpc&time_range=" +
         encodeURIComponent(time_range) +
         "&limit=500&access_token=" +
         get_fb_token();
@@ -2349,10 +2367,37 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
 
           const data = Array.isArray(res.data) ? res.data : [];
           for (const item of data) {
+            const camp_id = String(item.campaign_id || "").trim();
             const camp_name = String(item.campaign_name || "").trim();
-            const spend = parseFloat(item.spend || 0.0);
+            const spend = parseFloat(item.spend || 0.0) || 0.0;
             if (!spend || spend <= 0) continue;
-            rawFbSpends.push({ actId, camp_name, spend });
+
+            const impressions = parseFloat(item.impressions || 0.0) || 0.0;
+            const hasLinkClicks = item.inline_link_clicks !== undefined && item.inline_link_clicks !== null;
+            const link_clicks = hasLinkClicks
+              ? parseFloat(item.inline_link_clicks || 0.0) || 0.0
+              : parseFloat(item.clicks || 0.0) || 0.0;
+            const cpm = parseFloat(item.cpm || 0.0) || (impressions > 0 ? (spend / impressions) * 1000 : 0.0);
+            const hasLinkCtr = item.inline_link_click_ctr !== undefined && item.inline_link_click_ctr !== null;
+            const ctr = hasLinkCtr
+              ? parseFloat(item.inline_link_click_ctr || 0.0) || 0.0
+              : parseFloat(item.ctr || 0.0) || (impressions > 0 ? (link_clicks / impressions) * 100 : 0.0);
+            const hasLinkCpc = item.cost_per_inline_link_click !== undefined && item.cost_per_inline_link_click !== null;
+            const cpc = hasLinkCpc
+              ? parseFloat(item.cost_per_inline_link_click || 0.0) || 0.0
+              : parseFloat(item.cpc || 0.0) || (link_clicks > 0 ? spend / link_clicks : 0.0);
+
+            rawFbSpends.push({
+              actId,
+              camp_id,
+              camp_name,
+              spend,
+              impressions,
+              link_clicks,
+              cpm,
+              ctr,
+              cpc,
+            });
           }
 
           if (res.paging && res.paging.next) {
@@ -2374,7 +2419,8 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
     } catch (e) {}
   }
 
-  for (const { actId, camp_name, spend } of rawFbSpends) {
+  for (const item of rawFbSpends) {
+    const { actId, camp_id, camp_name, spend, impressions, link_clicks, cpm, ctr, cpc } = item;
     const ten_mau = trich_xuat_ten_mau_thong_minh(camp_name);
     const campUpper = camp_name.toUpperCase();
     const campNoDau = bo_dau_tieng_viet(camp_name).toUpperCase();
@@ -2395,10 +2441,33 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
       local_chi_tiet[targetMkt][ten_mau] =
         (local_chi_tiet[targetMkt][ten_mau] || 0.0) + spend;
       local_tong[targetMkt] += spend;
+
+      const listCamps = local_camps[targetMkt];
+      const existing = camp_id ? listCamps.find((c) => c.campaign_id === camp_id) : null;
+      if (existing) {
+        existing.spend += spend;
+        existing.impressions += impressions;
+        existing.link_clicks += link_clicks;
+        existing.cpm = existing.impressions > 0 ? (existing.spend / existing.impressions) * 1000 : existing.cpm;
+        existing.ctr = existing.impressions > 0 ? (existing.link_clicks / existing.impressions) * 100 : existing.ctr;
+        existing.cpc = existing.link_clicks > 0 ? existing.spend / existing.link_clicks : existing.cpc;
+      } else {
+        listCamps.push({
+          campaign_id: camp_id,
+          campaign_name: camp_name,
+          sp: ten_mau,
+          spend,
+          impressions,
+          link_clicks,
+          cpm,
+          ctr,
+          cpc,
+        });
+      }
     }
   }
 
-  return { local_chi_tiet, local_tong };
+  return { local_chi_tiet, local_tong, local_camps };
 }
 
 // ==============================================================
@@ -2490,7 +2559,7 @@ function rebuild_td_first_landing_index() {
   const headerRow = data_tong_don_upyo[0];
   if (Array.isArray(headerRow)) {
     for (let i = 0; i < headerRow.length; i++) {
-      const h = bo_dau_tieng_viet(String(headerRow[i] || "").trim()).toLowerCase();
+      const h = bo_dau_tieng_viet(String(headerRow[i] || "").replace(/\s+/g, " ").trim()).toLowerCase();
       if (h === "so dien thoai" || h === "sdt") colSdt = i;
       else if (h === "mkt" || h === "marketer") colMkt = i;
     }
@@ -3102,6 +3171,7 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
 
   let colTg = 0;
   let colMkt = 6;
+  let colSp = 7;
   let colTgGoi = 23; // Cột X: Thời gian gọi
   let colDaChot = 24;
   let colDemDon = 25;
@@ -3114,6 +3184,7 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
       else if (h === "đơn đã chốt" || h === "don da chot") colDaChot = i;
       else if (h === "đếm đơn" || h === "dem don") colDemDon = i;
       else if (h === "mkt" || h === "marketer") colMkt = i;
+      else if (h === "dòng sp" || h === "dong sp" || h === "sản phẩm" || h === "tên sp" || h === "ten sp") colSp = i;
     }
   }
 
@@ -3126,6 +3197,8 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   let tong_tg_goi_toi_sec = 0;
   let so_don_da_goi_toi = 0;
   const by_mkt = {};
+  const by_sp = {};
+  const by_mkt_sp = {};
 
   for (const r of data_tong_don_upyo) {
     if (r.length > Math.max(colDaChot, colDemDon)) {
@@ -3164,6 +3237,22 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
         }
         by_mkt[mkt_norm].dem += dem;
         by_mkt[mkt_norm].chot += chot;
+
+        const rawSp = r.length > colSp ? String(r[colSp] || "").trim() : "";
+        let sp_norm = "";
+        if (rawSp && !["DÒNG SP", "TÊN SP", "SẢN PHẨM", "MÃ SP", "MÃ"].includes(rawSp.toUpperCase())) {
+          sp_norm = trich_xuat_ten_mau_thong_minh(rawSp);
+        }
+        if (sp_norm && sp_norm !== "CHƯA XÁC ĐỊNH") {
+          if (!by_sp[sp_norm]) by_sp[sp_norm] = { dem: 0, chot: 0 };
+          by_sp[sp_norm].dem += dem;
+          by_sp[sp_norm].chot += chot;
+
+          if (!by_mkt_sp[mkt_norm]) by_mkt_sp[mkt_norm] = {};
+          if (!by_mkt_sp[mkt_norm][sp_norm]) by_mkt_sp[mkt_norm][sp_norm] = { dem: 0, chot: 0 };
+          by_mkt_sp[mkt_norm][sp_norm].dem += dem;
+          by_mkt_sp[mkt_norm][sp_norm].chot += chot;
+        }
 
         if (r.length > colTgGoi) {
           const tgGoiRaw = String(r[colTgGoi] || "").trim();
@@ -3217,6 +3306,8 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
     avg_call_toi_sec,
     so_don_da_goi_toi,
     by_mkt,
+    by_sp,
+    by_mkt_sp,
   };
 }
 
@@ -3617,6 +3708,8 @@ function render_closing_rate_card(crData) {
     avg_call_sec: 0,
     so_don_da_goi: 0,
     by_mkt: {},
+    by_sp: {},
+    by_mkt_sp: {},
   };
 
   const closedEl = document.getElementById("crValClosed");
@@ -4220,7 +4313,7 @@ function build_customer_source_mkt_index() {
 
     const headerRow = tdRows[0];
     for (let i = 0; i < headerRow.length; i++) {
-      const h = bo_dau_tieng_viet(String(headerRow[i] || "").trim()).toLowerCase();
+      const h = bo_dau_tieng_viet(String(headerRow[i] || "").replace(/\s+/g, " ").trim()).toLowerCase();
       if (h === "ho ten") colHoTen = i;
       else if (h === "so dien thoai" || h === "sdt") colSdt = i;
       else if (h === "mau sac") colMauSac = i;
@@ -4369,7 +4462,7 @@ function lay_danh_sach_don_landing_loi_mkt(mode = "missing", cachedSrcIdx = null
   if (tdRows.length > 0) {
     const headerRow = tdRows[0];
     for (let i = 0; i < headerRow.length; i++) {
-      const h = bo_dau_tieng_viet(String(headerRow[i] || "").trim()).toLowerCase();
+      const h = bo_dau_tieng_viet(String(headerRow[i] || "").replace(/\s+/g, " ").trim()).toLowerCase();
       if (h === "ho ten") colHoTen = i;
       else if (h === "so dien thoai" || h === "sdt") colSdt = i;
       else if (h === "mau sac") colMauSac = i;
@@ -5662,6 +5755,455 @@ function dong_bang_don_hang_chi_tiet() {
   if (modal) modal.classList.add("hidden");
 }
 
+function dong_bang_camp_mkt() {
+  if (current_cal_target === "mc_filter") {
+    const calPopup = document.getElementById("calendarPopup");
+    calPopup?.classList.add("hidden");
+    calPopup?.classList.remove("is-modal-cal");
+    document.getElementById("btnMcDateRange")?.classList.remove("is-open");
+    current_cal_target = null;
+  }
+  current_mc_mkt = null;
+  const modal = document.getElementById("mktCampModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function update_mc_date_btn_ui() {
+  const btn = document.getElementById("btnMcDateRange");
+  const startEl = document.getElementById("mcDateStartText");
+  const sepEl = document.getElementById("mcDateSep");
+  const endEl = document.getElementById("mcDateEndText");
+  const st = mc_date_start || current_start_date;
+  const en = mc_date_end || current_end_date;
+
+  if (btn && startEl && sepEl && endEl) {
+    if (st && en && st === en) {
+      startEl.textContent = format_date_vn_display(st);
+      sepEl.classList.add("hidden");
+      endEl.classList.add("hidden");
+    } else if (st && en) {
+      startEl.textContent = format_date_vn_display(st);
+      endEl.textContent = format_date_vn_display(en);
+      sepEl.classList.remove("hidden");
+      endEl.classList.remove("hidden");
+    } else {
+      startEl.textContent = "Chọn ngày";
+      sepEl.classList.add("hidden");
+      endEl.classList.add("hidden");
+    }
+    const isCustom = Boolean(st && en && (st !== current_start_date || en !== current_end_date));
+    btn.classList.toggle("active", isCustom);
+  }
+}
+
+async function tai_camp_mkt_theo_ngay(st, en) {
+  mc_date_start = st;
+  mc_date_end = en;
+  update_mc_date_btn_ui();
+
+  if (
+    st === current_start_date &&
+    en === current_end_date &&
+    cached_fb_camps &&
+    Object.keys(cached_fb_camps).length > 0
+  ) {
+    mc_custom_camps_map = null;
+    mc_is_loading_fb = false;
+    render_mc_table_rows();
+    return;
+  }
+
+  const cached = doc_cache_fb_last(st, en);
+  if (cached && cached.local_camps && Object.keys(cached.local_camps).length > 0) {
+    mc_custom_camps_map = cached.local_camps;
+    render_mc_table_rows();
+  }
+
+  mc_is_loading_fb = true;
+  render_mc_table_rows();
+
+  try {
+    const fbRes = await quet_chi_phi_facebook_helper(st, en);
+    if (mc_date_start === st && mc_date_end === en) {
+      mc_custom_camps_map = (fbRes && fbRes.local_camps) || {};
+      mc_is_loading_fb = false;
+      render_mc_table_rows();
+    }
+  } catch (e) {
+    if (mc_date_start === st && mc_date_end === en) {
+      mc_is_loading_fb = false;
+      render_mc_table_rows();
+    }
+  }
+}
+
+function format_date_vn_display(ymdStr) {
+  const s = String(ymdStr || "").trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : s || "--/--/----";
+}
+
+function chuan_hoa_id_camp_digits(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  // Nếu là công thức/chuỗi khoa học hoặc số nguyên thuần -> trích xuất phần chữ số
+  if (/^\d{8,}$/.test(s)) return s;
+  const digits = s.replace(/\D/g, "");
+  return digits.length >= 8 ? digits : "";
+}
+
+function extract_utm_campaign_from_url(linkRaw) {
+  const s = String(linkRaw || "");
+  if (!s) return "";
+  const m = s.match(/(?:utm_campaign|utm_id)=([0-9]{8,})/i);
+  return m ? m[1] : "";
+}
+
+function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
+  const countsByCampId = {};
+  const closedByCampId = {};
+  (campsList || []).forEach((c) => {
+    if (c && c.campaign_id) {
+      countsByCampId[c.campaign_id] = 0;
+      closedByCampId[c.campaign_id] = 0;
+    }
+  });
+
+  if (!Array.isArray(data_tong_don_upyo) || data_tong_don_upyo.length < 2) {
+    return { countsByCampId, closedByCampId, hasAnyCampColData: false, totalMatchedOrders: 0 };
+  }
+
+  const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
+  const targetMktNorm = chuan_hoa_mkt_so_sanh(ten_mkt);
+
+  let colTg = 0;
+  let colTen = 1;
+  let colSdt = 2;
+  let colMkt = 6;
+  let colLink = 12;
+  let colMaQc = 15;   // Cột P: Mã QC
+  let colCampId = 16; // Cột Q: Campaign ID
+  let colNoteU = 20;
+  let colNoteV = 21;
+  let colDaChot = 24;
+  let colDemDon = 25;
+
+  const headerRow = data_tong_don_upyo[0];
+  if (Array.isArray(headerRow)) {
+    for (let i = 0; i < headerRow.length; i++) {
+      const h = bo_dau_tieng_viet(String(headerRow[i] || "").replace(/\s+/g, " ").trim()).toLowerCase();
+      if (h === "thoi gian" || h === "ngay") colTg = i;
+      else if (h === "ho ten") colTen = i;
+      else if (h === "so dien thoai" || h === "sdt") colSdt = i;
+      else if (h === "mkt" || h === "marketer") colMkt = i;
+      else if (h === "link landing") colLink = i;
+      else if (h === "ma qc") colMaQc = i;
+      else if (h === "campaign id") colCampId = i;
+      else if (h === "ghi chu sale") colNoteU = i;
+      else if (h === "don da chot") colDaChot = i;
+      else if (h === "dem don") colDemDon = i;
+    }
+  }
+
+  // Xây dựng bảng tra cứu nhanh các Camp của MKT đang xem
+  const exactMap = new Map();
+  const prefix14Map = new Map();
+  const prefix11List = [];
+  for (const c of campsList || []) {
+    const cid = chuan_hoa_id_camp_digits(c.campaign_id);
+    if (!cid) continue;
+    if (!exactMap.has(cid)) exactMap.set(cid, cid);
+    if (cid.length >= 14) {
+      const p14 = cid.slice(0, 14);
+      if (!prefix14Map.has(p14)) prefix14Map.set(p14, cid);
+    }
+    if (cid.length >= 11) {
+      prefix11List.push({ p11: cid.slice(0, 11), cid });
+    }
+  }
+
+  let hasAnyCampColData = false;
+  let totalMatchedOrders = 0;
+
+  for (let i = 1; i < data_tong_don_upyo.length; i++) {
+    const r = data_tong_don_upyo[i];
+    if (!Array.isArray(r) || r.length === 0) continue;
+
+    const tg = String(r[colTg] || "").trim();
+    if (!tg || !patternsArr.some((p) => tg.includes(p))) continue;
+
+    const ten = String(r[colTen] || "").trim().toUpperCase();
+    const sdt = String(r[colSdt] || "").replace(/\D/g, "");
+    if (!ten && !sdt) continue;
+    if (ten === "TEST" || sdt === "999999999") continue;
+
+    const noteU = String(r[colNoteU] || "").toLowerCase();
+    const noteV = String(r[colNoteV] || "").toLowerCase();
+    if (noteU.includes("capture form") || noteV.includes("capture form")) continue;
+    if (noteU.includes("trùng") || noteV.includes("trùng")) continue;
+
+    if (r.length > colDemDon) {
+      const demStr = String(r[colDemDon] || "").trim();
+      if (demStr === "0") continue;
+    }
+
+    const idQ = r.length > colCampId ? chuan_hoa_id_camp_digits(r[colCampId]) : "";
+    const idP = r.length > colMaQc ? chuan_hoa_id_camp_digits(r[colMaQc]) : "";
+    const urlCamp = r.length > colLink ? extract_utm_campaign_from_url(r[colLink]) : "";
+
+    if (idQ || idP || urlCamp) hasAnyCampColData = true;
+
+    const candidates = [idQ, idP, urlCamp].filter(Boolean);
+    if (candidates.length === 0) continue;
+
+    // 1. Ưu tiên khớp chính xác hoàn toàn
+    let matchedCid = "";
+    for (const cand of candidates) {
+      if (exactMap.has(cand)) {
+        matchedCid = exactMap.get(cand);
+        break;
+      }
+    }
+
+    // 2. Dự phòng khớp 14 chữ số đầu (nếu Google Sheet làm tròn 18 số)
+    if (!matchedCid) {
+      for (const cand of candidates) {
+        if (cand.length >= 14 && prefix14Map.has(cand.slice(0, 14))) {
+          matchedCid = prefix14Map.get(cand.slice(0, 14));
+          break;
+        }
+      }
+    }
+
+    // 3. Dự phòng khớp 11 chữ số đầu cùng MKT (nếu Ladipage đổ Adset ID vào Cột Q)
+    if (!matchedCid) {
+      const rowMktNorm = chuan_hoa_mkt_so_sanh(r[colMkt]);
+      if (rowMktNorm && rowMktNorm === targetMktNorm) {
+        for (const cand of candidates) {
+          if (cand.length >= 11) {
+            const c11 = cand.slice(0, 11);
+            const hit = prefix11List.find((x) => x.p11 === c11);
+            if (hit) {
+              matchedCid = hit.cid;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (matchedCid) {
+      countsByCampId[matchedCid] = (countsByCampId[matchedCid] || 0) + 1;
+      totalMatchedOrders += 1;
+      const chot = r.length > colDaChot ? parseInt(String(r[colDaChot] || "0").trim(), 10) || 0 : 0;
+      if (chot > 0) {
+        closedByCampId[matchedCid] = (closedByCampId[matchedCid] || 0) + 1;
+      }
+    }
+  }
+
+  return { countsByCampId, closedByCampId, hasAnyCampColData, totalMatchedOrders };
+}
+
+function render_mc_table_rows() {
+  const ten_mkt = current_mc_mkt;
+  if (!ten_mkt) return;
+
+  const activeStart = mc_date_start || current_start_date;
+  const activeEnd = mc_date_end || current_end_date;
+  const sourceCampsMap = mc_custom_camps_map || cached_fb_camps || {};
+
+  const campsList = Array.isArray(sourceCampsMap && sourceCampsMap[ten_mkt])
+    ? [...sourceCampsMap[ten_mkt]]
+    : [];
+
+  const { countsByCampId, closedByCampId, hasAnyCampColData } = tinh_ket_qua_camp_tu_tong_don(
+    ten_mkt,
+    campsList,
+    activeStart,
+    activeEnd
+  );
+
+  const searchInput = document.getElementById("mcSearchInput");
+  const clearBtn = document.getElementById("btnClearMcSearch");
+  const qRaw = (searchInput ? searchInput.value : "").trim().toLowerCase();
+  const qNoDau = qRaw ? bo_dau_tieng_viet(qRaw).toLowerCase() : "";
+  if (clearBtn) clearBtn.classList.toggle("hidden", !qRaw);
+
+  let filtered = campsList.filter((c) => {
+    if (!qRaw) return true;
+    const nameL = String(c.campaign_name || "").toLowerCase();
+    const nameNd = bo_dau_tieng_viet(nameL).toLowerCase();
+    const idL = String(c.campaign_id || "").toLowerCase();
+    const spL = String(c.sp || "").toLowerCase();
+    return (
+      nameL.includes(qRaw) ||
+      nameNd.includes(qNoDau) ||
+      idL.includes(qRaw) ||
+      spL.includes(qRaw)
+    );
+  });
+
+  filtered.sort((a, b) => {
+    const resA = countsByCampId[a.campaign_id] || 0;
+    const resB = countsByCampId[b.campaign_id] || 0;
+    if (resB !== resA) return resB - resA;
+    return (b.spend || 0) - (a.spend || 0);
+  });
+
+  const mcMktBadge = document.getElementById("mcMktBadge");
+  const mcCampCountBadge = document.getElementById("mcCampCountBadge");
+  const mcTotalResultBadge = document.getElementById("mcTotalResultBadge");
+  const mcDateRangeText = document.getElementById("mcDateRangeText");
+  const mcTotalSpendText = document.getElementById("mcTotalSpendText");
+  const mcTableBody = document.getElementById("mcTableBody");
+  const mcTableFoot = document.getElementById("mcTableFoot");
+  const mcEmptyState = document.getElementById("mcEmptyState");
+  const mcFooterSummary = document.getElementById("mcFooterSummary");
+
+  const totalSpend = filtered.reduce((acc, c) => acc + (c.spend || 0), 0);
+  const totalImpr = filtered.reduce((acc, c) => acc + (c.impressions || 0), 0);
+  const totalClicks = filtered.reduce((acc, c) => acc + (c.link_clicks || 0), 0);
+  const totalResults = filtered.reduce((acc, c) => acc + (countsByCampId[c.campaign_id] || 0), 0);
+  const totalClosed = filtered.reduce((acc, c) => acc + (closedByCampId[c.campaign_id] || 0), 0);
+
+  if (mcMktBadge) mcMktBadge.textContent = ten_mkt;
+  if (mcCampCountBadge) mcCampCountBadge.textContent = `${filtered.length} Camp`;
+  if (mcTotalResultBadge) mcTotalResultBadge.textContent = `${totalResults} kết quả`;
+  if (mcDateRangeText) {
+    mcDateRangeText.textContent =
+      activeStart === activeEnd
+        ? `Ngày: ${format_date_vn_display(activeStart)}`
+        : `Từ ${format_date_vn_display(activeStart)} → ${format_date_vn_display(activeEnd)}`;
+  }
+  if (mcTotalSpendText) mcTotalSpendText.textContent = `Tổng tiêu: ${format_tien_vnd(totalSpend)}`;
+
+  if (mcTableBody) mcTableBody.innerHTML = "";
+  if (mcTableFoot) mcTableFoot.innerHTML = "";
+
+  if (filtered.length === 0) {
+    if (mcEmptyState) {
+      const titleEl = mcEmptyState.querySelector(".od-empty-title");
+      const descEl = mcEmptyState.querySelector(".od-empty-desc");
+      if (mc_is_loading_fb) {
+        if (titleEl) titleEl.textContent = "⏳ Đang tải dữ liệu Camp...";
+        if (descEl) descEl.textContent = "Đang đồng bộ số liệu chi phí & kết quả từ Facebook Ads theo khoảng ngày vừa chọn.";
+      } else {
+        if (titleEl) titleEl.textContent = "Chưa có chiến dịch nào phát sinh chi phí";
+        if (descEl) descEl.textContent = "Không tìm thấy chiến dịch (Camp) nào của MKT này trong khoảng ngày đang chọn.";
+      }
+      mcEmptyState.classList.remove("hidden");
+    }
+    if (mcFooterSummary) {
+      mcFooterSummary.textContent = mc_is_loading_fb ? "⏳ Đang tải dữ liệu chiến dịch..." : "Hiển thị 0 chiến dịch";
+    }
+    return;
+  }
+
+  if (mcEmptyState) mcEmptyState.classList.add("hidden");
+
+  const frag = document.createDocumentFragment();
+  filtered.forEach((c, idx) => {
+    const tr = document.createElement("tr");
+    const kq = countsByCampId[c.campaign_id] || 0;
+    const chot = closedByCampId[c.campaign_id] || 0;
+    const spend = c.spend || 0;
+    const cpa = kq > 0 ? spend / kq : 0;
+    const cpmVal = c.cpm > 0 ? c.cpm : (c.impressions > 0 ? (spend / c.impressions) * 1000 : 0);
+    const ctrVal = c.ctr > 0 ? c.ctr : (c.impressions > 0 ? ((c.link_clicks || 0) / c.impressions) * 100 : 0);
+    const cpcVal = c.cpc > 0 ? c.cpc : ((c.link_clicks || 0) > 0 ? spend / c.link_clicks : 0);
+
+    const kqSubText = kq > 0
+      ? `${format_tien_vnd(cpa)}/số${chot > 0 ? ` • Chốt ${chot}` : ""}`
+      : "0 đ/số";
+    const campNameSafe = escape_html(c.campaign_name || "(Không tên)");
+
+    tr.innerHTML = `
+      <td class="mc-col-stt"><span class="mc-stt-badge">${idx + 1}</span></td>
+      <td class="mc-col-name">
+        <div class="mc-camp-name" title="${campNameSafe}">${campNameSafe}</div>
+        <div class="mc-camp-sub">
+          ${c.sp ? `<span class="mc-sp-tag">${escape_html(c.sp)}</span>` : ""}
+          <span class="mc-id-badge">ID: ${escape_html(c.campaign_id || "-")}</span>
+        </div>
+      </td>
+      <td class="mc-col-result">
+        <div class="mc-result-wrap">
+          <span class="mc-result-pill ${kq === 0 ? "is-zero" : ""}">${kq}</span>
+          <div class="mc-cpa-sub">${escape_html(kqSubText)}</div>
+        </div>
+      </td>
+      <td class="mc-col-spend"><span class="mc-spend-val">${escape_html(format_tien_vnd(spend))}</span></td>
+      <td class="mc-col-cpm"><span class="mc-metric-val">${cpmVal > 0 ? escape_html(format_tien_vnd(cpmVal)) : "-"}</span></td>
+      <td class="mc-col-ctr"><span class="mc-ctr-badge">${ctrVal > 0 ? `${ctrVal.toFixed(2)}%` : "0.00%"}</span></td>
+      <td class="mc-col-cpc"><span class="mc-metric-val">${cpcVal > 0 ? escape_html(format_tien_vnd(cpcVal)) : "-"}</span></td>
+    `;
+    frag.appendChild(tr);
+  });
+  mcTableBody.appendChild(frag);
+
+  if (mcTableFoot) {
+    const avgCpm = totalImpr > 0 ? (totalSpend / totalImpr) * 1000 : 0;
+    const avgCtr = totalImpr > 0 ? (totalClicks / totalImpr) * 100 : 0;
+    const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+    const avgCpa = totalResults > 0 ? totalSpend / totalResults : 0;
+
+    const footTr = document.createElement("tr");
+    footTr.className = "mc-foot-row";
+    footTr.innerHTML = `
+      <td class="mc-col-stt">Σ</td>
+      <td class="mc-col-name">TỔNG CỘNG (${filtered.length} Camp)</td>
+      <td class="mc-col-result">
+        <div class="mc-result-wrap">
+          <span class="mc-result-pill ${totalResults === 0 ? "is-zero" : ""}">${totalResults}</span>
+          ${totalResults > 0 ? `<div class="mc-cpa-sub">${escape_html(format_tien_vnd(avgCpa))}/số${totalClosed > 0 ? ` • Chốt ${totalClosed}` : ""}</div>` : ""}
+        </div>
+      </td>
+      <td class="mc-col-spend"><span class="mc-spend-val">${escape_html(format_tien_vnd(totalSpend))}</span></td>
+      <td class="mc-col-cpm"><span class="mc-metric-val">${avgCpm > 0 ? escape_html(format_tien_vnd(avgCpm)) : "-"}</span></td>
+      <td class="mc-col-ctr"><span class="mc-ctr-badge">${avgCtr > 0 ? `${avgCtr.toFixed(2)}%` : "0.00%"}</span></td>
+      <td class="mc-col-cpc"><span class="mc-metric-val">${avgCpc > 0 ? escape_html(format_tien_vnd(avgCpc)) : "-"}</span></td>
+    `;
+    mcTableFoot.appendChild(footTr);
+  }
+
+  if (mcFooterSummary) {
+    const noteMissingColQ =
+      Array.isArray(data_tong_don_upyo) && data_tong_don_upyo.length > 1 && !hasAnyCampColData
+        ? " • ⚠️ Chưa thấy dữ liệu Cột Q (Campaign ID) từ applam.gs"
+        : "";
+    const loadingSuffix = mc_is_loading_fb ? " • ⏳ Đang đồng bộ mới nhất..." : "";
+    mcFooterSummary.textContent = `Hiển thị ${filtered.length} chiến dịch • Tổng ${totalResults} kết quả thực tế (Cột Q)${noteMissingColQ}${loadingSuffix}`;
+  }
+}
+
+async function hien_thi_bang_camp_mkt(ten_mkt) {
+  const modal = document.getElementById("mktCampModal");
+  if (!modal) return;
+
+  hide_all_popups();
+  current_mc_mkt = ten_mkt;
+  mc_date_start = current_start_date;
+  mc_date_end = current_end_date;
+  mc_custom_camps_map = null;
+  mc_is_loading_fb = false;
+  update_mc_date_btn_ui();
+
+  const searchInput = document.getElementById("mcSearchInput");
+  if (searchInput) searchInput.value = "";
+
+  modal.classList.remove("hidden");
+  render_mc_table_rows();
+
+  if (!Array.isArray(data_tong_don_upyo) || data_tong_don_upyo.length < 2) {
+    tai_du_lieu_thong_bao_ngam(false).then(() => {
+      if (current_mc_mkt === ten_mkt && !modal.classList.contains("hidden")) {
+        render_mc_table_rows();
+      }
+    });
+  }
+}
+
 function apply_od_filters_and_render(resetLimit = false) {
   if (resetLimit) od_render_limit = 500;
 
@@ -5861,6 +6403,25 @@ function render_order_detail_table(ordersToRender) {
   tbody.innerHTML = rowsHtml.join("");
 }
 
+function build_sp_closing_rate_pill_html(ma_str, ten_mkt) {
+  const crData = last_closing_rate_data || {};
+  const stat = ten_mkt
+    ? (crData.by_mkt_sp && crData.by_mkt_sp[ten_mkt] && crData.by_mkt_sp[ten_mkt][ma_str])
+    : (crData.by_sp && crData.by_sp[ma_str]);
+  const dem = (stat && stat.dem) || 0;
+  const chot = (stat && stat.chot) || 0;
+  const pct = dem > 0 ? (chot / dem) * 100 : 0;
+  const pillCls = get_closing_rate_pill_cls(pct, dem);
+  const pctFormatted = dem > 0
+    ? `${Number.isInteger(Number(pct.toFixed(1))) ? pct.toFixed(0) : pct.toFixed(1)}%`
+    : "0%";
+  const labelText = dem > 0 ? `Chốt ${pctFormatted} (${chot}/${dem})` : `Chốt 0%`;
+  const tooltip = dem > 0
+    ? `Tỉ lệ chốt Landing mã ${ma_str}${ten_mkt ? ` (${ten_mkt})` : ""}: ${pct.toFixed(1)}% (Chốt ${chot}/${dem} số)`
+    : `Chưa có số Landing mã ${ma_str}${ten_mkt ? ` (${ten_mkt})` : ""} trong khoảng ngày này`;
+  return `<span class="sp-cr-pill ${pillCls}" title="${escape_html(tooltip)}">${escape_html(labelText)}</span>`;
+}
+
 function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   const dict = t();
   const card = document.createElement("div");
@@ -5874,6 +6435,7 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   topRow.innerHTML = `
     <div class="card-title-group">
       <span class="card-name">👟 ${ma_str}</span>
+      ${build_sp_closing_rate_pill_html(ma_str, current_mkt_detail)}
       <span class="card-view-orders-hint">Xem ${count} đơn →</span>
     </div>
     <div class="card-count-group">
@@ -5927,6 +6489,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
     <div class="card-title-group">
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
+      ${build_sp_closing_rate_pill_html(name_str, null)}
       <span class="card-view-orders-hint">Xem ${count} đơn →</span>
     </div>
     <div class="card-count-group">
@@ -6005,6 +6568,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   const colMkt = document.getElementById("colMkt");
   const frameMkt = document.getElementById("frameMkt");
   const containerMkt = document.getElementById("containerMkt");
+  const btnMktViewCampInline = document.getElementById("btnMktViewCampInline");
   const btnMktViewAllInline = document.getElementById("btnMktViewAllInline");
   const headerMktText = document.getElementById("headerMktText");
   const headerMktIcon = document.getElementById("headerMktIcon");
@@ -6013,6 +6577,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   function ve_danh_sach_top_mkt() {
     current_mkt_detail = null;
     if (colMkt) colMkt.classList.remove("is-mkt-detail");
+    if (btnMktViewCampInline) btnMktViewCampInline.classList.add("hidden");
     if (btnMktViewAllInline) btnMktViewAllInline.classList.add("hidden");
     btnBackMkt.classList.add("hidden");
     if (headerMktIcon) headerMktIcon.textContent = "🏆";
@@ -6100,6 +6665,15 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     if (frameMkt) frameMkt.classList.remove("is-scrolled");
 
     const tong_don_mkt = stats_mkt_don[ten_mkt] || 0;
+    const camps_mkt = (cached_fb_camps && cached_fb_camps[ten_mkt]) || [];
+    if (btnMktViewCampInline) {
+      btnMktViewCampInline.textContent = camps_mkt.length > 0 ? `📢 Xem Camp (${camps_mkt.length})` : "📢 Xem Camp";
+      btnMktViewCampInline.title = `Xem danh sách chiến dịch (Camp) đang chạy của ${ten_mkt}`;
+      btnMktViewCampInline.classList.remove("hidden");
+      btnMktViewCampInline.onclick = () => {
+        hien_thi_bang_camp_mkt(ten_mkt);
+      };
+    }
     if (btnMktViewAllInline) {
       btnMktViewAllInline.textContent = `\ud83d\udccb Xem ${tong_don_mkt} \u0111\u01a1n \u2192`;
       btnMktViewAllInline.title = `Xem danh s\u00e1ch t\u1ea5t c\u1ea3 ${tong_don_mkt} \u0111\u01a1n c\u1ee7a ${ten_mkt} (T\u1ea5t c\u1ea3 m\u00e3 SP)`;
@@ -6364,6 +6938,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       if (instantFb) {
         cached_fb_chi_tiet = instantFb.local_chi_tiet;
         cached_fb_tong = instantFb.local_tong;
+        cached_fb_camps = instantFb.local_camps || {};
       }
       // Vẽ NGAY ở khung hình đầu tiên bằng cache có sẵn trước khi mở cửa sổ -> Tổng Công Ty + 2 cột đồng bộ 100%, không nháy nhảy!
       ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
@@ -6383,6 +6958,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       fbResult = await fbPromise;
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
+      cached_fb_camps = fbResult.local_camps || {};
       run_silent_dashboard_rerender();
 
       gsResult = await sheetsPromise;
@@ -6398,6 +6974,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
+      cached_fb_camps = fbResult.local_camps || {};
       ve_noi_dung_dashboard(
         current_start_date,
         current_end_date,
@@ -6631,8 +7208,17 @@ function update_cal_range_highlight() {
   if (!grid) return;
 
   const isOdCal = current_cal_target === "od_filter";
-  let rStart = isOdCal ? (od_date_start || "") : current_start_date;
-  let rEnd = isOdCal ? (od_date_end || od_date_start || "") : current_end_date;
+  const isMcCal = current_cal_target === "mc_filter";
+  let rStart = isOdCal
+    ? (od_date_start || "")
+    : isMcCal
+    ? (mc_date_start || current_start_date)
+    : current_start_date;
+  let rEnd = isOdCal
+    ? (od_date_end || od_date_start || "")
+    : isMcCal
+    ? (mc_date_end || mc_date_start || current_end_date)
+    : current_end_date;
 
   if (cal_pick_step === 1 && cal_temp_start) {
     const h = cal_hover_date || cal_temp_start;
@@ -6754,6 +7340,13 @@ function render_calendar_grid(year, month) {
           current_cal_target = null;
           update_od_date_btn_ui();
           apply_od_filters_and_render(true);
+        } else if (current_cal_target === "mc_filter") {
+          const calPopup = document.getElementById("calendarPopup");
+          calPopup?.classList.add("hidden");
+          calPopup?.classList.remove("is-modal-cal");
+          document.getElementById("btnMcDateRange")?.classList.remove("is-open");
+          current_cal_target = null;
+          tai_camp_mkt_theo_ngay(st, en);
         } else {
           set_and_refresh(st, en);
         }
@@ -6794,9 +7387,12 @@ function toggle_calendar_popup(targetType, anchorBtn) {
   cal_temp_start = null;
   cal_hover_date = null;
 
-  const baseDateStr = current_cal_target === "od_filter"
-    ? (od_date_end || od_date_start || current_end_date || current_start_date)
-    : (current_end_date || current_start_date);
+  const baseDateStr =
+    current_cal_target === "od_filter"
+      ? (od_date_end || od_date_start || current_end_date || current_start_date)
+      : current_cal_target === "mc_filter"
+      ? (mc_date_end || mc_date_start || current_end_date || current_start_date)
+      : (current_end_date || current_start_date);
   const dt = parse_ymd_date(baseDateStr);
   current_cal_year = dt.getFullYear();
   current_cal_month = dt.getMonth() + 1;
@@ -6804,7 +7400,10 @@ function toggle_calendar_popup(targetType, anchorBtn) {
   render_calendar_grid(current_cal_year, current_cal_month);
   sync_cal_preset_sidebar_ui();
 
-  calPopup.classList.toggle("is-modal-cal", current_cal_target === "od_filter");
+  calPopup.classList.toggle(
+    "is-modal-cal",
+    current_cal_target === "od_filter" || current_cal_target === "mc_filter"
+  );
   calPopup.classList.remove("hidden");
   anchorBtn.classList.add("is-open");
   const rect = anchorBtn.getBoundingClientRect();
@@ -6821,11 +7420,20 @@ function toggle_calendar_popup(targetType, anchorBtn) {
 
 function sync_cal_preset_sidebar_ui() {
   const isOdCal = current_cal_target === "od_filter";
+  const isMcCal = current_cal_target === "mc_filter";
   const allBtn = document.getElementById("btnCalAllDates");
   if (allBtn) allBtn.classList.toggle("hidden", !isOdCal);
 
-  const st = isOdCal ? od_date_start : current_start_date;
-  const en = isOdCal ? od_date_end : current_end_date;
+  const st = isOdCal
+    ? od_date_start
+    : isMcCal
+    ? (mc_date_start || current_start_date)
+    : current_start_date;
+  const en = isOdCal
+    ? od_date_end
+    : isMcCal
+    ? (mc_date_end || current_end_date)
+    : current_end_date;
   const activePreset = detect_active_cal_preset(st, en, isOdCal);
 
   document.querySelectorAll("#calPresetsSidebar .cal-preset-item").forEach((btn) => {
@@ -6848,6 +7456,13 @@ function apply_cal_preset_choice(preset) {
     current_cal_target = null;
     update_od_date_btn_ui();
     apply_od_filters_and_render(true);
+  } else if (current_cal_target === "mc_filter" && st && en) {
+    const calPopup = document.getElementById("calendarPopup");
+    calPopup?.classList.add("hidden");
+    calPopup?.classList.remove("is-modal-cal");
+    document.getElementById("btnMcDateRange")?.classList.remove("is-open");
+    current_cal_target = null;
+    tai_camp_mkt_theo_ngay(st, en);
   } else if (st && en) {
     set_and_refresh(st, en);
   }
@@ -6902,6 +7517,7 @@ function hide_all_popups() {
   }
   document.getElementById("btnStartDate")?.classList.remove("is-open");
   document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+  document.getElementById("btnMcDateRange")?.classList.remove("is-open");
   if (typeof close_cal_custom_dropdowns === "function") close_cal_custom_dropdowns();
   if (settingsPopup) settingsPopup.classList.add("hidden");
   if (ctxMenu) ctxMenu.classList.add("hidden");
@@ -7907,7 +8523,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  document.querySelector(".order-detail-card")?.addEventListener("click", (e) => {
+  document.getElementById("orderDetailCard")?.addEventListener("click", (e) => {
     e.stopPropagation();
     if (!e.target.closest("#odExcelFilterPopover") && !e.target.closest(".od-th-filter-btn")) {
       close_od_excel_filter();
@@ -7917,6 +8533,47 @@ window.addEventListener("DOMContentLoaded", async () => {
       calPopup?.classList.add("hidden");
       calPopup?.classList.remove("is-modal-cal");
       document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+      current_cal_target = null;
+    }
+  });
+
+  // Sự kiện Modal Xem Camp MKT (v8.6.224)
+  document.getElementById("btnMcDateRange")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggle_calendar_popup("mc_filter", e.currentTarget);
+  });
+  const mcSearchInput = document.getElementById("mcSearchInput");
+  const mcClearBtn = document.getElementById("btnClearMcSearch");
+  mcSearchInput?.addEventListener("input", () => {
+    render_mc_table_rows();
+  });
+  mcClearBtn?.addEventListener("click", () => {
+    if (mcSearchInput) {
+      mcSearchInput.value = "";
+      mcSearchInput.focus();
+      render_mc_table_rows();
+    }
+  });
+  document.getElementById("btnCloseMktCamp")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dong_bang_camp_mkt();
+  });
+  document.getElementById("btnDismissMktCamp")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dong_bang_camp_mkt();
+  });
+  document.getElementById("mktCampModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "mktCampModal") {
+      dong_bang_camp_mkt();
+    }
+  });
+  document.getElementById("mktCampCard")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (current_cal_target === "mc_filter" && !e.target.closest("#calendarPopup") && !e.target.closest("#btnMcDateRange")) {
+      const calPopup = document.getElementById("calendarPopup");
+      calPopup?.classList.add("hidden");
+      calPopup?.classList.remove("is-modal-cal");
+      document.getElementById("btnMcDateRange")?.classList.remove("is-open");
       current_cal_target = null;
     }
   });
@@ -7964,8 +8621,16 @@ window.addEventListener("DOMContentLoaded", async () => {
         current_cal_target = null;
         return;
       }
+      if (current_cal_target === "mc_filter" && calPop && !calPop.classList.contains("hidden")) {
+        calPop.classList.add("hidden");
+        calPop.classList.remove("is-modal-cal");
+        document.getElementById("btnMcDateRange")?.classList.remove("is-open");
+        current_cal_target = null;
+        return;
+      }
       hide_all_popups();
       dong_bang_don_hang_chi_tiet();
+      dong_bang_camp_mkt();
     }
   });
 
