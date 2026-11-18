@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.226";
+const APP_FRONTEND_VERSION = "8.6.227";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -54,6 +54,8 @@ const CSV_URL_THONG_BAO_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SE
 
 const CSV_URL_NGUON_TAG = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1400554532`;
 const CSV_URL_NGUON_TAG_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1400554532`;
+
+const CSV_URL_LIVE_WEBHOOK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&mode=live`;
 
 const FB_TOKEN_PROTECTED =
   "EBEYFxhqLA5jKj0KcGNBBmIBMCcTEQcGbBV1Gn0FA30jJS4DZxwfADwkNwVxemh1ByMDDT4ZFBo/agENdXNqWWIXKypnGw4FLQAHb2tqcV8hJyh/OgITLCwIBzRgAV5ZYx0ofGgQCiA5ESs9RHpxcwYALSFnMCEmNgsrOFpgU3AWBwsJMGQUCGUlBxVRaVxsFwlvOSUSDBIFMA4nd2pxDhcTLn0HOQcNDTwPCGRxdmwWJG16J2ZzJBEaNxBECAdaJB0yKAUXHwc=";
@@ -7754,11 +7756,11 @@ async function quet_don_dinh_ky() {
       }
     }
 
-    // 2. Chế độ chạy trên trình duyệt web: Lấy đơn từ DÒNG ĐẦU TIÊN (Dòng 1) của Bảng Thông Báo
-    const rowsTb = await fetch_csv_with_fallback(CSV_URL_THONG_BAO, CSV_URL_THONG_BAO_FALLBACK, "thong_bao").catch(() => []);
-    if (!Array.isArray(rowsTb) || rowsTb.length < 2) return;
+    // 2. Chế độ chạy trên trình duyệt web: Lấy đơn trực tiếp từ hàng đợi RAM Webhook (mode=live, không quét Sheet)
+    const rowsTb = await fetch_csv_with_fallback(CSV_URL_LIVE_WEBHOOK, CSV_URL_LIVE_WEBHOOK, "live_webhook").catch(() => []);
+    if (!Array.isArray(rowsTb) || rowsTb.length < 1 || !Array.isArray(rowsTb[0]) || rowsTb[0].length !== 5) return;
 
-    let colTg = 0, colTen = 1, colSdt = 2, colMkt = 6, colSp = 7;
+    let colTg = 0, colTen = 1, colSdt = 2, colMkt = 3, colSp = 4;
     const h = rowsTb[0];
     if (Array.isArray(h)) {
       for (let c = 0; c < h.length; c++) {
@@ -7769,6 +7771,14 @@ async function quet_don_dinh_ky() {
         else if (name === "mkt" || name === "marketer" || name === "tên mkt") colMkt = c;
         else if (name === "dòng sp" || name === "dong sp" || name === "sản phẩm" || name === "san pham") colSp = c;
       }
+    }
+
+    if (rowsTb.length < 2) {
+      if (!scanner_initialized) {
+        last_row1_key_web = "__EMPTY__";
+        scanner_initialized = true;
+      }
+      return;
     }
 
     const dongDau = rowsTb[1];
@@ -7789,7 +7799,7 @@ async function quet_don_dinh_ky() {
       const danh_sach_doc = [];
       const danh_sach_toast = [];
 
-      for (let i = 1; i < Math.Min(15, rowsTb.length); i++) {
+      for (let i = 1; i < Math.min(15, rowsTb.length); i++) {
         const r = rowsTb[i];
         const tg = String(r[colTg] || "").trim();
         const sdt = String(r[colSdt] || "").trim();
@@ -7797,7 +7807,7 @@ async function quet_don_dinh_ky() {
         const sp = String(r[colSp] || "").trim();
 
         const key_i = `${tg}_${sdt}_${sp}_${mkt}`;
-        if (key_i === last_row1_key_web) break;
+        if (last_row1_key_web && last_row1_key_web !== "__EMPTY__" && key_i === last_row1_key_web) break;
 
         const mktClean = chuan_hoa_mkt_ten(mkt);
         const spClean = chuan_hoa_sp_ten(sp);
@@ -8645,5 +8655,5 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   await quet_don_dinh_ky();
-  setInterval(quet_don_dinh_ky, 3000);
+  setInterval(quet_don_dinh_ky, 1500);
 });
