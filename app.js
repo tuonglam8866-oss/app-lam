@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.229";
+const APP_FRONTEND_VERSION = "8.6.230";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -963,11 +963,11 @@ const I18N = {
     lblVoice: "1. Âm thanh (Chị Google):",
     lblPopup: "2. Popup Góc Màn Hình:",
     lblFireworks: "3. Hiệu ứng Pháo Hoa:",
-    lblFontSize: "4. Cỡ chữ:",
-    lblUiScale: "5. Kích thước UI:",
-    lblTheme: "6. Giao diện (Dark Mode):",
-    lblLang: "7. Ngôn ngữ (Language):",
-    lblAutoStart: "8. Khởi động cùng Windows:",
+    lblFontSize: "1. Cỡ chữ:",
+    lblUiScale: "2. Kích thước UI:",
+    lblTheme: "3. Giao diện (Dark Mode):",
+    lblLang: "4. Ngôn ngữ (Language):",
+    lblAutoStart: "5. Khởi động cùng Windows:",
     lblUpdate: "8. Tự động cập nhật (GitHub):",
     btnSaveUpdateUrl: "💾 Lưu & Cập nhật",
     btnCheckUpdateNow: "🔄 Kiểm tra ngay",
@@ -978,7 +978,7 @@ const I18N = {
     btnTestPopup: "🎉 Xem thử Popup",
     themeLight: "☀️ Sáng (Kem Cozy)",
     themeDark: "🌙 Tối (Nâu Be Cozy)",
-    scannerStatus: "Đang Online: Quét đơn (3s/lần)",
+    scannerStatus: "Đang Online",
     knownCodesFmt: (n) => `Đang nhận diện: ${n} mã SP`,
     ctxCopyCp: "📋 Copy CP",
     toastCopiedCp: "Đã copy CP",
@@ -1050,11 +1050,11 @@ const I18N = {
     lblVoice: "1. 语音播报 (Google 语音):",
     lblPopup: "2. 屏幕右下角弹窗:",
     lblFireworks: "3. 烟花庆祝特效:",
-    lblFontSize: "4. 字体大小:",
-    lblUiScale: "5. 界面缩放:",
-    lblTheme: "6. 界面主题 (深色模式):",
-    lblLang: "7. 语言选择 (Language):",
-    lblAutoStart: "8. 开机自动启动:",
+    lblFontSize: "1. 字体大小:",
+    lblUiScale: "2. 界面缩放:",
+    lblTheme: "3. 界面主题 (深色模式):",
+    lblLang: "4. 语言选择 (Language):",
+    lblAutoStart: "5. 开机自动启动:",
     lblUpdate: "8. 自动更新 (GitHub):",
     btnSaveUpdateUrl: "💾 保存并更新",
     btnCheckUpdateNow: "🔄 立即检查",
@@ -1065,7 +1065,7 @@ const I18N = {
     btnTestPopup: "🎉 预览弹窗",
     themeLight: "☀️ 浅色 (温暖米色)",
     themeDark: "🌙 深色 (摩卡棕米)",
-    scannerStatus: "实时监控: 每3秒扫描新订单",
+    scannerStatus: "在线运行",
     knownCodesFmt: (n) => `当前识别: ${n} 个产品代码`,
     ctxCopyCp: "📋 复制广告费",
     toastCopiedCp: "已复制广告费",
@@ -1137,11 +1137,11 @@ const I18N = {
     lblVoice: "1. Voice Alert (Google TTS):",
     lblPopup: "2. Corner Popup Alert:",
     lblFireworks: "3. Fireworks Celebration:",
-    lblFontSize: "4. Font Size:",
-    lblUiScale: "5. UI Scale:",
-    lblTheme: "6. Appearance (Dark Mode):",
-    lblLang: "7. Language:",
-    lblAutoStart: "8. Start with Windows:",
+    lblFontSize: "1. Font Size:",
+    lblUiScale: "2. UI Scale:",
+    lblTheme: "3. Appearance (Dark Mode):",
+    lblLang: "4. Language:",
+    lblAutoStart: "5. Start with Windows:",
     lblUpdate: "8. Auto-Update (GitHub):",
     btnSaveUpdateUrl: "💾 Save & Update",
     btnCheckUpdateNow: "🔄 Check Now",
@@ -1152,7 +1152,7 @@ const I18N = {
     btnTestPopup: "🎉 Test Popup",
     themeLight: "☀️ Light (Cozy Cream)",
     themeDark: "🌙 Dark (Cozy Mocha)",
-    scannerStatus: "Live: Scanning orders (every 3s)",
+    scannerStatus: "Online",
     knownCodesFmt: (n) => `Recognizing: ${n} product codes`,
     ctxCopyCp: "📋 Copy Spend",
     toastCopiedCp: "Copied Spend",
@@ -7709,7 +7709,7 @@ function extract_orders_web_tk(rows) {
 
 async function quet_don_dinh_ky() {
   try {
-    // 1. Chế độ Native EXE: Nhận sự kiện đơn từ C# server
+    // Chế độ Native EXE: Chỉ nhận sự kiện cập nhật phiên bản từ C# server (đã bỏ hoàn toàn quét & thông báo đơn mới)
     if (native_exe_mode) {
       const res = await fetch(`/api/events?t=${Date.now()}`, {
         cache: "no-store",
@@ -7743,91 +7743,9 @@ async function quet_don_dinh_ky() {
                 hien_thi_bang_chuc_mung_cap_nhat(cleanVer);
               }
             }
-            if ((ev.toast || ev.newOrder) && !ev.fireworksHandled) {
-              trigger_confetti_burst();
-            }
-            if (ev.voice && !ev.voiceHandled && bat_thong_bao_gtts) {
-              doc_am_thanh(ev.voice);
-            }
           }
         }
         return;
-      }
-    }
-
-    // 2. Chế độ chạy trên trình duyệt web: Lấy đơn từ DÒNG ĐẦU TIÊN (Dòng 1) của Bảng Thông Báo
-    const rowsTb = await fetch_csv_with_fallback(CSV_URL_THONG_BAO, CSV_URL_THONG_BAO_FALLBACK, "thong_bao").catch(() => []);
-    if (!Array.isArray(rowsTb) || rowsTb.length < 2) return;
-
-    let colTg = 0, colTen = 1, colSdt = 2, colMkt = 6, colSp = 7;
-    const h = rowsTb[0];
-    if (Array.isArray(h)) {
-      for (let c = 0; c < h.length; c++) {
-        const name = String(h[c] || "").trim().toLowerCase();
-        if (name === "thời gian" || name === "thoi gian" || name === "ngày") colTg = c;
-        else if (name === "họ tên" || name === "ho ten" || name === "tên khách") colTen = c;
-        else if (name === "số điện thoại" || name === "so dien thoai" || name === "sđt" || name === "sdt") colSdt = c;
-        else if (name === "mkt" || name === "marketer" || name === "tên mkt") colMkt = c;
-        else if (name === "dòng sp" || name === "dong sp" || name === "sản phẩm" || name === "san pham") colSp = c;
-      }
-    }
-
-    const dongDau = rowsTb[1];
-    const tgDau = String(dongDau[colTg] || "").trim();
-    const sdtDau = String(dongDau[colSdt] || "").trim();
-    const mktDau = String(dongDau[colMkt] || "").trim();
-    const spDau = String(dongDau[colSp] || "").trim();
-
-    const curRow1Key = `${tgDau}_${sdtDau}_${spDau}_${mktDau}`;
-
-    if (!scanner_initialized) {
-      last_row1_key_web = curRow1Key;
-      scanner_initialized = true;
-      return;
-    }
-
-    if (curRow1Key && curRow1Key !== last_row1_key_web) {
-      const danh_sach_doc = [];
-      const danh_sach_toast = [];
-
-      for (let i = 1; i < Math.min(15, rowsTb.length); i++) {
-        const r = rowsTb[i];
-        const tg = String(r[colTg] || "").trim();
-        const sdt = String(r[colSdt] || "").trim();
-        const mkt = String(r[colMkt] || "").trim();
-        const sp = String(r[colSp] || "").trim();
-
-        const key_i = `${tg}_${sdt}_${sp}_${mkt}`;
-        if (key_i === last_row1_key_web) break;
-
-        const mktClean = chuan_hoa_mkt_ten(mkt);
-        const spClean = chuan_hoa_sp_ten(sp);
-        if (!mktClean && (spClean === "Sản phẩm" || spClean === "Sn phcm" || !spClean)) continue;
-
-        if (mktClean) {
-          danh_sach_doc.push(`${mktClean} ơi, có đơn rồi`);
-          danh_sach_toast.push(`MKT ${mktClean}\n${spClean}`);
-        } else {
-          danh_sach_doc.push("Có đơn mới rồi");
-          danh_sach_toast.push(`Vừa có đơn mới!\n${spClean}`);
-        }
-      }
-
-      last_row1_key_web = curRow1Key;
-
-      if (danh_sach_toast.length > 0 && bat_popup_thong_bao) {
-        let msg_toast = danh_sach_toast.join("\n");
-        if (msg_toast.length > 150) {
-          msg_toast = msg_toast.slice(0, 147) + "...";
-        }
-        hien_thi_popup_goc_man_hinh(t().newOrderPopupTitle, msg_toast);
-      } else {
-        trigger_confetti_burst();
-      }
-
-      if (danh_sach_doc.length > 0 && bat_thong_bao_gtts) {
-        const loi_doc_tong = danh_sach_doc.join(". ");
-        doc_am_thanh(loi_doc_tong, false);
       }
     }
   } catch (e) {}
