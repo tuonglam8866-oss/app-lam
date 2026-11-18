@@ -1,18 +1,18 @@
-﻿{
-    "version":  "8.6.220",
+{
+    "version":  "8.6.221",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "13c4d7cc9d3456e13702ace18e9f38bbad2b4f93eceecf205584498e20fb47f7",
+    "exe_sha256":  "4a8da6b68cea4f373d096c783951061d0e64e922b1215f2f160f607dbb5e4b7b",
     "index.html_sha256":  "7bfa5775f75bc7dd2f594f85d8c9b9eae697c688ea70e0d5c414f3d3d47aa230",
     "styles.css_sha256":  "6f904e25e474dded20b40797a73e335dbe2048ad5103039bdb533408d526fec6",
-    "app.js_sha256":  "fcfe966a0d2e8c8ae995d9fc809310bd39cfaed0cce1af43eaf3a8862b04a7b0",
+    "app.js_sha256":  "5c74274906c081db84e28d6a92941078cd50bd6b1316282409f43eb577b1d72c",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "13c4d7cc9d3456e13702ace18e9f38bbad2b4f93eceecf205584498e20fb47f7",
-                                     "size":  566784
+                                     "sha256":  "4a8da6b68cea4f373d096c783951061d0e64e922b1215f2f160f607dbb5e4b7b",
+                                     "size":  559616
                                  },
                   "app.js":  {
-                                 "sha256":  "fcfe966a0d2e8c8ae995d9fc809310bd39cfaed0cce1af43eaf3a8862b04a7b0",
-                                 "size":  291145
+                                 "sha256":  "5c74274906c081db84e28d6a92941078cd50bd6b1316282409f43eb577b1d72c",
+                                 "size":  291198
                              },
                   "index.html":  {
                                      "sha256":  "7bfa5775f75bc7dd2f594f85d8c9b9eae697c688ea70e0d5c414f3d3d47aa230",

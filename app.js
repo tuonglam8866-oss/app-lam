@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.220";
+const APP_FRONTEND_VERSION = "8.6.221";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -591,6 +591,7 @@ const LIST_MKT_FB = [
   { ten: "T\u00c2M", id: "act_611714185179363" },
   { ten: "SAN", id: "act_1333165132087237" },
   { ten: "D\u0168NG", id: "act_1333165132087237" },
+  { ten: "D\u0168NG", id: "act_1761088481624922" },
 ];
 
 const TU_DIEN_PHAT_AM = {
