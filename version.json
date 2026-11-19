@@ -1,22 +1,22 @@
 {
-    "version":  "8.6.231",
+    "version":  "8.6.232",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "d4579d003ee839303c8df068ecd7a1187f784e5958da490888ca7e9bcdb00557",
-    "index.html_sha256":  "9df4e1aca13bcbe3da0e58500562f07275f59eea05df6437ad2a1a3b4c6141e1",
+    "exe_sha256":  "febe4df1fd3d7be6ef151a0cdbafad235ff8df863b16302088b49b9402c78791",
+    "index.html_sha256":  "17f7fc808ee17817fc787a28aeb5b87069d0b499b2741b988eac07a8a5ba6cf4",
     "styles.css_sha256":  "399e7861302d174ac24b4d0263fc88ccc1418366e24dcb7f9264f2305a8eb5de",
-    "app.js_sha256":  "f3bc97896143b28b3b285b65059cddd679f0e124f104d2144587d8c39aec3ada",
+    "app.js_sha256":  "8ee9620b63933ffea95c56fd92d1631441478d45ea23b04c8f034a1f5830fdf6",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "d4579d003ee839303c8df068ecd7a1187f784e5958da490888ca7e9bcdb00557",
+                                     "sha256":  "febe4df1fd3d7be6ef151a0cdbafad235ff8df863b16302088b49b9402c78791",
                                      "size":  595968
                                  },
                   "app.js":  {
-                                 "sha256":  "f3bc97896143b28b3b285b65059cddd679f0e124f104d2144587d8c39aec3ada",
-                                 "size":  315164
+                                 "sha256":  "8ee9620b63933ffea95c56fd92d1631441478d45ea23b04c8f034a1f5830fdf6",
+                                 "size":  315158
                              },
                   "index.html":  {
-                                     "sha256":  "9df4e1aca13bcbe3da0e58500562f07275f59eea05df6437ad2a1a3b4c6141e1",
-                                     "size":  41167
+                                     "sha256":  "17f7fc808ee17817fc787a28aeb5b87069d0b499b2741b988eac07a8a5ba6cf4",
+                                     "size":  41165
                                  },
                   "styles.css":  {
                                      "sha256":  "399e7861302d174ac24b4d0263fc88ccc1418366e24dcb7f9264f2305a8eb5de",

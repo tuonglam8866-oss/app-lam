@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.231";
+const APP_FRONTEND_VERSION = "8.6.232";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -978,7 +978,7 @@ const I18N = {
     btnTestPopup: "💬 Xem thử Popup",
     themeLight: "☀️ Sáng (Kem Cozy)",
     themeDark: "🌙 Tối (Nâu Be Cozy)",
-    scannerStatus: "Đang Online: Quét đơn (2.5s/lần)",
+    scannerStatus: "Đang Online: Quét đơn (4s/lần)",
     knownCodesFmt: (n) => `Đang nhận diện: ${n} mã SP`,
     ctxCopyCp: "📋 Copy CP",
     toastCopiedCp: "Đã copy CP",
@@ -1065,7 +1065,7 @@ const I18N = {
     btnTestPopup: "🎉 预览弹窗",
     themeLight: "☀️ 浅色 (温暖米色)",
     themeDark: "🌙 深色 (摩卡棕米)",
-    scannerStatus: "实时监控: 每2.5秒扫描新订单",
+    scannerStatus: "实时监控: 每4秒扫描新订单",
     knownCodesFmt: (n) => `当前识别: ${n} 个产品代码`,
     ctxCopyCp: "📋 复制广告费",
     toastCopiedCp: "已复制广告费",
@@ -1152,7 +1152,7 @@ const I18N = {
     btnTestPopup: "🎉 Test Popup",
     themeLight: "☀️ Light (Cozy Cream)",
     themeDark: "🌙 Dark (Cozy Mocha)",
-    scannerStatus: "Online: Scanning orders (2.5s)",
+    scannerStatus: "Online: Scanning orders (4s)",
     knownCodesFmt: (n) => `Recognizing: ${n} product codes`,
     ctxCopyCp: "📋 Copy Spend",
     toastCopiedCp: "Copied Spend",
