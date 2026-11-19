@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.266";
+const APP_FRONTEND_VERSION = "8.6.267";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1998,11 +1998,19 @@ let thong_bao_fetch_promise = null;
 let thong_bao_last_fetch_ms = 0;
 let thong_bao_loaded_start = "";
 let thong_bao_loaded_end = "";
+let thong_ke_loaded_start = "";
+let thong_ke_loaded_end = "";
+let thong_ke_fetch_promise = null;
+let thong_ke_fetch_range_key = "";
+
+function dich_ngay_ymd(ymdStr, deltaDays) {
+  const dt = parse_ymd_date(ymdStr);
+  dt.setDate(dt.getDate() + deltaDays);
+  return format_ymd_date(dt);
+}
 
 function lui_ngay_ymd(ymdStr, days) {
-  const dt = parse_ymd_date(ymdStr);
-  dt.setDate(dt.getDate() - days);
-  return format_ymd_date(dt);
+  return dich_ngay_ymd(ymdStr, -days);
 }
 
 function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd = "") {
@@ -2171,7 +2179,7 @@ function doc_cache_fb_last(start_str, end_str) {
   return null;
 }
 
-async function tai_du_lieu_google_sheets() {
+async function tai_du_lieu_google_sheets(force = false, customStart = "", customEnd = "") {
   doc_cau_hinh_tu_storage();
 
   let hasCachedCodes = false;
@@ -2179,23 +2187,75 @@ async function tai_du_lieu_google_sheets() {
     hasCachedCodes = Boolean(localStorage.getItem(STORAGE_KEY_SHEET_CODES));
   } catch (e) {}
 
-  // Ưu tiên tải xong ĐƠN TỔNG HỢP (gid=1227181736) trước để không tranh chấp khóa đọc Sheet trên Apps Script
-  const rowsThongKe = await fetch_csv_with_fallback(
-    build_apps_script_url("gid=1227181736"),
-    "",
-    "thong_ke"
+  const todayStr = format_ymd_date(new Date());
+  const effStart = customStart || current_start_date || todayStr;
+  const effEnd = customEnd || current_end_date || effStart;
+  const targetStart = dich_ngay_ymd(effStart, -35);
+  const plus3 = dich_ngay_ymd(effEnd, 3);
+  const targetEnd = effEnd <= todayStr && plus3 > todayStr ? todayStr : plus3;
+  const rangeKey = `${targetStart}|${targetEnd}`;
+
+  const rangeCovered = Boolean(
+    thong_ke_loaded_start &&
+    thong_ke_loaded_end &&
+    thong_ke_loaded_start <= targetStart &&
+    thong_ke_loaded_end >= targetEnd
   );
-  if (rowsThongKe && rowsThongKe.length > 0) {
-    data_hien_tai = rowsThongKe;
-    rebuild_cust_first_mkt_index();
-    luu_cache_thong_ke(rowsThongKe);
-    if (!hasCachedCodes) {
-      await dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
-    }
-    kich_hoat_tai_nen_sau_bang_chinh(150);
+
+  if (!force && rangeCovered && Array.isArray(data_hien_tai) && data_hien_tai.length > 0) {
     return true;
   }
-  return false;
+  if (thong_ke_fetch_promise && !force && thong_ke_fetch_range_key === rangeKey) {
+    return thong_ke_fetch_promise;
+  }
+
+  const directUrl = build_apps_script_url(
+    `gid=1227181736&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`
+  );
+  if (!directUrl) return false;
+
+  thong_ke_fetch_range_key = rangeKey;
+  thong_ke_fetch_promise = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      const res = await fetch(`${directUrl}&t=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) return false;
+      const text = await res.text();
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.startsWith("<!DOCTYPE html") || trimmed === "Unauthorized") {
+        return false;
+      }
+
+      const rowsThongKe = parse_csv_lines(text);
+      if (rowsThongKe && rowsThongKe.length > 0) {
+        data_hien_tai = rowsThongKe;
+        thong_ke_loaded_start = targetStart;
+        thong_ke_loaded_end = targetEnd;
+        rebuild_cust_first_mkt_index();
+        luu_cache_thong_ke(rowsThongKe);
+        if (!hasCachedCodes) {
+          await dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
+        }
+        if (!customStart) {
+          kich_hoat_tai_nen_sau_bang_chinh(150);
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    } finally {
+      thong_ke_fetch_promise = null;
+      thong_ke_fetch_range_key = "";
+    }
+  })();
+
+  return thong_ke_fetch_promise;
 }
 
 // ==============================================================
@@ -5672,6 +5732,17 @@ async function tai_camp_mkt_theo_ngay(st, en) {
   mc_date_end = en;
   update_mc_date_btn_ui();
   tai_du_lieu_thong_bao_ngam(false, st, en).catch(() => {});
+  const needTkForMc = Boolean(
+    st && en && (!thong_ke_loaded_start || !thong_ke_loaded_end || thong_ke_loaded_start > st || thong_ke_loaded_end < en)
+  );
+  if (needTkForMc) {
+    tai_du_lieu_google_sheets(false, st, en).then((ok) => {
+      const modal = document.getElementById("mktCampModal");
+      if (ok && modal && !modal.classList.contains("hidden") && current_mc_mkt && mc_date_start === st && mc_date_end === en) {
+        render_mc_table_rows();
+      }
+    }).catch(() => {});
+  }
 
   if (
     st === current_start_date &&
@@ -7523,8 +7594,16 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
     update_date_buttons_text();
   }
 
+  const reqTkStart = dich_ngay_ymd(current_start_date, -30);
+  const reqTkEnd = current_end_date;
+  const tkRangeCovered = Boolean(
+    thong_ke_loaded_start &&
+    thong_ke_loaded_end &&
+    thong_ke_loaded_start <= reqTkStart &&
+    thong_ke_loaded_end >= reqTkEnd
+  );
   const canReuseSheets = Boolean(
-    skipSheetsIfLoaded && Array.isArray(data_hien_tai) && data_hien_tai.length > 0
+    skipSheetsIfLoaded && tkRangeCovered && Array.isArray(data_hien_tai) && data_hien_tai.length > 0
   );
   const fbCacheKey = `${current_start_date}|${current_end_date}`;
   const cachedFbEntry = fb_range_cache.get(fbCacheKey);
@@ -7617,7 +7696,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
     } else {
       const fbPromise = buildFbPromise();
       [gsResult, fbResult] = await Promise.all([
-        canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(),
+        canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(!skipSheetsIfLoaded),
         fbPromise,
       ]);
       gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
@@ -7921,6 +8000,31 @@ function update_cal_range_highlight() {
   }
 }
 
+function ap_dung_khoang_ngay_loc_don(st, en) {
+  od_date_start = st;
+  od_date_end = en;
+  const calPopup = document.getElementById("calendarPopup");
+  calPopup?.classList.add("hidden");
+  calPopup?.classList.remove("is-modal-cal");
+  document.getElementById("btnOdDateRange")?.classList.remove("is-open");
+  current_cal_target = null;
+  update_od_date_btn_ui();
+  apply_od_filters_and_render(true);
+
+  if (st && en) {
+    const needTk = !thong_ke_loaded_start || !thong_ke_loaded_end || thong_ke_loaded_start > st || thong_ke_loaded_end < en;
+    if (needTk) {
+      tai_du_lieu_google_sheets(false, st, en).then((ok) => {
+        if (ok && current_od_mode === "all_table") {
+          current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+          apply_od_filters_and_render(true);
+        }
+      }).catch(() => {});
+    }
+    tai_du_lieu_thong_bao_ngam(false, st, en).catch(() => {});
+  }
+}
+
 function render_calendar_grid(year, month) {
   const label = document.getElementById("calMonthYearLabel");
   const grid = document.getElementById("calGrid");
@@ -7988,15 +8092,7 @@ function render_calendar_grid(year, month) {
         cal_temp_start = null;
         cal_hover_date = null;
         if (current_cal_target === "od_filter") {
-          od_date_start = st;
-          od_date_end = en;
-          const calPopup = document.getElementById("calendarPopup");
-          calPopup?.classList.add("hidden");
-          calPopup?.classList.remove("is-modal-cal");
-          document.getElementById("btnOdDateRange")?.classList.remove("is-open");
-          current_cal_target = null;
-          update_od_date_btn_ui();
-          apply_od_filters_and_render(true);
+          ap_dung_khoang_ngay_loc_don(st, en);
         } else if (current_cal_target === "mc_filter") {
           const calPopup = document.getElementById("calendarPopup");
           calPopup?.classList.add("hidden");
@@ -8104,15 +8200,7 @@ function apply_cal_preset_choice(preset) {
   const en = range.end;
 
   if (current_cal_target === "od_filter") {
-    od_date_start = st;
-    od_date_end = en;
-    const calPopup = document.getElementById("calendarPopup");
-    calPopup?.classList.add("hidden");
-    calPopup?.classList.remove("is-modal-cal");
-    document.getElementById("btnOdDateRange")?.classList.remove("is-open");
-    current_cal_target = null;
-    update_od_date_btn_ui();
-    apply_od_filters_and_render(true);
+    ap_dung_khoang_ngay_loc_don(st, en);
   } else if (current_cal_target === "mc_filter" && st && en) {
     const calPopup = document.getElementById("calendarPopup");
     calPopup?.classList.add("hidden");
