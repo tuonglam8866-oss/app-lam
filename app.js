@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.232";
+const APP_FRONTEND_VERSION = "8.6.233";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -56,12 +56,7 @@ const CSV_URL_NGUON_TAG = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}
 const CSV_URL_NGUON_TAG_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1400554532`;
 
 
-const FB_TOKEN_PROTECTED =
-  "EBEYFxhqLA5jKj0KcGNBBmIBMCcTEQcGbBV1Gn0FA30jJS4DZxwfADwkNwVxemh1ByMDDT4ZFBo/agENdXNqWWIXKypnGw4FLQAHb2tqcV8hJyh/OgITLCwIBzRgAV5ZYx0ofGgQCiA5ESs9RHpxcwYALSFnMCEmNgsrOFpgU3AWBwsJMGQUCGUlBxVRaVxsFwlvOSUSDBIFMA4nd2pxDhcTLn0HOQcNDTwPCGRxdmwWJG16J2ZzJBEaNxBECAdaJB0yKAUXHwc=";
-
-function get_fb_token() {
-  return decode_protected_token(FB_TOKEN_PROTECTED);
-}
+// v8.6.233: Token Facebook được lưu kín trong Google Apps Script (applam.gs), không lưu trong app.js/GitHub.
 
 // IndexedDB helper bất đồng bộ để lưu dữ liệu lớn (Sheet & Pancake) không làm đơ UI thread
 const IDB_CACHE_NAME = "applam_fast_cache_v1";
@@ -2339,15 +2334,10 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
         JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: 0 }])
       );
       const baseInsightsUrl =
-        "https://graph.facebook.com/v19.0/" +
-        actId +
-        "/insights?level=campaign&fields=campaign_id,campaign_name,spend,impressions,cpm,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,clicks,ctr,cpc&time_range=" +
-        encodeURIComponent(time_range) +
-        "&limit=500&access_token=" +
-        get_fb_token();
+        `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&fb_act=${encodeURIComponent(actId)}&time_range=${encodeURIComponent(time_range)}`;
 
-      let usedFilter = true;
-      let url = baseInsightsUrl + "&filtering=" + fbFilterParam;
+      let usedFilter = false;
+      let url = baseInsightsUrl;
 
       while (url) {
         try {
