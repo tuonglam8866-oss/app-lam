@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.236";
+const APP_FRONTEND_VERSION = "8.6.237";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -27,34 +27,39 @@ function compare_semver(v1, v2) {
 }
 
 // ==============================================================
-// BẢO MẬT KHÓA & TOKEN TRUY CẬP (SECURE CREDENTIALS ENCRYPTION)
+// BẢO MẬT KHÓA ĐỘNG & URL APPS SCRIPT (v8.6.237 - KHÔNG LƯU KHÓA TRÊN GITHUB)
 // ==============================================================
-function decode_protected_token(encodedB64, keyStr = "UPYO_SECURE_2026") {
-  try {
-    const raw = atob(encodedB64);
-    let res = "";
-    for (let i = 0; i < raw.length; i++) {
-      res += String.fromCharCode(raw.charCodeAt(i) ^ keyStr.charCodeAt(i % keyStr.length));
-    }
-    return res;
-  } catch (e) {
-    return "";
-  }
-}
-
 const APPS_SCRIPT_BASE_URL =
   "https://script.google.com/macros/s/AKfycbxCZ-Dv4-ywGIyfoB7Vm5RHmKWlpi4T3S5pdkeyl5iN656CbTj7LHtr1EjXTIYUJGLr/exec";
-const APPS_SCRIPT_SECRET_KEY = decode_protected_token("AAAAAAAfBA4KYHVtBA==");
+const API_KEY_STORAGE_KEY = "app_lam_api_key";
+let _runtime_api_key = "";
 
-const CSV_URL_THONG_KE = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1227181736`;
-const CSV_URL_THONG_KE_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1227181736`;
+function is_valid_api_key(v) {
+  return /^[0-9a-f]{64}$/.test(String(v || "").trim().toLowerCase());
+}
 
-const CSV_URL_THONG_BAO = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=0`;
-const CSV_URL_THONG_BAO_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=0`;
+function get_apps_script_api_key() {
+  if (is_valid_api_key(_runtime_api_key)) return _runtime_api_key;
+  try {
+    const ls = (localStorage.getItem(API_KEY_STORAGE_KEY) || "").trim().toLowerCase();
+    if (is_valid_api_key(ls)) {
+      _runtime_api_key = ls;
+      return ls;
+    }
+    const ss = (sessionStorage.getItem(API_KEY_STORAGE_KEY) || "").trim().toLowerCase();
+    if (is_valid_api_key(ss)) {
+      _runtime_api_key = ss;
+      return ss;
+    }
+  } catch (e) {}
+  return "";
+}
 
-const CSV_URL_NGUON_TAG = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1400554532`;
-const CSV_URL_NGUON_TAG_FALLBACK = `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&gid=1400554532`;
-
+function build_apps_script_url(extraQuery) {
+  const key = get_apps_script_api_key();
+  if (!key) return "";
+  return `${APPS_SCRIPT_BASE_URL}?key=${encodeURIComponent(key)}&${extraQuery}`;
+}
 
 // v8.6.233: Token Facebook được lưu kín trong Google Apps Script (applam.gs), không lưu trong app.js/GitHub.
 
@@ -129,15 +134,49 @@ async function idb_cache_set(key, val) {
 
 let _pancakeConvCacheHydrated = false;
 
-const PANCAKE_PAGES = [
-  {
-    pageId: "971169049409319",
-    mkt: "L\u00c2M",
-    mktSheet: "L\u00c2M",
-    tokenProtected:
-      "MCkTJz0UJioaOw8WZ0p7Bxs5EDwWPRd2NhEMaXtbQm4DExN2cTY8CSUIBhYEeVhdZh0NCm0cEQJlHREORX9mey0fCgYsGisRJTASCUhUdXAhMxoGaR4RIGAcAThLfnZjIh43f3EhdQ0QExAVVFZdRBkVET4PajcQMTYfCVp5YGIFCRguKxszEjQTIzsCe3tZ",
-  },
-];
+// v8.6.237: Token Pancake được lưu kín trong Apps Script (applam.gs) và tải qua ?mode=cfg sau khi đăng nhập.
+let PANCAKE_PAGES = [];
+let _pancakeCfgLoaded = false;
+let _pancakeCfgPromise = null;
+
+async function ensure_pancake_pages_cfg() {
+  if (_pancakeCfgLoaded && PANCAKE_PAGES.length > 0) return PANCAKE_PAGES;
+  if (_pancakeCfgPromise) return _pancakeCfgPromise;
+  const cfgUrl = build_apps_script_url("mode=cfg");
+  if (!cfgUrl) return [];
+  _pancakeCfgPromise = (async () => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 20000);
+        const res = await fetch(`${cfgUrl}&t=${Date.now()}`, { cache: "no-store", signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const txt = await res.text();
+        if (!txt || txt.trim() === "Unauthorized") return [];
+        const data = JSON.parse(txt);
+        if (data && Array.isArray(data.pancakePages) && data.pancakePages.length > 0) {
+          PANCAKE_PAGES = data.pancakePages
+            .filter((p) => p && p.pageId && p.token)
+            .map((p) => ({
+              pageId: String(p.pageId).trim(),
+              mkt: String(p.mkt || "").trim(),
+              mktSheet: String(p.mktSheet || p.mkt || "").trim(),
+              token: String(p.token).trim(),
+            }));
+          _pancakeCfgLoaded = PANCAKE_PAGES.length > 0;
+          return PANCAKE_PAGES;
+        }
+      } catch (e) {
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 700));
+      }
+    }
+    return PANCAKE_PAGES;
+  })().finally(() => {
+    _pancakeCfgPromise = null;
+  });
+  return _pancakeCfgPromise;
+}
 const PANCAKE_SHOP_PHONES = new Set(["0974566895", "0915519166"]);
 let data_pancake_orders = [];
 let pancake_last_fetch_ms = 0;
@@ -477,8 +516,13 @@ async function tai_du_lieu_pancake(force = false) {
     const allOrders = [];
     const cutoffMs = now + 7 * 3600 * 1000 - 14 * 86400 * 1000;
 
+    await ensure_pancake_pages_cfg();
+    if (!PANCAKE_PAGES || PANCAKE_PAGES.length === 0) {
+      return data_pancake_orders;
+    }
+
     for (const pageCfg of PANCAKE_PAGES) {
-      const token = decode_protected_token(pageCfg.tokenProtected);
+      const token = String(pageCfg.token || "").trim();
       if (!token) continue;
 
       const convs = [];
@@ -695,14 +739,22 @@ function sha256_fallback(ascii) {
   return result;
 }
 
-function sync_auth_session_file(hashVal) {
+async function sync_auth_session_file(hashVal, apiKeyVal, persistFlag = true) {
   try {
     if (!window.location.protocol.startsWith("http")) return;
-    fetch("/api/auth-session", {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 1500);
+    await fetch("/api/auth-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hash: hashVal || "" }),
+      body: JSON.stringify({
+        hash: hashVal || "",
+        apiKey: apiKeyVal || "",
+        persist: Boolean(persistFlag),
+      }),
+      signal: ctrl.signal,
     }).catch(() => {});
+    clearTimeout(timer);
   } catch (e) {}
 }
 
@@ -716,7 +768,9 @@ function is_app_authenticated() {
     if (ssToken && ssToken !== APP_AUTH_HASH) {
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
     }
-    return lsToken === APP_AUTH_HASH || ssToken === APP_AUTH_HASH;
+    const hasHash = lsToken === APP_AUTH_HASH || ssToken === APP_AUTH_HASH;
+    if (!hasHash) return false;
+    return is_valid_api_key(get_apps_script_api_key());
   } catch (e) {
     return false;
   }
@@ -725,8 +779,11 @@ function is_app_authenticated() {
 async function check_persisted_auth_session() {
   if (is_app_authenticated()) {
     try {
+      const k = get_apps_script_api_key();
       if (localStorage.getItem(AUTH_STORAGE_KEY) === APP_AUTH_HASH) {
-        sync_auth_session_file(APP_AUTH_HASH);
+        await sync_auth_session_file(APP_AUTH_HASH, k, true);
+      } else {
+        await sync_auth_session_file("", k, false);
       }
     } catch (e) {}
     return true;
@@ -740,41 +797,55 @@ async function check_persisted_auth_session() {
     if (!res || !res.ok) return false;
     const data = await res.json().catch(() => null);
     const savedHash = String((data && data.hash) || "").trim().toLowerCase();
-    if (savedHash === APP_AUTH_HASH) {
+    const savedApiKey = String((data && data.apiKey) || "").trim().toLowerCase();
+    if (savedHash === APP_AUTH_HASH && is_valid_api_key(savedApiKey)) {
+      _runtime_api_key = savedApiKey;
       try {
         localStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
+        localStorage.setItem(API_KEY_STORAGE_KEY, savedApiKey);
       } catch (e) {}
       return true;
     }
-    if (savedHash) {
+    if (savedHash && savedHash !== APP_AUTH_HASH) {
       // Mật khẩu đã thay đổi ở bản mới -> xóa phiên cũ để yêu cầu đăng nhập lại
-      sync_auth_session_file("");
+      await sync_auth_session_file("", "", false);
     }
   } catch (e) {}
   return false;
 }
 
-function set_app_authenticated(remember) {
+async function set_app_authenticated(remember, apiKeyVal) {
+  const cleanKey = String(apiKeyVal || "").trim().toLowerCase();
+  _runtime_api_key = is_valid_api_key(cleanKey) ? cleanKey : "";
   try {
     if (remember) {
       localStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
+      if (_runtime_api_key) localStorage.setItem(API_KEY_STORAGE_KEY, _runtime_api_key);
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
-      sync_auth_session_file(APP_AUTH_HASH);
+      sessionStorage.removeItem(API_KEY_STORAGE_KEY);
+      await sync_auth_session_file(APP_AUTH_HASH, _runtime_api_key, true);
     } else {
       sessionStorage.setItem(AUTH_STORAGE_KEY, APP_AUTH_HASH);
+      if (_runtime_api_key) sessionStorage.setItem(API_KEY_STORAGE_KEY, _runtime_api_key);
       localStorage.removeItem(AUTH_STORAGE_KEY);
-      sync_auth_session_file("");
+      localStorage.removeItem(API_KEY_STORAGE_KEY);
+      await sync_auth_session_file("", _runtime_api_key, false);
     }
   } catch (e) {}
 }
 
 function lock_app() {
+  _runtime_api_key = "";
+  PANCAKE_PAGES = [];
+  _pancakeCfgLoaded = false;
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    sessionStorage.removeItem(API_KEY_STORAGE_KEY);
     localStorage.removeItem("app_lam_auth_token");
     sessionStorage.removeItem("app_lam_auth_token");
-    sync_auth_session_file("");
+    sync_auth_session_file("", "", false);
   } catch (e) {}
   show_auth_lock_screen();
 }
@@ -837,7 +908,11 @@ function unlock_app(deferReveal) {
   if (lockScreen) lockScreen.classList.add("hidden");
   if (appContainer) appContainer.classList.remove("hidden");
   if (native_exe_mode) {
-    fetch("/api/session-unlocked", { method: "POST" }).catch(() => {});
+    fetch("/api/session-unlocked", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: get_apps_script_api_key() }),
+    }).catch(() => {});
   }
 
   if (deferReveal && !_openingRevealDone) {
@@ -957,7 +1032,6 @@ const I18N = {
     settingsTitle: "⚙ CÀI ĐẶT HỆ THỐNG",
     lblVoice: "1. Âm thanh (Chuông nhẹ & Giọng đọc):",
     lblPopup: "2. Popup Góc Màn Hình:",
-    lblFireworks: "Hiệu ứng:",
     lblFontSize: "3. Cỡ chữ:",
     lblUiScale: "4. Kích thước UI:",
     lblTheme: "5. Giao diện (Dark Mode):",
@@ -1044,7 +1118,6 @@ const I18N = {
     settingsTitle: "⚙ 系统设置",
     lblVoice: "1. 提示音与语音 (轻柔铃声):",
     lblPopup: "2. 屏幕右下角弹窗:",
-    lblFireworks: "特效:",
     lblFontSize: "3. 字体大小:",
     lblUiScale: "4. 界面缩放:",
     lblTheme: "5. 界面主题 (深色模式):",
@@ -1131,7 +1204,6 @@ const I18N = {
     settingsTitle: "⚙ SYSTEM SETTINGS",
     lblVoice: "1. Sound (Soft Chime & Voice):",
     lblPopup: "2. Corner Popup Alert:",
-    lblFireworks: "Effects:",
     lblFontSize: "3. Font Size:",
     lblUiScale: "4. UI Scale:",
     lblTheme: "5. Appearance (Dark Mode):",
@@ -1180,7 +1252,6 @@ const STORAGE_KEY_EXTRA_CODES = "applam_extra_sp_codes_v8618";
 const STORAGE_KEY_SHEET_CODES = "applam_sheet_sp_codes_v86135";
 const STORAGE_KEY_VOICE = "applam_bat_thong_bao_gtts_v8618";
 const STORAGE_KEY_POPUP = "applam_bat_popup_thong_bao_v8618";
-const STORAGE_KEY_FIREWORKS = "applam_bat_phao_hoa_v8618";
 const STORAGE_KEY_FONT_SCALE = "applam_font_scale_v8618";
 const STORAGE_KEY_UI_SCALE = "applam_ui_scale_v8618";
 const STORAGE_KEY_THEME = "applam_theme_v8618";
@@ -1191,7 +1262,6 @@ let bat_khoi_dong_cung_win = true;
 let KNOWN_CODES = [...KNOWN_CODES_DEFAULT];
 let bat_thong_bao_gtts = true;
 let bat_popup_thong_bao = true;
-let bat_phao_hoa = true;
 let font_scale = 100;
 let ui_scale = 100;
 let current_theme = "light"; // 'light' | 'dark'
@@ -1234,229 +1304,6 @@ function t() {
 }
 
 // ==============================================================
-// HIỆU ỨNG PHÁO HOA & PHÁO GIẤY RỰC RỠ KHI NỔ ĐƠN / TEST POPUP
-// ==============================================================
-const confettiParticles = [];
-let confettiAnimId = null;
-
-function spawn_firework_explosion(cx, cy, colors, count = 42) {
-  if (confettiParticles.length > 220) {
-    confettiParticles.splice(0, confettiParticles.length - 220);
-  }
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.25;
-    const speed = 3.5 + Math.random() * 9.5;
-    const isCircleSpark = i % 2 === 0;
-    confettiParticles.push({
-      x: cx,
-      y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1.2,
-      size: isCircleSpark ? 4.5 + Math.random() * 4 : 6 + Math.random() * 6,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      rotation: Math.random() * 360,
-      vRot: (Math.random() - 0.5) * 14,
-      twinkle: Math.random() * Math.PI * 2,
-      alpha: 1,
-      gravity: isCircleSpark ? 0.18 : 0.28,
-      decay: isCircleSpark ? 0.014 : 0.011,
-      shape: isCircleSpark ? "spark" : "rect",
-    });
-  }
-}
-
-function start_confetti_loop(canvas, ctx) {
-  if (confettiAnimId) return;
-  let lastFrameTs = 0;
-  function renderConfetti(ts) {
-    const dtScale = lastFrameTs ? Math.min(2.2, Math.max(0.4, (ts - lastFrameTs) / 16.67)) : 1;
-    lastFrameTs = ts;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let i = confettiParticles.length - 1; i >= 0; i--) {
-      const p = confettiParticles[i];
-      p.x += p.vx * dtScale;
-      p.y += p.vy * dtScale;
-      p.vy += (p.gravity ?? 0.3) * dtScale;
-      p.vx *= Math.pow(0.985, dtScale);
-      p.rotation += p.vRot * dtScale;
-      p.alpha -= (p.decay ?? 0.012) * dtScale;
-
-      if (p.alpha <= 0 || p.y > canvas.height + 40) {
-        confettiParticles.splice(i, 1);
-        continue;
-      }
-
-      const fade = Math.max(0, p.alpha);
-      if (p.shape === "spark") {
-        const pulse = 0.78 + 0.22 * Math.sin(ts * 0.02 + (p.twinkle || 0));
-        const r = p.size * 0.54;
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = fade * pulse;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (r >= 2.2) {
-          ctx.fillStyle = "#FFFAEB";
-          ctx.globalAlpha = fade * pulse * 0.85;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r * 0.42, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      } else {
-        const flutter = 0.35 + 0.65 * Math.abs(Math.cos((p.rotation * Math.PI) / 180));
-        ctx.save();
-        ctx.globalAlpha = fade;
-        ctx.translate(p.x, p.y);
-        ctx.rotate((p.rotation * Math.PI) / 180);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.size / 2, (-p.size * 0.65 * flutter) / 2, p.size, p.size * 0.65 * flutter);
-        ctx.restore();
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    if (confettiParticles.length > 0) {
-      confettiAnimId = requestAnimationFrame(renderConfetti);
-    } else {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      confettiAnimId = null;
-    }
-  }
-  confettiAnimId = requestAnimationFrame(renderConfetti);
-}
-
-function play_fireworks_sound_web() {
-  if (!bat_phao_hoa || native_exe_mode) return;
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const now = ctx.currentTime;
-
-    // 1. Tiếng rít pháo hoa bay lên
-    const osc = ctx.createOscillator();
-    const gainW = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(520, now);
-    osc.frequency.exponentialRampToValueAtTime(1950, now + 0.34);
-    gainW.gain.setValueAtTime(0.01, now);
-    gainW.gain.linearRampToValueAtTime(0.18, now + 0.16);
-    gainW.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-    osc.connect(gainW).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.36);
-
-    // 2. Tiếng nổ pháo hoa + lách tách
-    [0.35, 0.62].forEach((offset, idx) => {
-      const bTime = now + offset;
-      const boomOsc = ctx.createOscillator();
-      const boomGain = ctx.createGain();
-      boomOsc.type = "triangle";
-      boomOsc.frequency.setValueAtTime(135, bTime);
-      boomOsc.frequency.exponentialRampToValueAtTime(36, bTime + 0.38);
-      boomGain.gain.setValueAtTime(idx === 0 ? 0.45 : 0.35, bTime);
-      boomGain.gain.exponentialRampToValueAtTime(0.001, bTime + 0.42);
-      boomOsc.connect(boomGain).connect(ctx.destination);
-      boomOsc.start(bTime);
-      boomOsc.stop(bTime + 0.44);
-
-      const bufSize = ctx.sampleRate * 0.9;
-      const noiseBuf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-      const data = noiseBuf.getChannelData(0);
-      for (let i = 0; i < bufSize; i++) {
-        const env = Math.exp(-i / (ctx.sampleRate * 0.24));
-        const crackle = Math.random() > 0.92 ? (Math.random() * 2 - 1) * 1.4 : (Math.random() * 2 - 1) * 0.35;
-        data[i] = crackle * env;
-      }
-      const noise = ctx.createBufferSource();
-      noise.buffer = noiseBuf;
-      const filter = ctx.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.value = 1800;
-      const nGain = ctx.createGain();
-      nGain.gain.setValueAtTime(0.32, bTime);
-      nGain.gain.exponentialRampToValueAtTime(0.01, bTime + 0.88);
-      noise.connect(filter).connect(nGain).connect(ctx.destination);
-      noise.start(bTime);
-    });
-  } catch (e) {}
-}
-
-function trigger_confetti_burst(customX, customY) {
-  if (!bat_phao_hoa) return;
-  play_fireworks_sound_web();
-  const canvas = document.getElementById("confettiCanvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const colors = [
-    "#F59E0B",
-    "#16A34A",
-    "#B45309",
-    "#FBBF24",
-    "#DC2626",
-    "#D97706",
-    "#10B981",
-    "#F97316",
-  ];
-  const originX = customX !== undefined ? customX : (window.innerWidth - 160);
-  const originY = customY !== undefined ? customY : (window.innerHeight - 90);
-
-  // 1. Pháo giấy bắn vọt cao từ góc popup thông báo
-  for (let i = 0; i < 65; i++) {
-    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.45;
-    const speed = 7 + Math.random() * 13;
-    confettiParticles.push({
-      x: originX + (Math.random() - 0.5) * 90,
-      y: originY,
-      vx: Math.cos(angle) * speed - 2.5,
-      vy: Math.sin(angle) * speed - 4,
-      size: 6 + Math.random() * 6,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      rotation: Math.random() * 360,
-      vRot: (Math.random() - 0.5) * 14,
-      alpha: 1,
-      gravity: 0.28,
-      decay: 0.011,
-      shape: "rect",
-    });
-  }
-
-  // 2. Các chùm pháo hoa nổ trên không trung (giống hệt lúc chúc mừng nổ đơn)
-  spawn_firework_explosion(
-    Math.max(180, window.innerWidth - 240),
-    Math.max(140, window.innerHeight - 280),
-    colors,
-    44
-  );
-
-  setTimeout(() => {
-    spawn_firework_explosion(
-      Math.max(140, window.innerWidth * 0.68),
-      Math.max(120, window.innerHeight * 0.35),
-      colors,
-      46
-    );
-    start_confetti_loop(canvas, ctx);
-  }, 220);
-
-  setTimeout(() => {
-    spawn_firework_explosion(
-      Math.max(120, window.innerWidth * 0.42),
-      Math.max(110, window.innerHeight * 0.3),
-      colors,
-      44
-    );
-    start_confetti_loop(canvas, ctx);
-  }, 460);
-
-  start_confetti_loop(canvas, ctx);
-}
-
-// ==============================================================
 // HIỆU ỨNG ĐẾM SỐ MƯỢT (COUNT-UP ANIMATION)
 // ==============================================================
 function animate_number(el, targetVal, formatter, duration = 560) {
@@ -1491,9 +1338,6 @@ function doc_cau_hinh_tu_storage() {
 
     const savedPopup = localStorage.getItem(STORAGE_KEY_POPUP);
     if (savedPopup !== null) bat_popup_thong_bao = savedPopup === "true";
-
-    const savedFireworks = localStorage.getItem(STORAGE_KEY_FIREWORKS);
-    if (savedFireworks !== null) bat_phao_hoa = savedFireworks === "true";
 
     const savedFontScale = parseInt(localStorage.getItem(STORAGE_KEY_FONT_SCALE) || "100", 10);
     if (!Number.isNaN(savedFontScale) && savedFontScale >= 80 && savedFontScale <= 140) {
@@ -1681,7 +1525,6 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("settingsTitleText", dict.settingsTitle);
   setText("lblSettingVoice", dict.lblVoice);
   setText("lblSettingPopup", dict.lblPopup);
-  setText("lblSettingFireworks", dict.lblFireworks);
   setText("lblSettingFontSize", dict.lblFontSize);
   setText("lblSettingUiScale", dict.lblUiScale);
   setText("lblSettingTheme", dict.lblTheme);
@@ -1759,16 +1602,12 @@ async function dong_bo_cau_hinh_tu_server_neu_co() {
       bat_popup_thong_bao = data.popup;
       localStorage.setItem(STORAGE_KEY_POPUP, String(bat_popup_thong_bao));
     }
-    if (typeof data.fireworks === "boolean") {
-      bat_phao_hoa = data.fireworks;
-      localStorage.setItem(STORAGE_KEY_FIREWORKS, String(bat_phao_hoa));
-    }
 
     if (typeof data.autostart === "boolean") {
       bat_khoi_dong_cung_win = data.autostart;
       localStorage.setItem(STORAGE_KEY_AUTOSTART, String(bat_khoi_dong_cung_win));
-      cap_nhat_giao_dien_toggle_init();
     }
+    cap_nhat_giao_dien_toggle_init();
 
     // Đồng bộ thông tin tự động cập nhật từ Server C#
     try {
@@ -1796,7 +1635,6 @@ function dong_bo_settings_len_server() {
     body: JSON.stringify({
       voice: bat_thong_bao_gtts,
       popup: bat_popup_thong_bao,
-      fireworks: bat_phao_hoa,
       autostart: bat_khoi_dong_cung_win,
     }),
   }).catch(() => {});
@@ -2112,7 +1950,8 @@ async function fetch_csv_with_fallback(primaryUrl, fallbackUrl, apiType) {
       clearTimeout(timer);
       if (res.ok) {
         const text = await res.text();
-        if (text && !text.trim().startsWith("<!DOCTYPE html")) {
+        const trimmed = text.trim();
+        if (trimmed && !trimmed.startsWith("<!DOCTYPE html") && trimmed !== "Unauthorized") {
           return parse_csv_lines(text);
         }
       }
@@ -2126,8 +1965,8 @@ let pending_nguon_tag_sync = null;
 async function dong_bo_ma_sp_tu_nguon_tag() {
   try {
     const rows = await fetch_csv_with_fallback(
-      CSV_URL_NGUON_TAG,
-      CSV_URL_NGUON_TAG_FALLBACK,
+      build_apps_script_url("gid=1400554532"),
+      "",
       "nguon_tag"
     );
     if (!rows || rows.length === 0) return false;
@@ -2163,8 +2002,8 @@ function tai_du_lieu_thong_bao_ngam(force = false) {
     return Promise.resolve(data_tong_don_upyo);
   }
   thong_bao_fetch_promise = fetch_csv_with_fallback(
-    CSV_URL_THONG_BAO,
-    CSV_URL_THONG_BAO_FALLBACK,
+    build_apps_script_url("gid=0"),
+    "",
     "thong_bao"
   )
     .then((rowsThongBao) => {
@@ -2285,8 +2124,8 @@ async function tai_du_lieu_google_sheets() {
 
   // Ưu tiên tải xong ĐƠN TỔNG HỢP (gid=1227181736) trước để không tranh chấp khóa đọc Sheet trên Apps Script
   const rowsThongKe = await fetch_csv_with_fallback(
-    CSV_URL_THONG_KE,
-    CSV_URL_THONG_KE_FALLBACK,
+    build_apps_script_url("gid=1227181736"),
+    "",
     "thong_ke"
   );
   if (rowsThongKe && rowsThongKe.length > 0) {
@@ -2330,74 +2169,76 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
 
   await Promise.all(
     uniqueAccounts.map(async (actId) => {
-      const fbFilterParam = encodeURIComponent(
-        JSON.stringify([{ field: "spend", operator: "GREATER_THAN", value: 0 }])
+      const baseInsightsUrl = build_apps_script_url(
+        `fb_act=${encodeURIComponent(actId)}&time_range=${encodeURIComponent(time_range)}`
       );
-      const baseInsightsUrl =
-        `${APPS_SCRIPT_BASE_URL}?key=${APPS_SCRIPT_SECRET_KEY}&fb_act=${encodeURIComponent(actId)}&time_range=${encodeURIComponent(time_range)}`;
+      if (!baseInsightsUrl) return;
 
-      let usedFilter = false;
       let url = baseInsightsUrl;
 
       while (url) {
-        try {
+        let res = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 10000);
-          const response = await fetch(url, { signal: controller.signal });
-          clearTimeout(timer);
-
-          const res = await response.json();
-          if (!res || res.error) {
-            if (usedFilter) {
-              usedFilter = false;
-              url = baseInsightsUrl;
-              continue;
-            }
+          const timer = setTimeout(() => controller.abort(), 25000);
+          try {
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timer);
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            res = await response.json();
             break;
+          } catch (e) {
+            clearTimeout(timer);
+            res = null;
+            if (attempt === 0) {
+              await new Promise((r) => setTimeout(r, 700));
+            }
           }
+        }
 
-          const data = Array.isArray(res.data) ? res.data : [];
-          for (const item of data) {
-            const camp_id = String(item.campaign_id || "").trim();
-            const camp_name = String(item.campaign_name || "").trim();
-            const spend = parseFloat(item.spend || 0.0) || 0.0;
-            if (!spend || spend <= 0) continue;
-
-            const impressions = parseFloat(item.impressions || 0.0) || 0.0;
-            const hasLinkClicks = item.inline_link_clicks !== undefined && item.inline_link_clicks !== null;
-            const link_clicks = hasLinkClicks
-              ? parseFloat(item.inline_link_clicks || 0.0) || 0.0
-              : parseFloat(item.clicks || 0.0) || 0.0;
-            const cpm = parseFloat(item.cpm || 0.0) || (impressions > 0 ? (spend / impressions) * 1000 : 0.0);
-            const hasLinkCtr = item.inline_link_click_ctr !== undefined && item.inline_link_click_ctr !== null;
-            const ctr = hasLinkCtr
-              ? parseFloat(item.inline_link_click_ctr || 0.0) || 0.0
-              : parseFloat(item.ctr || 0.0) || (impressions > 0 ? (link_clicks / impressions) * 100 : 0.0);
-            const hasLinkCpc = item.cost_per_inline_link_click !== undefined && item.cost_per_inline_link_click !== null;
-            const cpc = hasLinkCpc
-              ? parseFloat(item.cost_per_inline_link_click || 0.0) || 0.0
-              : parseFloat(item.cpc || 0.0) || (link_clicks > 0 ? spend / link_clicks : 0.0);
-
-            rawFbSpends.push({
-              actId,
-              camp_id,
-              camp_name,
-              spend,
-              impressions,
-              link_clicks,
-              cpm,
-              ctr,
-              cpc,
-            });
-          }
-
-          if (res.paging && res.paging.next) {
-            url = res.paging.next;
-          } else {
-            url = null;
-          }
-        } catch (e) {
+        if (!res || res.error) {
           break;
+        }
+
+        const data = Array.isArray(res.data) ? res.data : [];
+        for (const item of data) {
+          const camp_id = String(item.campaign_id || "").trim();
+          const camp_name = String(item.campaign_name || "").trim();
+          const spend = parseFloat(item.spend || 0.0) || 0.0;
+          if (!spend || spend <= 0) continue;
+
+          const impressions = parseFloat(item.impressions || 0.0) || 0.0;
+          const hasLinkClicks = item.inline_link_clicks !== undefined && item.inline_link_clicks !== null;
+          const link_clicks = hasLinkClicks
+            ? parseFloat(item.inline_link_clicks || 0.0) || 0.0
+            : parseFloat(item.clicks || 0.0) || 0.0;
+          const cpm = parseFloat(item.cpm || 0.0) || (impressions > 0 ? (spend / impressions) * 1000 : 0.0);
+          const hasLinkCtr = item.inline_link_click_ctr !== undefined && item.inline_link_click_ctr !== null;
+          const ctr = hasLinkCtr
+            ? parseFloat(item.inline_link_click_ctr || 0.0) || 0.0
+            : parseFloat(item.ctr || 0.0) || (impressions > 0 ? (link_clicks / impressions) * 100 : 0.0);
+          const hasLinkCpc = item.cost_per_inline_link_click !== undefined && item.cost_per_inline_link_click !== null;
+          const cpc = hasLinkCpc
+            ? parseFloat(item.cost_per_inline_link_click || 0.0) || 0.0
+            : parseFloat(item.cpc || 0.0) || (link_clicks > 0 ? spend / link_clicks : 0.0);
+
+          rawFbSpends.push({
+            actId,
+            camp_id,
+            camp_name,
+            spend,
+            impressions,
+            link_clicks,
+            cpm,
+            ctr,
+            cpc,
+          });
+        }
+
+        if (res.paging && res.paging.next) {
+          url = res.paging.next;
+        } else {
+          url = null;
         }
       }
     })
@@ -3217,25 +3058,7 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
         const chot = parseInt(String(r[colDaChot] || "0").trim(), 10) || 0;
         if (dem <= 0 && chot <= 0) continue;
 
-        const mkt = String(r[colMkt] || "").trim().toUpperCase();
-        let mkt_norm = "KHÁC";
-        if (mkt && !["MKT", "MARKETER", "TÊN MKT", "SALE", "KHÁC", "KHAC"].includes(mkt)) {
-          if (mkt.includes("THANH") || mkt.includes("TH.LÂM") || mkt.includes("TH.LAM")) {
-            mkt_norm = "TH.LÂM";
-          } else if (mkt.includes("LÂM") || mkt.includes("LAM")) {
-            mkt_norm = "LÂM";
-          } else if (mkt.includes("PHÚC") || mkt.includes("PHUC")) {
-            mkt_norm = "PHÚC";
-          } else if (mkt.includes("TÂM") || mkt.includes("TAM")) {
-            mkt_norm = "TÂM";
-          } else if (mkt.includes("SAN")) {
-            mkt_norm = "SAN";
-          } else if (mkt.includes("D\u0168NG") || mkt.includes("DUNG")) {
-            mkt_norm = "D\u0168NG";
-          } else {
-            mkt_norm = mkt;
-          }
-        }
+        const mkt_norm = chuan_hoa_mkt_dashboard(r[colMkt]);
 
         tong_dem += dem;
         tong_chot += chot;
@@ -3349,49 +3172,6 @@ function show_update_toast_notification(msg) {
   }, 4500);
 }
 
-function trigger_celebration_fireworks() {
-  play_fireworks_sound_web();
-
-  try {
-    fetch("/api/fireworks", { method: "POST" }).catch(() => {});
-  } catch (e) {}
-
-  const canvas = document.getElementById("confettiCanvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const colors = [
-    "#F59E0B", "#10B981", "#D97706", "#3B82F6",
-    "#EC4899", "#8B5CF6", "#F97316", "#EF4444", "#FBBF24"
-  ];
-
-  // Đợt 1: Hai chùm pháo hoa 2 bên bắn lên
-  spawn_firework_explosion(window.innerWidth * 0.22, window.innerHeight * 0.42, colors, 55);
-  spawn_firework_explosion(window.innerWidth * 0.78, window.innerHeight * 0.42, colors, 55);
-  start_confetti_loop(canvas, ctx);
-
-  // Đợt 2: Pháo nổ rực rỡ ngay tâm cao
-  setTimeout(() => {
-    spawn_firework_explosion(window.innerWidth * 0.5, window.innerHeight * 0.28, colors, 65);
-    start_confetti_loop(canvas, ctx);
-  }, 240);
-
-  // Đợt 3: Hai bên trên cao
-  setTimeout(() => {
-    spawn_firework_explosion(window.innerWidth * 0.35, window.innerHeight * 0.32, colors, 50);
-    spawn_firework_explosion(window.innerWidth * 0.65, window.innerHeight * 0.32, colors, 50);
-    start_confetti_loop(canvas, ctx);
-  }, 500);
-
-  // Đợt 4: Chùm pháo hoa bung tỏa cuối cùng
-  setTimeout(() => {
-    spawn_firework_explosion(window.innerWidth * 0.5, window.innerHeight * 0.38, colors, 60);
-    start_confetti_loop(canvas, ctx);
-  }, 780);
-}
-
 function hien_thi_bang_chuc_mung_cap_nhat(version) {
   const modal = document.getElementById("updateCelebrationModal");
   const verText = document.getElementById("ucVersionText");
@@ -3479,13 +3259,7 @@ function hien_thi_popup_goc_man_hinh(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, message, force, voice: voiceText }),
-    })
-      .then(() => {
-        trigger_confetti_burst();
-      })
-      .catch(() => {});
-  } else {
-    trigger_confetti_burst();
+    }).catch(() => {});
   }
 
   // Khi đang chạy app exe native, chỉ dùng 1 popup duy nhất hiển thị luôn trên màn hình (cả trong lẫn ngoài app)
@@ -5307,17 +5081,7 @@ function get_od_col_sort_value(order, colKey) {
 }
 
 function parse_order_ymd(order) {
-  const raw = String(order?.ngay_only || "").trim();
-  if (!raw) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  const parts = raw.split(/[\/\-]/);
-  if (parts.length === 3) {
-    if (parts[0].length === 4) {
-      return `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
-    }
-    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
-  }
-  return "";
+  return tach_ngay_ymd_tu_chuoi(order?.ngay_only || "");
 }
 
 function update_od_date_btn_ui() {
@@ -7554,7 +7318,6 @@ function cap_nhat_giao_dien_toggle_init() {
   const dict = t();
   const btnVoice = document.getElementById("btnToggleVoice");
   const btnPopup = document.getElementById("btnTogglePopup");
-  const btnFireworks = document.getElementById("btnToggleFireworks");
 
   if (btnVoice) {
     btnVoice.textContent = bat_thong_bao_gtts ? dict.stateOn : dict.stateOff;
@@ -7566,12 +7329,6 @@ function cap_nhat_giao_dien_toggle_init() {
     btnPopup.textContent = bat_popup_thong_bao ? dict.stateOn : dict.stateOff;
     btnPopup.classList.toggle("btn-green", bat_popup_thong_bao);
     btnPopup.classList.toggle("btn-red", !bat_popup_thong_bao);
-  }
-
-  if (btnFireworks) {
-    btnFireworks.textContent = bat_phao_hoa ? dict.stateOn : dict.stateOff;
-    btnFireworks.classList.toggle("btn-green", bat_phao_hoa);
-    btnFireworks.classList.toggle("btn-red", !bat_phao_hoa);
   }
 
   const btnAutoStart = document.getElementById("btnToggleAutoStart");
@@ -7992,13 +7749,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  document.getElementById("btnToggleFireworks")?.addEventListener("click", () => {
-    bat_phao_hoa = !bat_phao_hoa;
-    localStorage.setItem(STORAGE_KEY_FIREWORKS, String(bat_phao_hoa));
-    cap_nhat_giao_dien_toggle_init();
-    dong_bo_settings_len_server();
-  });
-
   // Cỡ chữ (Font Size: 80% -> 140%)
   document.getElementById("btnFontDec")?.addEventListener("click", () => {
     font_scale = Math.max(80, font_scale - 5);
@@ -8135,7 +7885,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     const hash = await compute_sha256(val);
     if (hash === APP_AUTH_HASH) {
       if (errMsg) errMsg.classList.add("hidden");
-      set_app_authenticated(rememberChk ? rememberChk.checked : true);
+      const apiKey = await compute_sha256(val + ":APPLAM_API");
+      await set_app_authenticated(rememberChk ? rememberChk.checked : true, apiKey);
       unlock_app();
       tai_va_cap_nhat_theo_ngay();
     } else {
