@@ -1,22 +1,22 @@
 {
-    "version":  "8.6.267",
+    "version":  "8.6.268",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "ebe7d1df9283fe856a30f7e4869737ab54ca2d7804770a8804ee9539d23d5f97",
-    "index.html_sha256":  "c6d2c725196d19086276d9a64f7be652f16bd51d4e3763bb50c08f1484a5077a",
+    "exe_sha256":  "9aed04b50f3e3c73dd44dad5fb17d7491c0be2f209d719e9d59c2a64b8f6b069",
+    "index.html_sha256":  "0fe7c2193e6f365f9a3c27420952d933c4230a5a4b6d595fa29cd684c15665b4",
     "styles.css_sha256":  "1797e16d4f886149b6171a67f6c24328e7156f3e72ac4592432c2e2e0d2d63c0",
-    "app.js_sha256":  "269a7f1330318e1401ab834ead7a0bf76a5fdbceffa36be9595c01e176c64ad6",
+    "app.js_sha256":  "6eb7d757661fb11adce2100e05dd837fc62d51161ccc4bdd9ee25c20bc7a82ec",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "ebe7d1df9283fe856a30f7e4869737ab54ca2d7804770a8804ee9539d23d5f97",
+                                     "sha256":  "9aed04b50f3e3c73dd44dad5fb17d7491c0be2f209d719e9d59c2a64b8f6b069",
                                      "size":  653312
                                  },
                   "app.js":  {
-                                 "sha256":  "269a7f1330318e1401ab834ead7a0bf76a5fdbceffa36be9595c01e176c64ad6",
-                                 "size":  353162
+                                 "sha256":  "6eb7d757661fb11adce2100e05dd837fc62d51161ccc4bdd9ee25c20bc7a82ec",
+                                 "size":  352943
                              },
                   "index.html":  {
-                                     "sha256":  "c6d2c725196d19086276d9a64f7be652f16bd51d4e3763bb50c08f1484a5077a",
-                                     "size":  46695
+                                     "sha256":  "0fe7c2193e6f365f9a3c27420952d933c4230a5a4b6d595fa29cd684c15665b4",
+                                     "size":  46699
                                  },
                   "styles.css":  {
                                      "sha256":  "1797e16d4f886149b6171a67f6c24328e7156f3e72ac4592432c2e2e0d2d63c0",

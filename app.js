@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.267";
+const APP_FRONTEND_VERSION = "8.6.268";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -5241,25 +5241,35 @@ function parse_order_ymd(order) {
   return tach_ngay_ymd_tu_chuoi(order?.ngay_only || "");
 }
 
+function cap_nhat_nut_khoang_ngay_ui(startEl, sepEl, endEl, st, en, emptyLabel = "Chọn ngày") {
+  if (!startEl) return;
+  if (st && en && st === en) {
+    startEl.textContent = format_date_vn_display(st);
+    if (sepEl) sepEl.classList.add("hidden");
+    if (endEl) endEl.classList.add("hidden");
+  } else if (st && en) {
+    startEl.textContent = format_date_vn_display(st);
+    if (endEl) {
+      endEl.textContent = format_date_vn_display(en);
+      endEl.classList.remove("hidden");
+    }
+    if (sepEl) sepEl.classList.remove("hidden");
+  } else {
+    startEl.textContent = emptyLabel;
+    if (sepEl) sepEl.classList.add("hidden");
+    if (endEl) endEl.classList.add("hidden");
+  }
+}
+
 function update_od_date_btn_ui() {
   const btn = document.getElementById("btnOdDateRange");
   const startEl = document.getElementById("odDateStartText");
   const sepEl = document.getElementById("odDateSep");
   const endEl = document.getElementById("odDateEndText");
 
-  if (btn && startEl && sepEl && endEl) {
-    if (od_date_start && od_date_end) {
-      startEl.textContent = od_date_start;
-      endEl.textContent = od_date_end;
-      sepEl.classList.remove("hidden");
-      endEl.classList.remove("hidden");
-      btn.classList.add("active");
-    } else {
-      startEl.textContent = "Tất cả ngày";
-      sepEl.classList.add("hidden");
-      endEl.classList.add("hidden");
-      btn.classList.remove("active");
-    }
+  if (btn && startEl) {
+    cap_nhat_nut_khoang_ngay_ui(startEl, sepEl, endEl, od_date_start, od_date_end, "Tất cả ngày");
+    btn.classList.toggle("active", Boolean(od_date_start && od_date_end));
   }
 }
 
@@ -5653,7 +5663,9 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   if (dateRangeText) {
     const s = current_start_date || "";
     const e = current_end_date || "";
-    dateRangeText.textContent = s === e ? `Ngày ${s}` : `Từ ${s} đến ${e}`;
+    const sVn = format_date_vn_display(s);
+    const eVn = format_date_vn_display(e);
+    dateRangeText.textContent = s === e ? `Ngày ${sVn}` : `Từ ${sVn} → ${eVn}`;
   }
 
   if (searchInput) {
@@ -5707,21 +5719,8 @@ function update_mc_date_btn_ui() {
   const st = mc_date_start || current_start_date;
   const en = mc_date_end || current_end_date;
 
-  if (btn && startEl && sepEl && endEl) {
-    if (st && en && st === en) {
-      startEl.textContent = format_date_vn_display(st);
-      sepEl.classList.add("hidden");
-      endEl.classList.add("hidden");
-    } else if (st && en) {
-      startEl.textContent = format_date_vn_display(st);
-      endEl.textContent = format_date_vn_display(en);
-      sepEl.classList.remove("hidden");
-      endEl.classList.remove("hidden");
-    } else {
-      startEl.textContent = "Chọn ngày";
-      sepEl.classList.add("hidden");
-      endEl.classList.add("hidden");
-    }
+  if (btn && startEl) {
+    cap_nhat_nut_khoang_ngay_ui(startEl, sepEl, endEl, st, en, "Chọn ngày");
     const isCustom = Boolean(st && en && (st !== current_start_date || en !== current_end_date));
     btn.classList.toggle("active", isCustom);
   }
@@ -7842,13 +7841,7 @@ function update_date_buttons_text() {
   const startText = document.getElementById("startDateText");
   const sepText = btn ? btn.querySelector(".date-range-sep") : null;
   const endText = document.getElementById("endDateText");
-  const isSingle = Boolean(current_start_date && current_end_date && current_start_date === current_end_date);
-  if (startText) startText.textContent = format_date_vn_display(current_start_date);
-  if (endText) {
-    endText.textContent = format_date_vn_display(current_end_date);
-    endText.classList.toggle("hidden", isSingle);
-  }
-  if (sepText) sepText.classList.toggle("hidden", isSingle);
+  cap_nhat_nut_khoang_ngay_ui(startText, sepText, endText, current_start_date, current_end_date, "--/--/----");
 
   const activePreset = detect_active_cal_preset(current_start_date, current_end_date, false);
 
