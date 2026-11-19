@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.239";
+const APP_FRONTEND_VERSION = "8.6.265";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1277,6 +1277,7 @@ let current_start_date = "";
 let current_end_date = "";
 let current_mkt_detail = null;
 let current_mc_mkt = null;
+let current_mc_sp = "";
 let mc_date_start = "";
 let mc_date_end = "";
 let mc_custom_camps_map = null;
@@ -3872,7 +3873,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
     <div class="card-title-group">
       <span class="card-name">${dict.companySummaryTitle}</span>
       <span class="card-sub-label">${date_label}</span>
-      <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">📋 Xem ${tong_don} đơn →</span>
+      <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">📋 Chi tiết đơn →</span>
     </div>
     <div class="card-count-group js-company-count-group" style="cursor: pointer;" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng">
       <span class="card-count-val js-total-orders" style="color: var(--color-highlight)">0</span>
@@ -3930,7 +3931,9 @@ function create_mkt_table_card(
     <div class="card-title-group">
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
-      <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="B\u1ea5m \u0111\u1ec3 xem chi ti\u1ebft t\u1ea5t c\u1ea3 ${count} \u0111\u01a1n c\u1ee7a ${name_str}">\ud83d\udccb Xem ${count} \u0111\u01a1n \u2192</span>
+      ${build_sp_closing_rate_pill_html(null, name_str)}
+      ${build_card_camp_pill_html(name_str, "")}
+      <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
     </div>
     <div class="card-count-group js-count-group" title="B\u1ea5m \u0111\u1ec3 xem chi ti\u1ebft t\u1ea5t c\u1ea3 ${count} \u0111\u01a1n c\u1ee7a ${name_str}" style="cursor: pointer;">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -3961,6 +3964,14 @@ function create_mkt_table_card(
 
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
+
+  const btnViewCardCamps = topRow.querySelector(".js-btn-view-card-camps");
+  if (btnViewCardCamps) {
+    btnViewCardCamps.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_camp_mkt(name_str);
+    });
+  }
 
   const btnViewOrders = topRow.querySelector(".js-btn-view-mkt-orders");
   if (btnViewOrders) {
@@ -5567,6 +5578,7 @@ function dong_bang_camp_mkt() {
     current_cal_target = null;
   }
   current_mc_mkt = null;
+  current_mc_sp = "";
   const modal = document.getElementById("mktCampModal");
   if (modal) modal.classList.add("hidden");
 }
@@ -5664,8 +5676,10 @@ function extract_utm_campaign_from_url(linkRaw) {
 
 let last_mc_orders_by_camp = {};
 let last_mc_camps_by_id = {};
+let last_mc_revenue_by_camp = {};
+let last_mc_outside_reconcile = null;
 let current_cc_camp_id = null;
-let current_cc_filter = "all"; // "all" | "closed" | "unclosed"
+let current_cc_filter = "all"; // "all" | "closed" | "unclosed" | "missing_cid" | "other"
 
 function dong_bang_khach_hang_camp() {
   current_cc_camp_id = null;
@@ -5692,14 +5706,19 @@ function mo_bang_khach_hang_camp(campId) {
 
 function render_camp_customers_modal() {
   if (!current_cc_camp_id) return;
-  const camp = last_mc_camps_by_id[current_cc_camp_id] || null;
+  const isUnmatchedMode = current_cc_camp_id === "__UNMATCHED__";
+  const camp = isUnmatchedMode ? null : (last_mc_camps_by_id[current_cc_camp_id] || null);
   const allCustomers = Array.isArray(last_mc_orders_by_camp[current_cc_camp_id])
     ? last_mc_orders_by_camp[current_cc_camp_id]
     : [];
 
   const totalAll = allCustomers.length;
-  const totalClosed = allCustomers.filter((x) => x.da_chot).length;
-  const totalUnclosed = totalAll - totalClosed;
+  const totalClosed = isUnmatchedMode
+    ? allCustomers.filter((x) => x.reasonType === "missing_cid").length
+    : allCustomers.filter((x) => x.da_chot).length;
+  const totalUnclosed = isUnmatchedMode
+    ? allCustomers.filter((x) => x.reasonType !== "missing_cid").length
+    : (totalAll - totalClosed);
 
   const ccMktBadge = document.getElementById("ccMktBadge");
   const ccSpBadge = document.getElementById("ccSpBadge");
@@ -5719,26 +5738,31 @@ function render_camp_customers_modal() {
 
   if (ccMktBadge) ccMktBadge.textContent = current_mc_mkt || "MKT";
   if (ccSpBadge) {
-    if (camp && camp.sp) {
+    if (isUnmatchedMode) {
+      ccSpBadge.textContent = "NGOÀI CAMP";
+      ccSpBadge.classList.remove("hidden");
+    } else if (camp && camp.sp) {
       ccSpBadge.textContent = camp.sp;
       ccSpBadge.classList.remove("hidden");
     } else {
       ccSpBadge.classList.add("hidden");
     }
   }
-  if (ccTotalBadge) ccTotalBadge.textContent = `${totalAll} khách`;
+  if (ccTotalBadge) ccTotalBadge.textContent = isUnmatchedMode ? `${totalAll} đơn` : `${totalAll} khách`;
   if (ccClosedBadge) {
-    ccClosedBadge.textContent = `Đã chốt: ${totalClosed}`;
+    ccClosedBadge.textContent = isUnmatchedMode ? `Thiếu ID: ${totalClosed}` : `Đã chốt: ${totalClosed}`;
     ccClosedBadge.classList.toggle("hidden", totalAll === 0);
   }
   if (ccUnclosedBadge) {
-    ccUnclosedBadge.textContent = `Chưa chốt: ${totalUnclosed}`;
+    ccUnclosedBadge.textContent = isUnmatchedMode ? `Pancake / Ngày trước: ${totalUnclosed}` : `Chưa chốt: ${totalUnclosed}`;
     ccUnclosedBadge.classList.toggle("hidden", totalAll === 0);
   }
   if (ccTitleText) {
-    ccTitleText.textContent = (camp && camp.campaign_name) ? camp.campaign_name : `Camp ${current_cc_camp_id}`;
+    ccTitleText.textContent = isUnmatchedMode
+      ? "ĐƠN NGOÀI CAMP (KHÔNG GẮN CHIẾN DỊCH)"
+      : ((camp && camp.campaign_name) ? camp.campaign_name : `Camp ${current_cc_camp_id}`);
   }
-  if (ccCampIdText) ccCampIdText.textContent = `ID: ${current_cc_camp_id}`;
+  if (ccCampIdText) ccCampIdText.textContent = isUnmatchedMode ? "Nguồn: Đơn Tổng Hợp chưa gắn ID" : `ID: ${current_cc_camp_id}`;
   if (ccDateRangeText) {
     ccDateRangeText.textContent =
       activeStart === activeEnd
@@ -5746,9 +5770,20 @@ function render_camp_customers_modal() {
         : `Từ ${format_date_vn_display(activeStart)} → ${format_date_vn_display(activeEnd)}`;
   }
   if (ccSpendText) {
-    const spendVal = camp ? (camp.spend || 0) : 0;
-    const cpaText = (totalAll > 0 && spendVal > 0) ? ` • ${format_tien_vnd(spendVal / totalAll)}/số` : "";
-    ccSpendText.textContent = `Tiêu: ${format_tien_vnd(spendVal)}${cpaText}`;
+    if (isUnmatchedMode) {
+      const rec = last_mc_outside_reconcile || {};
+      const dsOutside = rec.outsideTotalDs || 0;
+      const dsUnmatched = rec.unmatchedDs || 0;
+      ccSpendText.textContent = `DS ngoài Camp: ${format_tien_vnd(dsUnmatched)} • Tổng cả MKT: ${format_tien_vnd(dsOutside)}`;
+    } else {
+      const spendVal = camp ? (camp.spend || 0) : 0;
+      const campDs = last_mc_revenue_by_camp[current_cc_camp_id] || 0;
+      const dsPart = campDs > 0
+        ? ` • DS: ${format_tien_vnd(campDs)}${spendVal > 0 ? ` (${((spendVal / campDs) * 100).toFixed(1)}%)` : ""}`
+        : "";
+      const cpaText = (totalAll > 0 && spendVal > 0) ? ` • ${format_tien_vnd(spendVal / totalAll)}/số` : "";
+      ccSpendText.textContent = `CP: ${format_tien_vnd(spendVal)}${dsPart}${cpaText}`;
+    }
   }
 
   const fAllBtn = document.getElementById("ccFilterAll");
@@ -5759,11 +5794,11 @@ function render_camp_customers_modal() {
     fAllBtn.classList.toggle("active", current_cc_filter === "all");
   }
   if (fClosedBtn) {
-    fClosedBtn.textContent = `Đã chốt (${totalClosed})`;
+    fClosedBtn.textContent = isUnmatchedMode ? `Thiếu ID (${totalClosed})` : `Đã chốt (${totalClosed})`;
     fClosedBtn.classList.toggle("active", current_cc_filter === "closed");
   }
   if (fUnclosedBtn) {
-    fUnclosedBtn.textContent = `Chưa chốt (${totalUnclosed})`;
+    fUnclosedBtn.textContent = isUnmatchedMode ? `Pancake / Khác (${totalUnclosed})` : `Chưa chốt (${totalUnclosed})`;
     fUnclosedBtn.classList.toggle("active", current_cc_filter === "unclosed");
   }
 
@@ -5774,10 +5809,15 @@ function render_camp_customers_modal() {
   if (clearBtn) clearBtn.classList.toggle("hidden", !qRaw);
 
   const list = allCustomers.filter((item) => {
-    if (current_cc_filter === "closed" && !item.da_chot) return false;
-    if (current_cc_filter === "unclosed" && item.da_chot) return false;
+    if (isUnmatchedMode) {
+      if (current_cc_filter === "closed" && item.reasonType !== "missing_cid") return false;
+      if (current_cc_filter === "unclosed" && item.reasonType === "missing_cid") return false;
+    } else {
+      if (current_cc_filter === "closed" && !item.da_chot) return false;
+      if (current_cc_filter === "unclosed" && item.da_chot) return false;
+    }
     if (!qRaw) return true;
-    const hay = `${item.ho_ten} ${item.sdt} ${item.dia_chi} ${item.dong_sp} ${item.mau_sac} ${item.size} ${item.ghi_chu_khach} ${item.ghi_chu_sale}`.toLowerCase();
+    const hay = `${item.ho_ten} ${item.sdt} ${item.dia_chi} ${item.dong_sp} ${item.mau_sac} ${item.size} ${item.ghi_chu_khach || ""} ${item.ghi_chu_sale || ""} ${item.reasonLabel || ""}`.toLowerCase();
     const hayNd = bo_dau_tieng_viet(hay).toLowerCase();
     return hay.includes(qRaw) || hayNd.includes(qNoDau);
   });
@@ -5789,8 +5829,8 @@ function render_camp_customers_modal() {
       const titleEl = ccEmptyState.querySelector(".od-empty-title");
       const descEl = ccEmptyState.querySelector(".od-empty-desc");
       if (totalAll === 0) {
-        if (titleEl) titleEl.textContent = "Chưa có khách hàng đặt từ Camp này";
-        if (descEl) descEl.textContent = "Chưa ghi nhận đơn hàng nào khớp Campaign ID này trong khoảng ngày đang chọn.";
+        if (titleEl) titleEl.textContent = isUnmatchedMode ? "Không có đơn ngoài Camp" : "Chưa có khách hàng đặt từ Camp này";
+        if (descEl) descEl.textContent = isUnmatchedMode ? "100% đơn trong khoảng ngày đã khớp vào Camp." : "Chưa ghi nhận đơn hàng nào khớp Campaign ID này trong khoảng ngày đang chọn.";
       } else {
         if (titleEl) titleEl.textContent = "Không tìm thấy khách hàng phù hợp";
         if (descEl) descEl.textContent = "Hãy thử đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm.";
@@ -5798,7 +5838,7 @@ function render_camp_customers_modal() {
       ccEmptyState.classList.remove("hidden");
     }
     if (ccFooterSummary) {
-      ccFooterSummary.textContent = `Hiển thị 0 / ${totalAll} khách hàng`;
+      ccFooterSummary.textContent = `Hiển thị 0 / ${totalAll} ${isUnmatchedMode ? "đơn" : "khách hàng"}`;
     }
     return;
   }
@@ -5824,6 +5864,12 @@ function render_camp_customers_modal() {
       ? `<button type="button" class="cc-sdt-btn" data-copy-sdt="${escape_html(sdtClean)}" title="Bấm để copy SĐT">${escape_html(sdtClean)}</button>`
       : `<span class="mc-metric-val">-</span>`;
 
+    let badgeHtml = `<span class="cc-status-badge ${o.da_chot ? "is-closed" : "is-unclosed"}">${o.da_chot ? "✓ Đã chốt" : "Chưa chốt"}</span>`;
+    if (isUnmatchedMode) {
+      const rCls = o.reasonType === "missing_cid" ? "is-missing" : (o.reasonType === "form_prev" ? "is-prev" : "is-other");
+      badgeHtml = `<span class="cc-reason-badge ${rCls}">${escape_html(o.reasonLabel || "Ngoài Camp")}</span>`;
+    }
+
     tr.innerHTML = `
       <td class="cc-col-stt"><span class="mc-stt-badge">${idx + 1}</span></td>
       <td class="cc-col-time">${escape_html(o.tg || "-")}</td>
@@ -5835,7 +5881,10 @@ function render_camp_customers_modal() {
         ${attrText ? `<div class="cc-sp-sub">${escape_html(attrText)}</div>` : (!o.dong_sp ? `<span class="mc-metric-val">-</span>` : "")}
       </td>
       <td class="cc-col-status">
-        <div><span class="cc-status-badge ${o.da_chot ? "is-closed" : "is-unclosed"}">${o.da_chot ? "✓ Đã chốt" : "Chưa chốt"}</span></div>
+        <div>
+          ${badgeHtml}
+          ${o.gia_ban > 0 ? `<span class="cc-price-tag">${escape_html(format_tien_vnd(o.gia_ban))}</span>` : ""}
+        </div>
         ${noteText ? `<div class="cc-note-text">${escape_html(noteText)}</div>` : ""}
       </td>
     `;
@@ -5844,28 +5893,31 @@ function render_camp_customers_modal() {
   ccTableBody.appendChild(frag);
 
   if (ccFooterSummary) {
-    ccFooterSummary.textContent = `Hiển thị ${list.length} / ${totalAll} khách hàng (Bấm vào SĐT để copy)`;
+    ccFooterSummary.textContent = `Hiển thị ${list.length} / ${totalAll} ${isUnmatchedMode ? "đơn ngoài Camp" : "khách hàng"} (Bấm vào SĐT để copy)`;
   }
 }
 
-function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
+function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, spFilter = "") {
   const countsByCampId = {};
   const closedByCampId = {};
   const ordersByCampId = {};
+  const revenueByCampId = {};
   (campsList || []).forEach((c) => {
     if (c && c.campaign_id) {
       countsByCampId[c.campaign_id] = 0;
       closedByCampId[c.campaign_id] = 0;
       ordersByCampId[c.campaign_id] = [];
+      revenueByCampId[c.campaign_id] = 0;
     }
   });
 
   if (!Array.isArray(data_tong_don_upyo) || data_tong_don_upyo.length < 2) {
-    return { countsByCampId, closedByCampId, ordersByCampId, hasAnyCampColData: false, totalMatchedOrders: 0 };
+    return { countsByCampId, closedByCampId, ordersByCampId, revenueByCampId, hasAnyCampColData: false, totalMatchedOrders: 0 };
   }
 
   const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
   const targetMktNorm = chuan_hoa_mkt_so_sanh(ten_mkt);
+  const spFilterNorm = String(spFilter || "").trim().toUpperCase();
 
   let colTg = 0;
   let colTen = 1;
@@ -5928,12 +5980,34 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
 
   let hasAnyCampColData = false;
   let totalMatchedOrders = 0;
+  const r0PhoneHistory = new Map();
 
   for (let i = 1; i < data_tong_don_upyo.length; i++) {
     const r = data_tong_don_upyo[i];
     if (!Array.isArray(r) || r.length === 0) continue;
 
     const tg = String(r[colTg] || "").trim();
+    const sdtRawPre = String(r[colSdt] || "").trim();
+    const sdtNormPre = chuan_hoa_sdt_so_sanh(sdtRawPre);
+    const r0YmdPre = tach_ngay_ymd_tu_chuoi(tg);
+    if (sdtNormPre && r0YmdPre) {
+      const noteUPre = (r.length > colNoteU ? String(r[colNoteU] || "") : "").toLowerCase();
+      const noteVPre = (r.length > colNoteV ? String(r[colNoteV] || "") : "").toLowerCase();
+      const isDupPre = noteUPre.includes("capture form") || noteVPre.includes("capture form") || noteUPre.includes("trùng") || noteVPre.includes("trùng");
+      const demPre = r.length > colDemDon ? String(r[colDemDon] || "").trim() === "0" : false;
+      const cidPre = (r.length > colCampId ? chuan_hoa_id_camp_digits(r[colCampId]) : "") ||
+        (r.length > colMaQc ? chuan_hoa_id_camp_digits(r[colMaQc]) : "") ||
+        (r.length > colLink ? extract_utm_campaign_from_url(r[colLink]) : "");
+      if (!r0PhoneHistory.has(sdtNormPre)) r0PhoneHistory.set(sdtNormPre, []);
+      r0PhoneHistory.get(sdtNormPre).push({
+        ymd: r0YmdPre,
+        ymdMs: parse_ymd_date(r0YmdPre).getTime(),
+        cid: cidPre,
+        isDupCap: isDupPre,
+        isDemZero: demPre,
+      });
+    }
+
     if (!tg || !khop_ngay_chinh_xac(tg, patternsArr)) continue;
 
     const hoTenRaw = String(r[colTen] || "").trim();
@@ -6009,11 +6083,14 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
         closedByCampId[matchedCid] = (closedByCampId[matchedCid] || 0) + 1;
       }
       if (!ordersByCampId[matchedCid]) ordersByCampId[matchedCid] = [];
+      if (revenueByCampId[matchedCid] === undefined) revenueByCampId[matchedCid] = 0;
       const ghiChuSale = [noteURaw, noteVRaw, noteWRaw].filter(Boolean).join(" • ");
       ordersByCampId[matchedCid].push({
         tg,
+        order_ymd: tach_ngay_ymd_tu_chuoi(tg),
         ho_ten: hoTenRaw,
         sdt: sdtRaw,
+        sdt_norm: chuan_hoa_sdt_so_sanh(sdtRaw),
         mau_sac: r.length > colMauSac ? String(r[colMauSac] || "").trim() : "",
         size: r.length > colSize ? String(r[colSize] || "").trim() : "",
         dong_sp: r.length > colSp ? String(r[colSp] || "").trim() : "",
@@ -6022,11 +6099,282 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
         ghi_chu_sale: ghiChuSale,
         tg_goi: r.length > colTgGoi ? String(r[colTgGoi] || "").trim() : "",
         da_chot: chot > 0,
+        gia_ban: 0,
       });
     }
   }
 
-  return { countsByCampId, closedByCampId, ordersByCampId, hasAnyCampColData, totalMatchedOrders };
+  // Khớp doanh số đã chốt từ bảng ĐƠN TỔNG HỢP (data_hien_tai: gid=1227181736) theo SĐT + ngày đặt (+0..+3 ngày)
+  let outsideReconcile = {
+    outsideTotalCount: 0,
+    outsideTotalDs: 0,
+    matchedInRangeDs: 0,
+    unmatchedCount: 0,
+    unmatchedDs: 0,
+    missingCidCount: 0,
+    missingCidDs: 0,
+    otherPlatCount: 0,
+    otherPlatDs: 0,
+    formPrevCount: 0,
+    formPrevDs: 0,
+    unmatchedRows: [],
+  };
+
+  if (Array.isArray(data_hien_tai) && data_hien_tai.length > 0) {
+    const tkGroupByKey = new Map();
+    const tkGroupsByPhone = new Map();
+    const outsideMktRows = [];
+    let lastCustSdtRaw = "";
+    let lastCustSdtNorm = "";
+    let lastCustHoTen = "";
+    let lastCustAddr = "";
+    let lastCustDate = "";
+
+    for (let i = 0; i < data_hien_tai.length; i++) {
+      const r = data_hien_tai[i];
+      if (!Array.isArray(r) || r.length === 0) continue;
+
+      const c0 = bo_dau_tieng_viet(String(r[0] || "").trim()).toUpperCase();
+      const c2 = bo_dau_tieng_viet(String(r[2] || "").trim()).toUpperCase();
+      if (i === 0 && (c0 === "THOI GIAN" || c0 === "STT" || c2 === "HO TEN")) continue;
+
+      const tgStr = String(r[0] || "").trim();
+      const ymd = tach_ngay_ymd_tu_chuoi(tgStr);
+      const sdtCellRaw = r.length > 3 ? String(r[3] || "").trim() : "";
+      const sdtCell = sdtCellRaw ? chuan_hoa_sdt_so_sanh(sdtCellRaw) : "";
+      const hoTenCell = r.length > 2 ? String(r[2] || "").trim() : "";
+      const addrCell = r.length > 4 ? String(r[4] || "").trim() : "";
+      const mvdCell = r.length > 1 ? String(r[1] || "").trim() : "";
+      if (sdtCell || hoTenCell || addrCell || mvdCell) {
+        lastCustSdtRaw = sdtCellRaw;
+        lastCustSdtNorm = sdtCell;
+        lastCustHoTen = hoTenCell;
+        lastCustAddr = addrCell;
+        lastCustDate = ymd;
+      }
+
+      if (r.length <= 13 || !la_don_hop_le_de_dem(r[13])) continue;
+
+      const sameDateCtx = !ymd || !lastCustDate || ymd === lastCustDate;
+      const effSdt = sdtCell || (sameDateCtx ? lastCustSdtNorm : "");
+      const effSdtDisplay = sdtCellRaw || (sameDateCtx ? lastCustSdtRaw : "");
+      const fallbackAddr = !addrCell && sameDateCtx ? lastCustAddr : "";
+      const fallbackHoTen = !hoTenCell && sameDateCtx ? lastCustHoTen : "";
+      const money = r.length > 8 ? parse_gia_tien(r[8]) : 0;
+
+      if (effSdt && ymd && money > 0) {
+        const gKey = `${effSdt}|${ymd}`;
+        let grp = tkGroupByKey.get(gKey);
+        if (!grp) {
+          grp = {
+            key: gKey,
+            ymd,
+            ymdMs: parse_ymd_date(ymd).getTime(),
+            money: 0,
+          };
+          tkGroupByKey.set(gKey, grp);
+          if (!tkGroupsByPhone.has(effSdt)) tkGroupsByPhone.set(effSdt, []);
+          tkGroupsByPhone.get(effSdt).push(grp);
+        }
+        grp.money += money;
+      }
+
+      // Thu thập đúng các đơn của MKT này trong khoảng ngày để đối soát với dashboard bên ngoài
+      if (khop_ngay_chinh_xac(tgStr, patternsArr)) {
+        const mktRowNorm = resolve_row_mkt_for_dashboard(r, sdtCell ? "" : (sameDateCtx ? lastCustSdtRaw : ""), fallbackAddr, i + 1);
+        const rawSpText = r.length > 5 ? String(r[5] || "").trim() : "";
+        let tenMau = "";
+        if (rawSpText && !["DÒNG SP", "TÊN SP", "SẢN PHẨM", "MÃ SP", "MÃ"].includes(rawSpText.toUpperCase())) {
+          tenMau = trich_xuat_ten_mau_thong_minh(rawSpText);
+        }
+        if (mktRowNorm !== "KHÁC" && chuan_hoa_mkt_so_sanh(mktRowNorm) === targetMktNorm && tenMau && (!spFilterNorm || tenMau.toUpperCase() === spFilterNorm)) {
+          outsideMktRows.push({
+            gKey: effSdt && ymd ? `${effSdt}|${ymd}` : "",
+            tg: tgStr,
+            order_ymd: ymd,
+            ho_ten: hoTenCell || fallbackHoTen,
+            sdt: effSdtDisplay,
+            sdt_norm: effSdt,
+            dia_chi: addrCell || fallbackAddr,
+            dong_sp: tenMau || rawSpText,
+            mau_sac: r.length > 6 ? String(r[6] || "").trim() : "",
+            size: r.length > 7 ? String(r[7] || "").trim() : "",
+            gia_ban: money,
+            nen_tang: r.length > 10 ? String(r[10] || "").trim() : "",
+            sale: r.length > 11 ? String(r[11] || "").trim() : "",
+            trang_thai: String(r[13] || "").trim(),
+            ghi_chu_sale: [
+              r.length > 11 && String(r[11] || "").trim() ? `Sale: ${String(r[11] || "").trim()}` : "",
+              String(r[13] || "").trim(),
+              r.length > 15 ? String(r[15] || "").trim() : "",
+            ].filter(Boolean).join(" • "),
+            ghi_chu_khach: "",
+            tg_goi: "",
+            da_chot: true,
+          });
+        }
+      }
+    }
+
+    const usedTkGroupKeys = new Set();
+    const tryConsumeOrderGroup = (cid, o, maxDiffDays) => {
+      if (!o || !o.sdt_norm || !o.order_ymd) return false;
+      const groups = tkGroupsByPhone.get(o.sdt_norm);
+      if (!groups || groups.length === 0) return false;
+
+      const oYmdMs = parse_ymd_date(o.order_ymd).getTime();
+      let bestGrp = null;
+      let bestDiff = Infinity;
+      for (const g of groups) {
+        if (usedTkGroupKeys.has(g.key)) continue;
+        const diffDays = Math.round((g.ymdMs - oYmdMs) / 86400000);
+        if (diffDays >= 0 && diffDays <= maxDiffDays && diffDays < bestDiff) {
+          bestDiff = diffDays;
+          bestGrp = g;
+          if (diffDays === 0) break;
+        }
+      }
+      if (!bestGrp) return false;
+      usedTkGroupKeys.add(bestGrp.key);
+      o.gia_ban = bestGrp.money;
+      revenueByCampId[cid] = (revenueByCampId[cid] || 0) + bestGrp.money;
+      return true;
+    };
+
+    const campIdsAll = Object.keys(ordersByCampId);
+    // Lượt 1: Khớp các đơn đã đánh dấu chốt (ưu tiên cùng ngày, cho phép lệch +1..+3 ngày)
+    for (const cid of campIdsAll) {
+      for (const o of ordersByCampId[cid]) {
+        if (o.da_chot) tryConsumeOrderGroup(cid, o, 3);
+      }
+    }
+    // Lượt 2: Dự phòng cùng ngày nếu Sale đã lên đơn Tổng hợp nhưng chưa tích cột Đã chốt
+    for (const cid of campIdsAll) {
+      for (const o of ordersByCampId[cid]) {
+        if (!o.da_chot && o.gia_ban <= 0) tryConsumeOrderGroup(cid, o, 0);
+      }
+    }
+
+    // Đối soát toàn bộ đơn của MKT này trong khoảng ngày xem đơn nào chưa gắn vào Camp nào
+    const startMs = parse_ymd_date(start_str).getTime();
+    for (const row of outsideMktRows) {
+      outsideReconcile.outsideTotalCount += 1;
+      outsideReconcile.outsideTotalDs += row.gia_ban;
+      if (row.gKey && usedTkGroupKeys.has(row.gKey)) {
+        outsideReconcile.matchedInRangeDs += row.gia_ban;
+        continue;
+      }
+
+      const hist = row.sdt_norm ? (r0PhoneHistory.get(row.sdt_norm) || []) : [];
+      const prevRec = hist.find((h) => h.ymdMs < startMs && h.cid && !h.isDupCap && !h.isDemZero);
+      const hasInRangeForm = hist.some((h) => khop_ngay_chinh_xac(h.ymd, patternsArr));
+      const platNoDau = bo_dau_tieng_viet(row.nen_tang).toUpperCase();
+
+      let reasonType = "missing_cid";
+      let reasonLabel = hasInRangeForm ? "Thiếu Campaign ID" : "Landing chưa có ID";
+      if (platNoDau && !platNoDau.includes("LANDING")) {
+        reasonType = "other_platform";
+        reasonLabel = row.nen_tang || "Ngoài Landing Page";
+      } else if (prevRec && !hasInRangeForm) {
+        reasonType = "form_prev";
+        reasonLabel = `Form ${format_date_vn_display(prevRec.ymd)}`;
+      }
+
+      outsideReconcile.unmatchedCount += 1;
+      outsideReconcile.unmatchedDs += row.gia_ban;
+      if (reasonType === "missing_cid") {
+        outsideReconcile.missingCidCount += 1;
+        outsideReconcile.missingCidDs += row.gia_ban;
+      } else if (reasonType === "form_prev") {
+        outsideReconcile.formPrevCount += 1;
+        outsideReconcile.formPrevDs += row.gia_ban;
+      } else {
+        outsideReconcile.otherPlatCount += 1;
+        outsideReconcile.otherPlatDs += row.gia_ban;
+      }
+
+      outsideReconcile.unmatchedRows.push({
+        ...row,
+        reasonType,
+        reasonLabel,
+      });
+    }
+  }
+
+  return { countsByCampId, closedByCampId, ordersByCampId, revenueByCampId, outsideReconcile, hasAnyCampColData, totalMatchedOrders };
+}
+
+function cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReconcile) {
+  const reconcileBar = document.getElementById("mcOutsideReconcileBar");
+  const reconcileLeft = document.getElementById("mcReconcileLeft");
+  const reconcileRight = document.getElementById("mcReconcileRight");
+  if (!reconcileBar || !reconcileLeft || !reconcileRight) return;
+
+  const rec = outsideReconcile;
+  const hasVisibleCamps = campsList.length > 0;
+  const hasOutsideData = Boolean(rec && (rec.unmatchedCount > 0 || rec.outsideTotalDs > 0));
+  if (hasOutsideData && (hasVisibleCamps || spFilterNorm)) {
+    const fullMktSpend = campsList.reduce((acc, c) => acc + (c.spend || 0), 0);
+    const pillsHtml = [];
+    if (rec.missingCidCount > 0) {
+      pillsHtml.push(`<span class="mc-rec-pill is-warn">Thiếu ID: ${rec.missingCidCount} (${escape_html(format_tien_vnd(rec.missingCidDs))})</span>`);
+    }
+    if (rec.otherPlatCount > 0) {
+      pillsHtml.push(`<span class="mc-rec-pill is-info">Pancake / Khác: ${rec.otherPlatCount} (${escape_html(format_tien_vnd(rec.otherPlatDs))})</span>`);
+    }
+    if (rec.formPrevCount > 0) {
+      pillsHtml.push(`<span class="mc-rec-pill is-prev">Form cũ: ${rec.formPrevCount} (${escape_html(format_tien_vnd(rec.formPrevDs))})</span>`);
+    }
+
+    if (rec.unmatchedCount > 0) {
+      reconcileLeft.innerHTML =
+        `<span>📦 Ngoài Camp: <strong>+${rec.unmatchedCount} đơn (${escape_html(format_tien_vnd(rec.unmatchedDs))})</strong></span>` +
+        pillsHtml.join("") +
+        `<span class="mc-rec-link">Xem chi tiết →</span>`;
+    } else {
+      reconcileLeft.innerHTML = `<span>✅ Toàn bộ ${rec.outsideTotalCount} đơn đều đã khớp vào Camp</span>`;
+    }
+
+    const pctOut = rec.outsideTotalDs > 0 && fullMktSpend > 0 ? (fullMktSpend / rec.outsideTotalDs) * 100 : 0;
+    const pctClsOut = pctOut < 15 ? "val-green" : pctOut > 25 ? "val-red" : "val-highlight";
+    const pctOutBadge = (rec.outsideTotalDs > 0 && fullMktSpend > 0)
+      ? `<span class="cpds-pill mc-cpds-pill ${pctClsOut}">${pctOut.toFixed(1)}%</span>`
+      : "";
+    const scopeText = spFilterNorm ? `${escape_html(ten_mkt)} (${escape_html(spFilterNorm)})` : escape_html(ten_mkt);
+    reconcileRight.innerHTML =
+      `<span>Tổng ${scopeText}: <strong class="mc-rec-total-val">${escape_html(format_tien_vnd(rec.outsideTotalDs))}</strong> (${rec.outsideTotalCount} đơn)</span>` +
+      pctOutBadge;
+
+    reconcileBar.classList.remove("hidden");
+  } else {
+    reconcileBar.classList.add("hidden");
+  }
+}
+
+function loc_camp_theo_sp(campsList, spFilter = "") {
+  const spFilterNorm = String(spFilter || "").trim().toUpperCase();
+  const list = Array.isArray(campsList) ? campsList : [];
+  if (!spFilterNorm) return list;
+  return list.filter((c) => {
+    const csp = String((c && c.sp) || "").trim().toUpperCase();
+    if (csp === spFilterNorm) return true;
+    if (c && c.campaign_name) {
+      const extracted = String(trich_xuat_ten_mau_thong_minh(c.campaign_name) || "").trim().toUpperCase();
+      if (extracted === spFilterNorm) return true;
+    }
+    return false;
+  });
+}
+
+function build_card_camp_pill_html(ten_mkt, spFilter = "") {
+  if (!ten_mkt) return "";
+  const rawCamps = (cached_fb_camps && cached_fb_camps[ten_mkt]) || [];
+  const filtered = loc_camp_theo_sp(rawCamps, spFilter);
+  const campCount = filtered.length;
+  if (campCount <= 0) return "";
+  const scopeLabel = spFilter ? `mã ${spFilter} (${ten_mkt})` : ten_mkt;
+  const title = `Bấm để xem ${campCount} Camp đang chạy của ${scopeLabel}`;
+  return `<span class="card-camp-hint clickable-hint js-btn-view-card-camps" title="${escape_html(title)}">📢 ${campCount} Camp</span>`;
 }
 
 function render_mc_table_rows() {
@@ -6037,17 +6385,23 @@ function render_mc_table_rows() {
   const activeEnd = mc_date_end || current_end_date;
   const sourceCampsMap = mc_custom_camps_map || cached_fb_camps || {};
 
-  const campsList = Array.isArray(sourceCampsMap && sourceCampsMap[ten_mkt])
+  const spFilterNorm = String(current_mc_sp || "").trim().toUpperCase();
+  const rawCampsList = Array.isArray(sourceCampsMap && sourceCampsMap[ten_mkt])
     ? [...sourceCampsMap[ten_mkt]]
     : [];
+  const campsList = loc_camp_theo_sp(rawCampsList, spFilterNorm);
 
-  const { countsByCampId, closedByCampId, ordersByCampId, hasAnyCampColData } = tinh_ket_qua_camp_tu_tong_don(
+  const { countsByCampId, closedByCampId, ordersByCampId, revenueByCampId, outsideReconcile, hasAnyCampColData } = tinh_ket_qua_camp_tu_tong_don(
     ten_mkt,
     campsList,
     activeStart,
-    activeEnd
+    activeEnd,
+    spFilterNorm
   );
   last_mc_orders_by_camp = ordersByCampId || {};
+  last_mc_orders_by_camp["__UNMATCHED__"] = (outsideReconcile && outsideReconcile.unmatchedRows) || [];
+  last_mc_revenue_by_camp = revenueByCampId || {};
+  last_mc_outside_reconcile = outsideReconcile || null;
   last_mc_camps_by_id = {};
   for (const campItem of campsList) {
     if (campItem && campItem.campaign_id) {
@@ -6087,6 +6441,10 @@ function render_mc_table_rows() {
   const mcTotalResultBadge = document.getElementById("mcTotalResultBadge");
   const mcDateRangeText = document.getElementById("mcDateRangeText");
   const mcTotalSpendText = document.getElementById("mcTotalSpendText");
+  const mcTotalDsDivider = document.getElementById("mcTotalDsDivider");
+  const mcTotalDsText = document.getElementById("mcTotalDsText");
+  const mcTotalOutDsDivider = document.getElementById("mcTotalOutDsDivider");
+  const mcTotalOutDsText = document.getElementById("mcTotalOutDsText");
   const mcTotalBudgetDivider = document.getElementById("mcTotalBudgetDivider");
   const mcTotalBudgetText = document.getElementById("mcTotalBudgetText");
   const mcTableBody = document.getElementById("mcTableBody");
@@ -6095,6 +6453,7 @@ function render_mc_table_rows() {
   const mcFooterSummary = document.getElementById("mcFooterSummary");
 
   const totalSpend = filtered.reduce((acc, c) => acc + (c.spend || 0), 0);
+  const totalRevenue = filtered.reduce((acc, c) => acc + ((revenueByCampId && revenueByCampId[c.campaign_id]) || 0), 0);
   const totalImpr = filtered.reduce((acc, c) => acc + (c.impressions || 0), 0);
   const totalClicks = filtered.reduce((acc, c) => acc + (c.link_clicks || 0), 0);
   const totalResults = filtered.reduce((acc, c) => acc + (countsByCampId[c.campaign_id] || 0), 0);
@@ -6123,6 +6482,25 @@ function render_mc_table_rows() {
   }
 
   if (mcMktBadge) mcMktBadge.textContent = ten_mkt;
+  const mcSpFilterBadge = document.getElementById("mcSpFilterBadge");
+  const btnMcClearSpFilter = document.getElementById("btnMcClearSpFilter");
+  const mcTitleText = document.getElementById("mcTitleText");
+  if (mcSpFilterBadge) {
+    if (spFilterNorm) {
+      mcSpFilterBadge.textContent = `👟 ${spFilterNorm}`;
+      mcSpFilterBadge.classList.remove("hidden");
+    } else {
+      mcSpFilterBadge.classList.add("hidden");
+    }
+  }
+  if (btnMcClearSpFilter) {
+    btnMcClearSpFilter.classList.toggle("hidden", !spFilterNorm);
+  }
+  if (mcTitleText) {
+    mcTitleText.textContent = spFilterNorm
+      ? `DANH SÁCH CAMP ĐANG CHẠY — ${spFilterNorm}`
+      : "DANH SÁCH CAMP ĐANG CHẠY";
+  }
   if (mcCampCountBadge) mcCampCountBadge.textContent = `${filtered.length} Camp`;
   if (mcTotalResultBadge) mcTotalResultBadge.textContent = `${totalResults} kết quả`;
   if (mcDateRangeText) {
@@ -6131,7 +6509,31 @@ function render_mc_table_rows() {
         ? `Ngày: ${format_date_vn_display(activeStart)}`
         : `Từ ${format_date_vn_display(activeStart)} → ${format_date_vn_display(activeEnd)}`;
   }
-  if (mcTotalSpendText) mcTotalSpendText.textContent = `Tổng tiêu: ${format_tien_vnd(totalSpend)}`;
+  if (mcTotalSpendText) mcTotalSpendText.textContent = `CP: ${format_tien_vnd(totalSpend)}`;
+  if (mcTotalDsDivider && mcTotalDsText) {
+    if (totalRevenue > 0) {
+      const pctHdr = totalSpend > 0 ? ` (${((totalSpend / totalRevenue) * 100).toFixed(1)}%)` : "";
+      mcTotalDsText.textContent = `DS Camp: ${format_tien_vnd(totalRevenue)}${pctHdr}`;
+      mcTotalDsDivider.classList.remove("hidden");
+      mcTotalDsText.classList.remove("hidden");
+    } else {
+      mcTotalDsDivider.classList.add("hidden");
+      mcTotalDsText.classList.add("hidden");
+    }
+  }
+  if (mcTotalOutDsDivider && mcTotalOutDsText) {
+    const outRecHdr = outsideReconcile;
+    const allMktSpendHdr = campsList.reduce((acc, c) => acc + (c.spend || 0), 0);
+    if (outRecHdr && outRecHdr.outsideTotalDs > 0 && outRecHdr.outsideTotalDs !== totalRevenue) {
+      const pctOutHdr = allMktSpendHdr > 0 ? ` (${((allMktSpendHdr / outRecHdr.outsideTotalDs) * 100).toFixed(1)}%)` : "";
+      mcTotalOutDsText.textContent = `DS Tổng: ${format_tien_vnd(outRecHdr.outsideTotalDs)}${pctOutHdr}`;
+      mcTotalOutDsDivider.classList.remove("hidden");
+      mcTotalOutDsText.classList.remove("hidden");
+    } else {
+      mcTotalOutDsDivider.classList.add("hidden");
+      mcTotalOutDsText.classList.add("hidden");
+    }
+  }
   if (mcTotalBudgetDivider && mcTotalBudgetText) {
     if (totalActiveDailyBudget > 0) {
       mcTotalBudgetText.textContent = `Ngân sách chạy: ${format_tien_vnd(totalActiveDailyBudget)}/ngày`;
@@ -6159,13 +6561,18 @@ function render_mc_table_rows() {
         if (descEl) descEl.textContent = "Đang đồng bộ số liệu chi phí & kết quả từ Facebook Ads theo khoảng ngày vừa chọn.";
       } else {
         if (titleEl) titleEl.textContent = "Chưa có chiến dịch nào phát sinh chi phí";
-        if (descEl) descEl.textContent = "Không tìm thấy chiến dịch (Camp) nào của MKT này trong khoảng ngày đang chọn.";
+        if (descEl) {
+          descEl.textContent = spFilterNorm
+            ? `Không tìm thấy chiến dịch (Camp) nào cho mã ${spFilterNorm} của MKT này trong khoảng ngày đang chọn.`
+            : "Không tìm thấy chiến dịch (Camp) nào của MKT này trong khoảng ngày đang chọn.";
+        }
       }
       mcEmptyState.classList.remove("hidden");
     }
     if (mcFooterSummary) {
       mcFooterSummary.textContent = mc_is_loading_fb ? "⏳ Đang tải dữ liệu chiến dịch..." : "Hiển thị 0 chiến dịch";
     }
+    cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReconcile);
     return;
   }
 
@@ -6180,6 +6587,14 @@ function render_mc_table_rows() {
     const kq = countsByCampId[c.campaign_id] || 0;
     const chot = closedByCampId[c.campaign_id] || 0;
     const spend = c.spend || 0;
+    const ds = (revenueByCampId && revenueByCampId[c.campaign_id]) || 0;
+    const cpdsHtml = (spend > 0 && ds > 0)
+      ? (() => {
+          const pct = (spend / ds) * 100;
+          const pctCls = pct < 15 ? "val-green" : pct > 25 ? "val-red" : "val-highlight";
+          return `<span class="cpds-pill mc-cpds-pill ${pctCls}">${pct.toFixed(1)}%</span>`;
+        })()
+      : `<span class="mc-metric-val">-</span>`;
     const cpa = kq > 0 ? spend / kq : 0;
     const cpmVal = c.cpm > 0 ? c.cpm : (c.impressions > 0 ? (spend / c.impressions) * 1000 : 0);
     const ctrVal = c.ctr > 0 ? c.ctr : (c.impressions > 0 ? ((c.link_clicks || 0) / c.impressions) * 100 : 0);
@@ -6232,6 +6647,8 @@ function render_mc_table_rows() {
       </td>
       <td class="mc-col-budget">${budgetCellHtml}</td>
       <td class="mc-col-spend"><span class="mc-spend-val">${escape_html(format_tien_vnd(spend))}</span></td>
+      <td class="mc-col-ds">${ds > 0 ? `<span class="mc-ds-val">${escape_html(format_tien_vnd(ds))}</span>` : `<span class="mc-metric-val">-</span>`}</td>
+      <td class="mc-col-cpds">${cpdsHtml}</td>
       <td class="mc-col-cpm"><span class="mc-metric-val">${cpmVal > 0 ? escape_html(format_tien_vnd(cpmVal)) : "-"}</span></td>
       <td class="mc-col-ctr"><span class="mc-ctr-badge">${ctrVal > 0 ? `${ctrVal.toFixed(2)}%` : "0.00%"}</span></td>
       <td class="mc-col-cpc"><span class="mc-metric-val">${cpcVal > 0 ? escape_html(format_tien_vnd(cpcVal)) : "-"}</span></td>
@@ -6270,6 +6687,14 @@ function render_mc_table_rows() {
       `;
     }
 
+    const footCpdsHtml = (totalSpend > 0 && totalRevenue > 0)
+      ? (() => {
+          const pct = (totalSpend / totalRevenue) * 100;
+          const pctCls = pct < 15 ? "val-green" : pct > 25 ? "val-red" : "val-highlight";
+          return `<span class="cpds-pill mc-cpds-pill ${pctCls}">${pct.toFixed(1)}%</span>`;
+        })()
+      : `<span class="mc-metric-val">-</span>`;
+
     const footTr = document.createElement("tr");
     footTr.className = "mc-foot-row";
     footTr.innerHTML = `
@@ -6283,6 +6708,8 @@ function render_mc_table_rows() {
       </td>
       <td class="mc-col-budget">${footBudgetHtml}</td>
       <td class="mc-col-spend"><span class="mc-spend-val">${escape_html(format_tien_vnd(totalSpend))}</span></td>
+      <td class="mc-col-ds">${totalRevenue > 0 ? `<span class="mc-ds-val">${escape_html(format_tien_vnd(totalRevenue))}</span>` : `<span class="mc-metric-val">-</span>`}</td>
+      <td class="mc-col-cpds">${footCpdsHtml}</td>
       <td class="mc-col-cpm"><span class="mc-metric-val">${avgCpm > 0 ? escape_html(format_tien_vnd(avgCpm)) : "-"}</span></td>
       <td class="mc-col-ctr"><span class="mc-ctr-badge">${avgCtr > 0 ? `${avgCtr.toFixed(2)}%` : "0.00%"}</span></td>
       <td class="mc-col-cpc"><span class="mc-metric-val">${avgCpc > 0 ? escape_html(format_tien_vnd(avgCpc)) : "-"}</span></td>
@@ -6296,20 +6723,23 @@ function render_mc_table_rows() {
         ? " • ⚠️ Chưa thấy dữ liệu Campaign ID"
         : "";
     const loadingSuffix = mc_is_loading_fb ? " • ⏳ Đang đồng bộ mới nhất..." : "";
-    mcFooterSummary.textContent = `Hiển thị ${filtered.length} chiến dịch • Tổng ${totalResults} kết quả thực tế • Bấm vào Camp để xem khách đặt hàng${noteMissingColQ}${loadingSuffix}`;
+    mcFooterSummary.textContent = `Bấm vào dòng Camp để xem khách đặt hàng${noteMissingColQ}${loadingSuffix}`;
   }
+
+  cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReconcile);
 
   if (current_cc_camp_id) {
     render_camp_customers_modal();
   }
 }
 
-async function hien_thi_bang_camp_mkt(ten_mkt) {
+async function hien_thi_bang_camp_mkt(ten_mkt, spFilter = "") {
   const modal = document.getElementById("mktCampModal");
   if (!modal) return;
 
   hide_all_popups();
   current_mc_mkt = ten_mkt;
+  current_mc_sp = String(spFilter || "").trim();
   mc_date_start = current_start_date;
   mc_date_end = current_end_date;
   mc_custom_camps_map = null;
@@ -6532,9 +6962,17 @@ function render_order_detail_table(ordersToRender) {
 
 function build_sp_closing_rate_pill_html(ma_str, ten_mkt) {
   const crData = last_closing_rate_data || {};
-  const stat = ten_mkt
-    ? (crData.by_mkt_sp && crData.by_mkt_sp[ten_mkt] && crData.by_mkt_sp[ten_mkt][ma_str])
-    : (crData.by_sp && crData.by_sp[ma_str]);
+  let stat = null;
+  if (ten_mkt && ma_str) {
+    stat = crData.by_mkt_sp && crData.by_mkt_sp[ten_mkt] && crData.by_mkt_sp[ten_mkt][ma_str];
+  } else if (ten_mkt && !ma_str) {
+    const mktKey = crData.by_mkt && crData.by_mkt[ten_mkt]
+      ? ten_mkt
+      : chuan_hoa_mkt_dashboard(ten_mkt);
+    stat = crData.by_mkt && crData.by_mkt[mktKey];
+  } else if (ma_str) {
+    stat = crData.by_sp && crData.by_sp[ma_str];
+  }
   const dem = (stat && stat.dem) || 0;
   const chot = (stat && stat.chot) || 0;
   const pct = dem > 0 ? (chot / dem) * 100 : 0;
@@ -6543,9 +6981,12 @@ function build_sp_closing_rate_pill_html(ma_str, ten_mkt) {
     ? `${Number.isInteger(Number(pct.toFixed(1))) ? pct.toFixed(0) : pct.toFixed(1)}%`
     : "0%";
   const labelText = dem > 0 ? `Chốt ${pctFormatted} (${chot}/${dem})` : `Chốt 0%`;
+  const scopeDesc = ma_str
+    ? `mã ${ma_str}${ten_mkt ? ` (${ten_mkt})` : ""}`
+    : `${ten_mkt || "MKT"}`;
   const tooltip = dem > 0
-    ? `Tỉ lệ chốt Landing mã ${ma_str}${ten_mkt ? ` (${ten_mkt})` : ""}: ${pct.toFixed(1)}% (Chốt ${chot}/${dem} số)`
-    : `Chưa có số Landing mã ${ma_str}${ten_mkt ? ` (${ten_mkt})` : ""} trong khoảng ngày này`;
+    ? `Tỉ lệ chốt Landing ${scopeDesc}: ${pct.toFixed(1)}% (Chốt ${chot}/${dem} số)`
+    : `Chưa có số Landing ${scopeDesc} trong khoảng ngày này`;
   return `<span class="sp-cr-pill ${pillCls}" title="${escape_html(tooltip)}">${escape_html(labelText)}</span>`;
 }
 
@@ -6555,7 +6996,7 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   card.className = "cozy-card";
   card.style.setProperty("--card-index", String(idx));
   card.style.cursor = "pointer";
-  card.title = `Nhấn để xem ${count} đơn hàng chi tiết của ${ma_str}`;
+  card.title = `Nhấn để xem danh sách Camp của ${ma_str}`;
 
   const topRow = document.createElement("div");
   topRow.className = "card-top-row";
@@ -6563,9 +7004,10 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
     <div class="card-title-group">
       <span class="card-name">👟 ${ma_str}</span>
       ${build_sp_closing_rate_pill_html(ma_str, current_mkt_detail)}
-      <span class="card-view-orders-hint">Xem ${count} đơn →</span>
+      ${build_card_camp_pill_html(current_mkt_detail, ma_str)}
+      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem ${count} đơn hàng chi tiết của ${ma_str}">📋 Chi tiết đơn →</span>
     </div>
-    <div class="card-count-group">
+    <div class="card-count-group js-sp-count-group" style="cursor: pointer;" title="Bấm để xem ${count} đơn hàng chi tiết của ${ma_str}">
       <span class="card-count-val js-count" style="color: var(--color-highlight)">0</span>
       <span class="card-count-unit">${dict.ordersUnit}</span>
     </div>
@@ -6591,9 +7033,32 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
-  // Click vào card để hiện bảng thông tin đơn hàng chi tiết
+  // Click nút Xem đơn / số đơn để xem chi tiết đơn hàng của mã SP
+  const btnViewSpOrders = topRow.querySelector(".js-btn-view-sp-orders");
+  if (btnViewSpOrders) {
+    btnViewSpOrders.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str);
+    });
+  }
+  const spCountGroup = topRow.querySelector(".js-sp-count-group");
+  if (spCountGroup) {
+    spCountGroup.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str);
+    });
+  }
+
+  // Click vào pill Camp hoặc vào card SP để hiện danh sách Camp của riêng mã SP đó
+  const btnViewSpCamps = topRow.querySelector(".js-btn-view-card-camps");
+  if (btnViewSpCamps) {
+    btnViewSpCamps.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_camp_mkt(current_mkt_detail, ma_str);
+    });
+  }
   card.addEventListener("click", () => {
-    hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str);
+    hien_thi_bang_camp_mkt(current_mkt_detail, ma_str);
   });
 
   attach_right_click_copy(card, spend);
@@ -6617,7 +7082,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
       ${build_sp_closing_rate_pill_html(name_str, null)}
-      <span class="card-view-orders-hint">Xem ${count} đơn →</span>
+      <span class="card-view-orders-hint" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -6678,8 +7143,8 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
   const tong_chi_phi_all = Object.values(fb_tong_map).reduce((a, b) => a + b, 0);
   const display_date_str =
     start_str === end_str
-      ? dict.singleDateFmt(start_str)
-      : dict.rangeDateFmt(start_str, end_str);
+      ? dict.singleDateFmt(format_date_vn_display(start_str))
+      : dict.rangeDateFmt(format_date_vn_display(start_str), format_date_vn_display(end_str));
 
   render_company_summary_card(
     display_date_str,
@@ -7237,10 +7702,17 @@ function detect_active_cal_preset(st, en, isOdCal) {
 }
 
 function update_date_buttons_text() {
+  const btn = document.getElementById("btnStartDate");
   const startText = document.getElementById("startDateText");
+  const sepText = btn ? btn.querySelector(".date-range-sep") : null;
   const endText = document.getElementById("endDateText");
-  if (startText) startText.textContent = current_start_date;
-  if (endText) endText.textContent = current_end_date;
+  const isSingle = Boolean(current_start_date && current_end_date && current_start_date === current_end_date);
+  if (startText) startText.textContent = format_date_vn_display(current_start_date);
+  if (endText) {
+    endText.textContent = format_date_vn_display(current_end_date);
+    endText.classList.toggle("hidden", isSingle);
+  }
+  if (sepText) sepText.classList.toggle("hidden", isSingle);
 
   const activePreset = detect_active_cal_preset(current_start_date, current_end_date, false);
 
@@ -8165,7 +8637,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     const btnHeaderUpdate = document.getElementById("btnHeaderUpdate");
 
     if (btnHeaderUpdate) btnHeaderUpdate.disabled = true;
-    if (headerIconEl) headerIconEl.classList.add("spinning");
+    if (headerIconEl) {
+      headerIconEl.textContent = "↻";
+      headerIconEl.classList.add("spinning");
+    }
     if (statusEl) statusEl.textContent = "⏳ Đang kiểm tra bản cập nhật ngầm...";
 
     try {
@@ -8193,7 +8668,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     } catch (e) {
     } finally {
       if (btnHeaderUpdate) btnHeaderUpdate.disabled = false;
-      if (headerIconEl) headerIconEl.classList.remove("spinning");
+      if (headerIconEl) {
+        headerIconEl.classList.remove("spinning");
+        headerIconEl.textContent = "⬇";
+      }
     }
   }
 
@@ -8585,6 +9063,11 @@ window.addEventListener("DOMContentLoaded", async () => {
       render_mc_table_rows();
     }
   });
+  document.getElementById("btnMcClearSpFilter")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    current_mc_sp = "";
+    render_mc_table_rows();
+  });
   document.getElementById("btnCloseMktCamp")?.addEventListener("click", (e) => {
     e.stopPropagation();
     dong_bang_camp_mkt();
@@ -8610,6 +9093,22 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Sự kiện Modal Khách hàng theo Camp (v8.6.239)
+  document.getElementById("mcOutsideReconcileBar")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const rec = last_mc_outside_reconcile;
+    if (rec && rec.unmatchedCount > 0) {
+      mo_bang_khach_hang_camp("__UNMATCHED__");
+    }
+  });
+  document.getElementById("mcOutsideReconcileBar")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const rec = last_mc_outside_reconcile;
+      if (rec && rec.unmatchedCount > 0) {
+        mo_bang_khach_hang_camp("__UNMATCHED__");
+      }
+    }
+  });
   document.getElementById("mcTableBody")?.addEventListener("click", (e) => {
     const row = e.target.closest("tr.mc-row-clickable");
     if (!row) return;

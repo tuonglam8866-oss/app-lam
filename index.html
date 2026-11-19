@@ -160,10 +160,10 @@
             <span class="refresh-icon" id="refreshIcon">↻</span>
             <span id="btnRefreshText">Tải Lại</span>
           </button>
-          <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-choco btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
-            <span class="refresh-icon" id="headerUpdateIcon">↻</span>
+          <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-default btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
+            <span class="refresh-icon update-arrow-icon" id="headerUpdateIcon">⬇</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.105</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.265</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -439,14 +439,20 @@
         <div class="od-header-info">
           <div class="od-tag-row">
             <span class="od-tag-pill" id="mcMktBadge">MKT</span>
+            <span class="od-tag-sp mc-sp-filter-pill hidden" id="mcSpFilterBadge"></span>
             <span class="od-tag-sp" id="mcCampCountBadge">0 Camp</span>
             <span class="od-tag-count" id="mcTotalResultBadge">0 kết quả</span>
+            <button type="button" id="btnMcClearSpFilter" class="mc-clear-sp-btn hidden" title="Hiển thị tất cả sản phẩm của MKT này">Xem tất cả SP ✕</button>
           </div>
           <h2 class="od-title" id="mcTitleText">DANH SÁCH CAMP ĐANG CHẠY</h2>
           <div class="od-meta-row">
             <span class="od-meta-item" id="mcDateRangeText">Ngày ...</span>
             <span class="od-meta-divider">•</span>
-            <span class="od-meta-item" id="mcTotalSpendText">Tổng tiêu: 0 đ</span>
+            <span class="od-meta-item" id="mcTotalSpendText">CP: 0 đ</span>
+            <span class="od-meta-divider hidden" id="mcTotalDsDivider">•</span>
+            <span class="od-meta-item hidden" id="mcTotalDsText">DS Camp: 0 đ</span>
+            <span class="od-meta-divider hidden" id="mcTotalOutDsDivider">•</span>
+            <span class="od-meta-item mc-meta-total-ds hidden" id="mcTotalOutDsText">DS Tổng: 0 đ</span>
             <span class="od-meta-divider hidden" id="mcTotalBudgetDivider">•</span>
             <span class="od-meta-item hidden" id="mcTotalBudgetText">Ngân sách: 0 đ</span>
           </div>
@@ -489,7 +495,9 @@
               <th class="mc-col-name">Tên Camp</th>
               <th class="mc-col-result">Kết quả</th>
               <th class="mc-col-budget">Ngân sách</th>
-              <th class="mc-col-spend">Tiền tiêu</th>
+              <th class="mc-col-spend">CP</th>
+              <th class="mc-col-ds">DS</th>
+              <th class="mc-col-cpds">CP/DS</th>
               <th class="mc-col-cpm">CPM</th>
               <th class="mc-col-ctr">CTR</th>
               <th class="mc-col-cpc">CPC</th>
@@ -503,6 +511,11 @@
           <div class="od-empty-title">Chưa có chiến dịch nào phát sinh chi phí</div>
           <div class="od-empty-desc">Không tìm thấy chiến dịch (Camp) nào của MKT này trong khoảng ngày đang chọn.</div>
         </div>
+      </div>
+
+      <div id="mcOutsideReconcileBar" class="mc-reconcile-bar hidden" role="button" tabindex="0" title="Bấm để xem danh sách các đơn ngoài Camp">
+        <div class="mc-reconcile-left" id="mcReconcileLeft"></div>
+        <div class="mc-reconcile-right" id="mcReconcileRight"></div>
       </div>
 
       <div class="od-footer">
