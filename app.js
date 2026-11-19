@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.235";
+const APP_FRONTEND_VERSION = "8.6.236";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2510,6 +2510,23 @@ function tao_cac_dang_ngay_khop(start_str, end_str) {
   return Array.from(date_patterns);
 }
 
+const DATE_TOKEN_EXTRACT_RE = /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})|(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/;
+
+function tach_ngay_ymd_tu_chuoi(tg) {
+  const m = DATE_TOKEN_EXTRACT_RE.exec(String(tg || "").trim());
+  if (!m) return "";
+  if (m[1]) {
+    return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  }
+  return `${m[6]}-${m[5].padStart(2, "0")}-${m[4].padStart(2, "0")}`;
+}
+
+function khop_ngay_chinh_xac(tg, patternsArr) {
+  const ymd = tach_ngay_ymd_tu_chuoi(tg);
+  if (!ymd || !patternsArr) return false;
+  return Array.isArray(patternsArr) ? patternsArr.includes(ymd) : Boolean(patternsArr.has && patternsArr.has(ymd));
+}
+
 let td_first_landing_by_sdt = new Map();
 let td_first_landing_indexed_ref = null;
 let cust_first_mkt_by_sdt = new Map();
@@ -2806,7 +2823,7 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
         lastCustDate = dateOnly;
       }
 
-      const is_matched_date = patternsArr.some((p) => tg.includes(p));
+      const is_matched_date = khop_ngay_chinh_xac(tg, patternsArr);
 
       if (is_matched_date) {
         if (la_don_hop_le_de_dem(r[13])) {
@@ -2985,7 +3002,7 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
 
     if (patternsArr) {
       const tg = String(r[0] || mapped.ngay_only || "").trim();
-      if (!patternsArr.some((p) => tg.includes(p))) continue;
+      if (!khop_ngay_chinh_xac(tg, patternsArr)) continue;
     }
 
     ket_qua.push(mapped);
@@ -3018,7 +3035,7 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp) {
       lastCustDate = dateOnly;
     }
 
-    const is_matched_date = patternsArr.some((p) => tg.includes(p));
+    const is_matched_date = khop_ngay_chinh_xac(tg, patternsArr);
     if (!is_matched_date) continue;
 
     if (!la_don_hop_le_de_dem(r[13])) continue;
@@ -3194,7 +3211,7 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
   for (const r of data_tong_don_upyo) {
     if (r.length > Math.max(colDaChot, colDemDon)) {
       const tg = String(r[colTg] || "").trim();
-      const is_matched_date = patternsArr.some((p) => tg.includes(p));
+      const is_matched_date = khop_ngay_chinh_xac(tg, patternsArr);
       if (is_matched_date) {
         const dem = parseInt(String(r[colDemDon] || "0").trim(), 10) || 0;
         const chot = parseInt(String(r[colDaChot] || "0").trim(), 10) || 0;
@@ -5921,7 +5938,7 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
     if (!Array.isArray(r) || r.length === 0) continue;
 
     const tg = String(r[colTg] || "").trim();
-    if (!tg || !patternsArr.some((p) => tg.includes(p))) continue;
+    if (!tg || !khop_ngay_chinh_xac(tg, patternsArr)) continue;
 
     const ten = String(r[colTen] || "").trim().toUpperCase();
     const sdt = String(r[colSdt] || "").replace(/\D/g, "");
