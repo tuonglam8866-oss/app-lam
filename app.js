@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.265";
+const APP_FRONTEND_VERSION = "8.6.266";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1996,27 +1996,81 @@ async function dong_bo_ma_sp_tu_nguon_tag() {
 
 let thong_bao_fetch_promise = null;
 let thong_bao_last_fetch_ms = 0;
+let thong_bao_loaded_start = "";
+let thong_bao_loaded_end = "";
 
-function tai_du_lieu_thong_bao_ngam(force = false) {
-  if (thong_bao_fetch_promise) return thong_bao_fetch_promise;
-  if (!force && Array.isArray(data_tong_don_upyo) && data_tong_don_upyo.length > 0 && Date.now() - thong_bao_last_fetch_ms < 120000) {
+function lui_ngay_ymd(ymdStr, days) {
+  const dt = parse_ymd_date(ymdStr);
+  dt.setDate(dt.getDate() - days);
+  return format_ymd_date(dt);
+}
+
+function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd = "") {
+  const todayStr = format_ymd_date(new Date());
+  const effStart = customStart || current_start_date || todayStr;
+  const effEnd = customEnd || current_end_date || effStart;
+  const targetEnd = effEnd;
+  const targetStart = lui_ngay_ymd(effStart, 15);
+
+  const rangeCovered = Boolean(
+    thong_bao_loaded_start &&
+    thong_bao_loaded_end &&
+    thong_bao_loaded_start <= targetStart &&
+    thong_bao_loaded_end >= targetEnd
+  );
+
+  if (thong_bao_fetch_promise && !force && rangeCovered) {
+    return thong_bao_fetch_promise;
+  }
+  if (
+    !force &&
+    rangeCovered &&
+    Array.isArray(data_tong_don_upyo) &&
+    data_tong_don_upyo.length > 0 &&
+    Date.now() - thong_bao_last_fetch_ms < 120000
+  ) {
     return Promise.resolve(data_tong_don_upyo);
   }
-  thong_bao_fetch_promise = fetch_csv_with_fallback(
-    build_apps_script_url("gid=0"),
-    "",
-    "thong_bao"
-  )
-    .then((rowsThongBao) => {
+
+  const directUrl = build_apps_script_url(
+    `gid=0&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`
+  );
+  if (!directUrl) return Promise.resolve(data_tong_don_upyo);
+
+  thong_bao_fetch_promise = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      const res = await fetch(`${directUrl}&t=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) return data_tong_don_upyo;
+      const text = await res.text();
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.startsWith("<!DOCTYPE html") || trimmed === "Unauthorized") {
+        return data_tong_don_upyo;
+      }
+
+      const rowsThongBao = parse_csv_lines(text);
       if (rowsThongBao && rowsThongBao.length > 0) {
         data_tong_don_upyo = rowsThongBao;
         thong_bao_last_fetch_ms = Date.now();
+        thong_bao_loaded_start = targetStart;
+        thong_bao_loaded_end = targetEnd;
         rebuild_td_first_landing_index();
         rebuild_cust_first_mkt_index();
         try {
-          render_closing_rate_card(tinh_ty_le_chot_theo_ngay(current_start_date, current_end_date));
-          if (Array.isArray(data_hien_tai) && data_hien_tai.length > 0 && cached_fb_chi_tiet && cached_fb_tong) {
-            run_silent_dashboard_rerender();
+          const coversMainRange = Boolean(
+            (!current_start_date || thong_bao_loaded_start <= current_start_date) &&
+            (!current_end_date || thong_bao_loaded_end >= current_end_date)
+          );
+          if (coversMainRange) {
+            render_closing_rate_card(tinh_ty_le_chot_theo_ngay(current_start_date, current_end_date));
+            if (Array.isArray(data_hien_tai) && data_hien_tai.length > 0 && cached_fb_chi_tiet && cached_fb_tong) {
+              run_silent_dashboard_rerender();
+            }
           }
           const odModal = document.getElementById("orderDetailModal");
           if (odModal && !odModal.classList.contains("hidden") && current_od_mode === "all_table") {
@@ -2029,11 +2083,13 @@ function tai_du_lieu_thong_bao_ngam(force = false) {
         } catch (e) {}
       }
       return data_tong_don_upyo;
-    })
-    .catch(() => data_tong_don_upyo)
-    .finally(() => {
+    } catch (e) {
+      return data_tong_don_upyo;
+    } finally {
       thong_bao_fetch_promise = null;
-    });
+    }
+  })();
+
   return thong_bao_fetch_promise;
 }
 
@@ -5615,6 +5671,7 @@ async function tai_camp_mkt_theo_ngay(st, en) {
   mc_date_start = st;
   mc_date_end = en;
   update_mc_date_btn_ui();
+  tai_du_lieu_thong_bao_ngam(false, st, en).catch(() => {});
 
   if (
     st === current_start_date &&
@@ -7735,6 +7792,7 @@ function set_and_refresh(st, en) {
   hide_all_popups();
   // Khi chỉ đổi khoảng ngày xem, không cần tải lại toàn bộ Google Sheets nếu đã có sẵn trong RAM
   tai_va_cap_nhat_theo_ngay(false, true);
+  tai_du_lieu_thong_bao_ngam(false).catch(() => {});
 }
 
 // ==============================================================
