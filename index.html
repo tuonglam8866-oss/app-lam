@@ -192,7 +192,7 @@
             <div class="col-header-row">
               <div class="cozy-header-card section-header-card" id="headerMktCard">
                 <span class="section-icon" id="headerMktIcon">🏆</span>
-                <span id="headerMktText">BÁO CÁO MKT (Chuột phải Copy CP)</span>
+                <span id="headerMktText">BÁO CÁO MKT</span>
               </div>
               <div class="col-header-right-actions">
                 <button type="button" id="btnMktViewCampInline" class="rounded-btn btn-mkt-view-camp-pill hidden" title="Xem danh sách chiến dịch (Camp) đang chạy của MKT này">
@@ -447,6 +447,8 @@
             <span class="od-meta-item" id="mcDateRangeText">Ngày ...</span>
             <span class="od-meta-divider">•</span>
             <span class="od-meta-item" id="mcTotalSpendText">Tổng tiêu: 0 đ</span>
+            <span class="od-meta-divider hidden" id="mcTotalBudgetDivider">•</span>
+            <span class="od-meta-item hidden" id="mcTotalBudgetText">Ngân sách: 0 đ</span>
           </div>
         </div>
         <div class="od-header-actions">
@@ -486,6 +488,7 @@
               <th class="mc-col-stt">STT</th>
               <th class="mc-col-name">Tên Camp</th>
               <th class="mc-col-result">Kết quả</th>
+              <th class="mc-col-budget">Ngân sách</th>
               <th class="mc-col-spend">Tiền tiêu</th>
               <th class="mc-col-cpm">CPM</th>
               <th class="mc-col-ctr">CTR</th>
@@ -509,6 +512,80 @@
         <div class="od-footer-actions">
           <button type="button" id="btnDismissMktCamp" class="rounded-btn btn-choco" style="padding: 7px 22px; font-weight: 700;">
             Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Khách hàng đặt từ Camp (v8.6.239) -->
+  <div id="campCustomersModal" class="order-detail-backdrop camp-cust-backdrop hidden" role="dialog" aria-modal="true" aria-label="Danh sách khách hàng theo Camp">
+    <div class="order-detail-card camp-cust-card" id="campCustCard">
+      <div class="od-header">
+        <div class="od-header-info">
+          <div class="od-tag-row">
+            <span class="od-tag-pill" id="ccMktBadge">MKT</span>
+            <span class="od-tag-sp hidden" id="ccSpBadge">SP</span>
+            <span class="od-tag-count" id="ccTotalBadge">0 khách</span>
+            <span class="cc-tag-closed hidden" id="ccClosedBadge">Đã chốt: 0</span>
+            <span class="cc-tag-unclosed hidden" id="ccUnclosedBadge">Chưa chốt: 0</span>
+          </div>
+          <h2 class="od-title" id="ccTitleText">KHÁCH HÀNG ĐẶT TỪ CAMP</h2>
+          <div class="od-meta-row">
+            <span class="od-meta-item" id="ccCampIdText">ID: -</span>
+            <span class="od-meta-divider">•</span>
+            <span class="od-meta-item" id="ccDateRangeText">Ngày ...</span>
+            <span class="od-meta-divider">•</span>
+            <span class="od-meta-item" id="ccSpendText">Tiêu: 0 đ</span>
+          </div>
+        </div>
+        <div class="od-header-actions cc-header-actions">
+          <div class="cc-filter-group" role="group" aria-label="Lọc trạng thái chốt">
+            <button type="button" id="ccFilterAll" class="cc-filter-pill active" data-cc-filter="all">Tất cả</button>
+            <button type="button" id="ccFilterClosed" class="cc-filter-pill" data-cc-filter="closed">Đã chốt</button>
+            <button type="button" id="ccFilterUnclosed" class="cc-filter-pill" data-cc-filter="unclosed">Chưa chốt</button>
+          </div>
+          <div class="od-search-box cc-search-box">
+            <span class="od-search-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="7" cy="7" r="4.75" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M10.75 10.75L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <input type="text" id="ccSearchInput" class="od-search-input" placeholder="Tìm tên, SĐT, địa chỉ..." title="Tìm khách hàng" aria-label="Tìm khách hàng" autocomplete="off" />
+            <button type="button" id="btnClearCcSearch" class="od-search-clear hidden" title="Xóa tìm kiếm">✕</button>
+          </div>
+          <button type="button" id="btnCloseCampCust" class="od-close-btn" aria-label="Đóng" title="Quay lại (Esc)">✕</button>
+        </div>
+      </div>
+
+      <div class="od-table-wrapper" id="ccTableWrapper">
+        <table class="od-table cc-table" id="ccTable">
+          <thead>
+            <tr>
+              <th class="cc-col-stt">STT</th>
+              <th class="cc-col-time">Thời gian</th>
+              <th class="cc-col-name">Họ tên</th>
+              <th class="cc-col-sdt">Số điện thoại</th>
+              <th class="cc-col-addr">Địa chỉ</th>
+              <th class="cc-col-sp">Sản phẩm</th>
+              <th class="cc-col-status">Trạng thái &amp; Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody id="ccTableBody"></tbody>
+        </table>
+        <div id="ccEmptyState" class="od-empty-state hidden">
+          <div class="od-empty-icon">🧾</div>
+          <div class="od-empty-title">Chưa có khách hàng đặt từ Camp này</div>
+          <div class="od-empty-desc">Không có khách hàng nào khớp với bộ lọc trong khoảng ngày đang chọn.</div>
+        </div>
+      </div>
+
+      <div class="od-footer">
+        <div class="od-footer-summary" id="ccFooterSummary">Hiển thị 0 khách hàng</div>
+        <div class="od-footer-actions">
+          <button type="button" id="btnBackToCampList" class="rounded-btn btn-choco" style="padding: 7px 20px; font-weight: 700;">
+            ← Quay lại danh sách Camp
           </button>
         </div>
       </div>

@@ -1495,7 +1495,7 @@ html, body {
 
 .section-header-card {
   height: 42px;
-  min-width: 360px;
+  min-width: 0;
   padding: 0 18px;
   font-size: 15px;
   gap: 8px;
@@ -2003,7 +2003,7 @@ html, body {
   border-radius: 999px;
   box-shadow: 0 8px 20px rgba(22, 163, 74, 0.35);
   pointer-events: none;
-  z-index: 2500;
+  z-index: 10050;
   white-space: nowrap;
   animation: toast-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -3424,8 +3424,8 @@ input::-ms-clear {
 }
 
 .mkt-camp-card {
-  width: min(1060px, 94vw);
-  max-width: 1060px;
+  width: min(1160px, 95vw);
+  max-width: 1160px;
 }
 .mkt-camp-card .od-header-actions {
   gap: 8px;
@@ -3467,40 +3467,46 @@ input::-ms-clear {
   background: rgba(245, 176, 65, 0.08) !important;
 }
 .mc-col-stt {
-  width: 6%;
+  width: 5%;
   text-align: center !important;
   padding: 11px 6px !important;
 }
 .mc-col-name {
-  width: 28%;
+  width: 26%;
   text-align: left !important;
   padding: 11px 12px 11px 16px !important;
 }
 .mc-col-result {
-  width: 17%;
+  width: 15%;
   text-align: center !important;
   padding: 10px 8px !important;
 }
-.mc-col-spend {
+.mc-col-budget {
   width: 13%;
   text-align: center !important;
-  padding: 11px 8px !important;
+  padding: 10px 8px !important;
   font-variant-numeric: tabular-nums;
 }
-.mc-col-cpm {
+.mc-col-spend {
   width: 12%;
   text-align: center !important;
   padding: 11px 8px !important;
   font-variant-numeric: tabular-nums;
 }
+.mc-col-cpm {
+  width: 10%;
+  text-align: center !important;
+  padding: 11px 8px !important;
+  font-variant-numeric: tabular-nums;
+}
 .mc-col-ctr {
-  width: 11%;
+  width: 9%;
   text-align: center !important;
   padding: 11px 8px !important;
   font-variant-numeric: tabular-nums;
 }
 .mc-col-cpc {
-  width: 13%;
+  width: 10%;
   text-align: center !important;
   padding: 11px 14px 11px 8px !important;
   font-variant-numeric: tabular-nums;
@@ -3624,6 +3630,45 @@ input::-ms-clear {
 [data-theme="dark"] .mc-spend-val {
   color: #FBBF24;
 }
+.mc-budget-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.mc-budget-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0369A1;
+  white-space: nowrap;
+}
+[data-theme="dark"] .mc-budget-val {
+  color: #38BDF8;
+}
+.mc-budget-val.is-paused {
+  color: #78716C;
+  opacity: 0.85;
+}
+[data-theme="dark"] .mc-budget-val.is-paused {
+  color: #A8A29E;
+}
+.mc-budget-sub {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted, #6E5645);
+  white-space: nowrap;
+}
+.mc-budget-sub.is-paused {
+  color: #B91C1C;
+  background: rgba(220, 38, 38, 0.1);
+  padding: 0 6px;
+  border-radius: 5px;
+}
+[data-theme="dark"] .mc-budget-sub.is-paused {
+  color: #FCA5A5;
+  background: rgba(239, 68, 68, 0.18);
+}
 .mc-metric-val {
   font-size: 13px;
   font-weight: 700;
@@ -3662,6 +3707,242 @@ input::-ms-clear {
   background: #2C2119;
   color: #F5E6D3;
   border-top-color: rgba(245, 176, 65, 0.35);
+}
+.mc-table tbody tr.mc-row-clickable {
+  cursor: pointer;
+}
+.mc-camp-open-hint {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #B45309;
+  opacity: 0.72;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.mc-table tbody tr.mc-row-clickable:hover .mc-camp-open-hint {
+  opacity: 1;
+  transform: translateX(2px);
+}
+[data-theme="dark"] .mc-camp-open-hint {
+  color: #F5B041;
+}
+
+/* === MODAL DANH SACH KHACH HANG THEO CAMP (v8.6.239) === */
+.camp-cust-backdrop {
+  z-index: 10015;
+}
+.camp-cust-card {
+  width: min(1220px, 95vw);
+  max-width: 1220px;
+}
+.cc-header-actions {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.cc-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(110, 79, 58, 0.08);
+  border: 1px solid rgba(196, 171, 147, 0.45);
+}
+[data-theme="dark"] .cc-filter-group {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.cc-filter-pill {
+  border: none;
+  background: transparent;
+  color: #5C3D28;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.cc-filter-pill:hover {
+  background: rgba(180, 83, 9, 0.1);
+}
+.cc-filter-pill.active {
+  background: #3D2314;
+  color: #FAF5ED;
+}
+[data-theme="dark"] .cc-filter-pill {
+  color: #DFC3A8;
+}
+[data-theme="dark"] .cc-filter-pill.active {
+  background: #D97706;
+  color: #FFFFFF;
+}
+.cc-search-box,
+.cc-search-box .od-search-input {
+  width: 215px;
+  min-width: 215px;
+  max-width: 215px;
+}
+.cc-search-box .od-search-input {
+  padding-right: 26px;
+}
+.cc-tag-closed,
+.cc-tag-unclosed {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.cc-tag-closed {
+  background: rgba(5, 150, 105, 0.14);
+  color: #047857;
+  border: 1px solid rgba(5, 150, 105, 0.28);
+}
+.cc-tag-unclosed {
+  background: rgba(217, 119, 6, 0.12);
+  color: #B45309;
+  border: 1px solid rgba(217, 119, 6, 0.28);
+}
+[data-theme="dark"] .cc-tag-closed {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34D399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+[data-theme="dark"] .cc-tag-unclosed {
+  background: rgba(245, 158, 11, 0.16);
+  color: #FBBF24;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.cc-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.cc-table thead th {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  padding: 11px 8px !important;
+  white-space: nowrap;
+}
+.cc-table th,
+.cc-table td {
+  vertical-align: middle;
+}
+.cc-col-stt {
+  width: 5%;
+  text-align: center !important;
+  padding: 10px 6px !important;
+}
+.cc-col-time {
+  width: 13%;
+  text-align: left !important;
+  padding: 10px 8px !important;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.cc-col-name {
+  width: 15%;
+  text-align: left !important;
+  padding: 10px 8px !important;
+  font-weight: 800;
+}
+.cc-col-sdt {
+  width: 12%;
+  text-align: center !important;
+  padding: 10px 6px !important;
+}
+.cc-col-addr {
+  width: 20%;
+  text-align: left !important;
+  padding: 10px 8px !important;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.cc-col-sp {
+  width: 13%;
+  text-align: left !important;
+  padding: 10px 8px !important;
+}
+.cc-col-status {
+  width: 22%;
+  text-align: left !important;
+  padding: 10px 14px 10px 8px !important;
+}
+.cc-sdt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  font-family: Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.cc-sdt-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+[data-theme="dark"] .cc-sdt-btn {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #34D399;
+}
+.cc-sp-sub {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #6E5645);
+}
+[data-theme="dark"] .cc-sp-sub {
+  color: #C7B29F;
+}
+.cc-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 3px;
+}
+.cc-status-badge.is-closed {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+  border: 1px solid rgba(5, 150, 105, 0.28);
+}
+.cc-status-badge.is-unclosed {
+  background: rgba(217, 119, 6, 0.12);
+  color: #B45309;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+[data-theme="dark"] .cc-status-badge.is-closed {
+  background: rgba(52, 211, 153, 0.18);
+  color: #34D399;
+  border-color: rgba(52, 211, 153, 0.35);
+}
+[data-theme="dark"] .cc-status-badge.is-unclosed {
+  background: rgba(245, 158, 11, 0.18);
+  color: #FBBF24;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.cc-note-text {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-muted, #6E5645);
+  word-break: break-word;
+}
+[data-theme="dark"] .cc-note-text {
+  color: #D2C0B0;
 }
 
 /* === COZY ESPRESSO-LATTE SINGLE CALENDAR RANGE PICKER (v8.6.90) === */

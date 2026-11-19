@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.237";
+const APP_FRONTEND_VERSION = "8.6.239";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1020,8 +1020,8 @@ const I18N = {
     ordersUnit: "đơn",
     noOrdersYet: "Chưa nổ đơn",
     viewDetailHint: "Xem chi tiết →",
-    mktReportHeader: "BÁO CÁO MKT (Chuột phải Copy CP)",
-    mktDetailHeader: (m) => `CHI TIẾT: ${m} (Chuột phải Copy CP)`,
+    mktReportHeader: "BÁO CÁO MKT",
+    mktDetailHeader: (m) => `CHI TIẾT: ${m}`,
     btnBack: "← Quay lại",
     top5SpHeader: "TOP 10 MÃ TỔNG CÔNG TY",
     emptyMktList: "Chưa có đơn và chưa có CP",
@@ -1106,8 +1106,8 @@ const I18N = {
     ordersUnit: "单",
     noOrdersYet: "暂无出单",
     viewDetailHint: "查看详情 →",
-    mktReportHeader: "营销人员报表 (右键复制广告费)",
-    mktDetailHeader: (m) => `详情: ${m} (右键复制广告费)`,
+    mktReportHeader: "营销人员报表",
+    mktDetailHeader: (m) => `详情: ${m}`,
     btnBack: "← 返回",
     top5SpHeader: "前 5 热销款式",
     emptyMktList: "暂无订单与广告花费",
@@ -1192,8 +1192,8 @@ const I18N = {
     ordersUnit: "orders",
     noOrdersYet: "No orders",
     viewDetailHint: "View details →",
-    mktReportHeader: "MARKETER REPORT (Right-click to Copy Spend)",
-    mktDetailHeader: (m) => `DETAIL: ${m} (Right-click to Copy Spend)`,
+    mktReportHeader: "MARKETER REPORT",
+    mktDetailHeader: (m) => `DETAIL: ${m}`,
     btnBack: "← Back",
     top5SpHeader: "TOP 10 PRODUCTS",
     emptyMktList: "No orders or ad spend recorded",
@@ -2080,7 +2080,7 @@ async function doc_cache_thong_ke_async() {
   return doc_cache_thong_ke();
 }
 
-const CACHE_KEY_FB_LAST = "applam_cache_fb_last_v2";
+const CACHE_KEY_FB_LAST = "applam_cache_fb_last_v3";
 
 function luu_cache_fb_last(start_str, end_str, fbRes) {
   try {
@@ -2221,6 +2221,10 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
           const cpc = hasLinkCpc
             ? parseFloat(item.cost_per_inline_link_click || 0.0) || 0.0
             : parseFloat(item.cpc || 0.0) || (link_clicks > 0 ? spend / link_clicks : 0.0);
+          const daily_budget = parseFloat(item.daily_budget || 0.0) || 0.0;
+          const lifetime_budget = parseFloat(item.lifetime_budget || 0.0) || 0.0;
+          const budget_type = String(item.budget_type || "").trim();
+          const effective_status = String(item.effective_status || "").trim();
 
           rawFbSpends.push({
             actId,
@@ -2232,6 +2236,10 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
             cpm,
             ctr,
             cpc,
+            daily_budget,
+            lifetime_budget,
+            budget_type,
+            effective_status,
           });
         }
 
@@ -2252,7 +2260,21 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
   }
 
   for (const item of rawFbSpends) {
-    const { actId, camp_id, camp_name, spend, impressions, link_clicks, cpm, ctr, cpc } = item;
+    const {
+      actId,
+      camp_id,
+      camp_name,
+      spend,
+      impressions,
+      link_clicks,
+      cpm,
+      ctr,
+      cpc,
+      daily_budget,
+      lifetime_budget,
+      budget_type,
+      effective_status,
+    } = item;
     const ten_mau = trich_xuat_ten_mau_thong_minh(camp_name);
     const campUpper = camp_name.toUpperCase();
     const campNoDau = bo_dau_tieng_viet(camp_name).toUpperCase();
@@ -2283,6 +2305,10 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
         existing.cpm = existing.impressions > 0 ? (existing.spend / existing.impressions) * 1000 : existing.cpm;
         existing.ctr = existing.impressions > 0 ? (existing.link_clicks / existing.impressions) * 100 : existing.ctr;
         existing.cpc = existing.link_clicks > 0 ? existing.spend / existing.link_clicks : existing.cpc;
+        if (!existing.daily_budget && daily_budget > 0) existing.daily_budget = daily_budget;
+        if (!existing.lifetime_budget && lifetime_budget > 0) existing.lifetime_budget = lifetime_budget;
+        if (!existing.budget_type && budget_type) existing.budget_type = budget_type;
+        if (!existing.effective_status && effective_status) existing.effective_status = effective_status;
       } else {
         listCamps.push({
           campaign_id: camp_id,
@@ -2294,6 +2320,10 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
           cpm,
           ctr,
           cpc,
+          daily_budget,
+          lifetime_budget,
+          budget_type,
+          effective_status,
         });
       }
     }
@@ -5528,6 +5558,7 @@ function dong_bang_don_hang_chi_tiet() {
 }
 
 function dong_bang_camp_mkt() {
+  dong_bang_khach_hang_camp();
   if (current_cal_target === "mc_filter") {
     const calPopup = document.getElementById("calendarPopup");
     calPopup?.classList.add("hidden");
@@ -5631,18 +5662,206 @@ function extract_utm_campaign_from_url(linkRaw) {
   return m ? m[1] : "";
 }
 
+let last_mc_orders_by_camp = {};
+let last_mc_camps_by_id = {};
+let current_cc_camp_id = null;
+let current_cc_filter = "all"; // "all" | "closed" | "unclosed"
+
+function dong_bang_khach_hang_camp() {
+  current_cc_camp_id = null;
+  const modal = document.getElementById("campCustomersModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function mo_bang_khach_hang_camp(campId) {
+  const cid = String(campId || "").trim();
+  if (!cid) return;
+  const modal = document.getElementById("campCustomersModal");
+  if (!modal) return;
+
+  current_cc_camp_id = cid;
+  current_cc_filter = "all";
+  const searchEl = document.getElementById("ccSearchInput");
+  if (searchEl) searchEl.value = "";
+  const clearEl = document.getElementById("btnClearCcSearch");
+  if (clearEl) clearEl.classList.add("hidden");
+
+  modal.classList.remove("hidden");
+  render_camp_customers_modal();
+}
+
+function render_camp_customers_modal() {
+  if (!current_cc_camp_id) return;
+  const camp = last_mc_camps_by_id[current_cc_camp_id] || null;
+  const allCustomers = Array.isArray(last_mc_orders_by_camp[current_cc_camp_id])
+    ? last_mc_orders_by_camp[current_cc_camp_id]
+    : [];
+
+  const totalAll = allCustomers.length;
+  const totalClosed = allCustomers.filter((x) => x.da_chot).length;
+  const totalUnclosed = totalAll - totalClosed;
+
+  const ccMktBadge = document.getElementById("ccMktBadge");
+  const ccSpBadge = document.getElementById("ccSpBadge");
+  const ccTotalBadge = document.getElementById("ccTotalBadge");
+  const ccClosedBadge = document.getElementById("ccClosedBadge");
+  const ccUnclosedBadge = document.getElementById("ccUnclosedBadge");
+  const ccTitleText = document.getElementById("ccTitleText");
+  const ccCampIdText = document.getElementById("ccCampIdText");
+  const ccDateRangeText = document.getElementById("ccDateRangeText");
+  const ccSpendText = document.getElementById("ccSpendText");
+  const ccTableBody = document.getElementById("ccTableBody");
+  const ccEmptyState = document.getElementById("ccEmptyState");
+  const ccFooterSummary = document.getElementById("ccFooterSummary");
+
+  const activeStart = mc_date_start || current_start_date;
+  const activeEnd = mc_date_end || current_end_date;
+
+  if (ccMktBadge) ccMktBadge.textContent = current_mc_mkt || "MKT";
+  if (ccSpBadge) {
+    if (camp && camp.sp) {
+      ccSpBadge.textContent = camp.sp;
+      ccSpBadge.classList.remove("hidden");
+    } else {
+      ccSpBadge.classList.add("hidden");
+    }
+  }
+  if (ccTotalBadge) ccTotalBadge.textContent = `${totalAll} khách`;
+  if (ccClosedBadge) {
+    ccClosedBadge.textContent = `Đã chốt: ${totalClosed}`;
+    ccClosedBadge.classList.toggle("hidden", totalAll === 0);
+  }
+  if (ccUnclosedBadge) {
+    ccUnclosedBadge.textContent = `Chưa chốt: ${totalUnclosed}`;
+    ccUnclosedBadge.classList.toggle("hidden", totalAll === 0);
+  }
+  if (ccTitleText) {
+    ccTitleText.textContent = (camp && camp.campaign_name) ? camp.campaign_name : `Camp ${current_cc_camp_id}`;
+  }
+  if (ccCampIdText) ccCampIdText.textContent = `ID: ${current_cc_camp_id}`;
+  if (ccDateRangeText) {
+    ccDateRangeText.textContent =
+      activeStart === activeEnd
+        ? `Ngày: ${format_date_vn_display(activeStart)}`
+        : `Từ ${format_date_vn_display(activeStart)} → ${format_date_vn_display(activeEnd)}`;
+  }
+  if (ccSpendText) {
+    const spendVal = camp ? (camp.spend || 0) : 0;
+    const cpaText = (totalAll > 0 && spendVal > 0) ? ` • ${format_tien_vnd(spendVal / totalAll)}/số` : "";
+    ccSpendText.textContent = `Tiêu: ${format_tien_vnd(spendVal)}${cpaText}`;
+  }
+
+  const fAllBtn = document.getElementById("ccFilterAll");
+  const fClosedBtn = document.getElementById("ccFilterClosed");
+  const fUnclosedBtn = document.getElementById("ccFilterUnclosed");
+  if (fAllBtn) {
+    fAllBtn.textContent = `Tất cả (${totalAll})`;
+    fAllBtn.classList.toggle("active", current_cc_filter === "all");
+  }
+  if (fClosedBtn) {
+    fClosedBtn.textContent = `Đã chốt (${totalClosed})`;
+    fClosedBtn.classList.toggle("active", current_cc_filter === "closed");
+  }
+  if (fUnclosedBtn) {
+    fUnclosedBtn.textContent = `Chưa chốt (${totalUnclosed})`;
+    fUnclosedBtn.classList.toggle("active", current_cc_filter === "unclosed");
+  }
+
+  const searchInput = document.getElementById("ccSearchInput");
+  const clearBtn = document.getElementById("btnClearCcSearch");
+  const qRaw = (searchInput ? searchInput.value : "").trim().toLowerCase();
+  const qNoDau = qRaw ? bo_dau_tieng_viet(qRaw).toLowerCase() : "";
+  if (clearBtn) clearBtn.classList.toggle("hidden", !qRaw);
+
+  const list = allCustomers.filter((item) => {
+    if (current_cc_filter === "closed" && !item.da_chot) return false;
+    if (current_cc_filter === "unclosed" && item.da_chot) return false;
+    if (!qRaw) return true;
+    const hay = `${item.ho_ten} ${item.sdt} ${item.dia_chi} ${item.dong_sp} ${item.mau_sac} ${item.size} ${item.ghi_chu_khach} ${item.ghi_chu_sale}`.toLowerCase();
+    const hayNd = bo_dau_tieng_viet(hay).toLowerCase();
+    return hay.includes(qRaw) || hayNd.includes(qNoDau);
+  });
+
+  if (ccTableBody) ccTableBody.innerHTML = "";
+
+  if (list.length === 0) {
+    if (ccEmptyState) {
+      const titleEl = ccEmptyState.querySelector(".od-empty-title");
+      const descEl = ccEmptyState.querySelector(".od-empty-desc");
+      if (totalAll === 0) {
+        if (titleEl) titleEl.textContent = "Chưa có khách hàng đặt từ Camp này";
+        if (descEl) descEl.textContent = "Chưa ghi nhận đơn hàng nào khớp Campaign ID này trong khoảng ngày đang chọn.";
+      } else {
+        if (titleEl) titleEl.textContent = "Không tìm thấy khách hàng phù hợp";
+        if (descEl) descEl.textContent = "Hãy thử đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm.";
+      }
+      ccEmptyState.classList.remove("hidden");
+    }
+    if (ccFooterSummary) {
+      ccFooterSummary.textContent = `Hiển thị 0 / ${totalAll} khách hàng`;
+    }
+    return;
+  }
+
+  if (ccEmptyState) ccEmptyState.classList.add("hidden");
+
+  const frag = document.createDocumentFragment();
+  list.forEach((o, idx) => {
+    const tr = document.createElement("tr");
+    const attrParts = [];
+    if (o.mau_sac) attrParts.push(o.mau_sac);
+    if (o.size) attrParts.push(`Size ${o.size}`);
+    const attrText = attrParts.join(" • ");
+
+    const noteParts = [];
+    if (o.ghi_chu_khach) noteParts.push(`Khách: ${o.ghi_chu_khach}`);
+    if (o.ghi_chu_sale) noteParts.push(o.ghi_chu_sale);
+    if (o.tg_goi) noteParts.push(`Gọi: ${o.tg_goi}`);
+    const noteText = noteParts.join(" • ");
+
+    const sdtClean = String(o.sdt || "").trim();
+    const sdtCellHtml = sdtClean
+      ? `<button type="button" class="cc-sdt-btn" data-copy-sdt="${escape_html(sdtClean)}" title="Bấm để copy SĐT">${escape_html(sdtClean)}</button>`
+      : `<span class="mc-metric-val">-</span>`;
+
+    tr.innerHTML = `
+      <td class="cc-col-stt"><span class="mc-stt-badge">${idx + 1}</span></td>
+      <td class="cc-col-time">${escape_html(o.tg || "-")}</td>
+      <td class="cc-col-name">${escape_html(o.ho_ten || "(Không tên)")}</td>
+      <td class="cc-col-sdt">${sdtCellHtml}</td>
+      <td class="cc-col-addr">${escape_html(o.dia_chi || "-")}</td>
+      <td class="cc-col-sp">
+        ${o.dong_sp ? `<span class="mc-sp-tag">${escape_html(o.dong_sp)}</span>` : ""}
+        ${attrText ? `<div class="cc-sp-sub">${escape_html(attrText)}</div>` : (!o.dong_sp ? `<span class="mc-metric-val">-</span>` : "")}
+      </td>
+      <td class="cc-col-status">
+        <div><span class="cc-status-badge ${o.da_chot ? "is-closed" : "is-unclosed"}">${o.da_chot ? "✓ Đã chốt" : "Chưa chốt"}</span></div>
+        ${noteText ? `<div class="cc-note-text">${escape_html(noteText)}</div>` : ""}
+      </td>
+    `;
+    frag.appendChild(tr);
+  });
+  ccTableBody.appendChild(frag);
+
+  if (ccFooterSummary) {
+    ccFooterSummary.textContent = `Hiển thị ${list.length} / ${totalAll} khách hàng (Bấm vào SĐT để copy)`;
+  }
+}
+
 function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
   const countsByCampId = {};
   const closedByCampId = {};
+  const ordersByCampId = {};
   (campsList || []).forEach((c) => {
     if (c && c.campaign_id) {
       countsByCampId[c.campaign_id] = 0;
       closedByCampId[c.campaign_id] = 0;
+      ordersByCampId[c.campaign_id] = [];
     }
   });
 
   if (!Array.isArray(data_tong_don_upyo) || data_tong_don_upyo.length < 2) {
-    return { countsByCampId, closedByCampId, hasAnyCampColData: false, totalMatchedOrders: 0 };
+    return { countsByCampId, closedByCampId, ordersByCampId, hasAnyCampColData: false, totalMatchedOrders: 0 };
   }
 
   const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
@@ -5651,12 +5870,19 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
   let colTg = 0;
   let colTen = 1;
   let colSdt = 2;
+  let colMauSac = 3;
+  let colGhiChuKhach = 4;
+  let colDiaChi = 5;
   let colMkt = 6;
+  let colSp = 7;
+  let colSize = 10;
   let colLink = 12;
   let colMaQc = 15;   // Cột P: Mã QC
   let colCampId = 16; // Cột Q: Campaign ID
   let colNoteU = 20;
   let colNoteV = 21;
+  let colNoteW = 22;
+  let colTgGoi = 23;
   let colDaChot = 24;
   let colDemDon = 25;
 
@@ -5667,11 +5893,17 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
       if (h === "thoi gian" || h === "ngay") colTg = i;
       else if (h === "ho ten") colTen = i;
       else if (h === "so dien thoai" || h === "sdt") colSdt = i;
+      else if (h === "mau sac" || h === "mau") colMauSac = i;
+      else if (h === "ghi chu khach") colGhiChuKhach = i;
+      else if (h === "dia chi") colDiaChi = i;
       else if (h === "mkt" || h === "marketer") colMkt = i;
+      else if (h === "dong sp" || h === "san pham" || h === "ten sp") colSp = i;
+      else if (h === "size") colSize = i;
       else if (h === "link landing") colLink = i;
       else if (h === "ma qc") colMaQc = i;
       else if (h === "campaign id") colCampId = i;
       else if (h === "ghi chu sale") colNoteU = i;
+      else if (h === "thoi gian goi") colTgGoi = i;
       else if (h === "don da chot") colDaChot = i;
       else if (h === "dem don") colDemDon = i;
     }
@@ -5704,13 +5936,18 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
     const tg = String(r[colTg] || "").trim();
     if (!tg || !khop_ngay_chinh_xac(tg, patternsArr)) continue;
 
-    const ten = String(r[colTen] || "").trim().toUpperCase();
-    const sdt = String(r[colSdt] || "").replace(/\D/g, "");
-    if (!ten && !sdt) continue;
-    if (ten === "TEST" || sdt === "999999999") continue;
+    const hoTenRaw = String(r[colTen] || "").trim();
+    const ten = hoTenRaw.toUpperCase();
+    const sdtRaw = String(r[colSdt] || "").trim();
+    const sdtDigits = sdtRaw.replace(/\D/g, "");
+    if (!ten && !sdtDigits) continue;
+    if (ten === "TEST" || sdtDigits === "999999999") continue;
 
-    const noteU = String(r[colNoteU] || "").toLowerCase();
-    const noteV = String(r[colNoteV] || "").toLowerCase();
+    const noteURaw = r.length > colNoteU ? String(r[colNoteU] || "").trim() : "";
+    const noteVRaw = r.length > colNoteV ? String(r[colNoteV] || "").trim() : "";
+    const noteWRaw = r.length > colNoteW ? String(r[colNoteW] || "").trim() : "";
+    const noteU = noteURaw.toLowerCase();
+    const noteV = noteVRaw.toLowerCase();
     if (noteU.includes("capture form") || noteV.includes("capture form")) continue;
     if (noteU.includes("trùng") || noteV.includes("trùng")) continue;
 
@@ -5771,10 +6008,25 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str) {
       if (chot > 0) {
         closedByCampId[matchedCid] = (closedByCampId[matchedCid] || 0) + 1;
       }
+      if (!ordersByCampId[matchedCid]) ordersByCampId[matchedCid] = [];
+      const ghiChuSale = [noteURaw, noteVRaw, noteWRaw].filter(Boolean).join(" • ");
+      ordersByCampId[matchedCid].push({
+        tg,
+        ho_ten: hoTenRaw,
+        sdt: sdtRaw,
+        mau_sac: r.length > colMauSac ? String(r[colMauSac] || "").trim() : "",
+        size: r.length > colSize ? String(r[colSize] || "").trim() : "",
+        dong_sp: r.length > colSp ? String(r[colSp] || "").trim() : "",
+        dia_chi: r.length > colDiaChi ? String(r[colDiaChi] || "").trim() : "",
+        ghi_chu_khach: r.length > colGhiChuKhach ? String(r[colGhiChuKhach] || "").trim() : "",
+        ghi_chu_sale: ghiChuSale,
+        tg_goi: r.length > colTgGoi ? String(r[colTgGoi] || "").trim() : "",
+        da_chot: chot > 0,
+      });
     }
   }
 
-  return { countsByCampId, closedByCampId, hasAnyCampColData, totalMatchedOrders };
+  return { countsByCampId, closedByCampId, ordersByCampId, hasAnyCampColData, totalMatchedOrders };
 }
 
 function render_mc_table_rows() {
@@ -5789,12 +6041,19 @@ function render_mc_table_rows() {
     ? [...sourceCampsMap[ten_mkt]]
     : [];
 
-  const { countsByCampId, closedByCampId, hasAnyCampColData } = tinh_ket_qua_camp_tu_tong_don(
+  const { countsByCampId, closedByCampId, ordersByCampId, hasAnyCampColData } = tinh_ket_qua_camp_tu_tong_don(
     ten_mkt,
     campsList,
     activeStart,
     activeEnd
   );
+  last_mc_orders_by_camp = ordersByCampId || {};
+  last_mc_camps_by_id = {};
+  for (const campItem of campsList) {
+    if (campItem && campItem.campaign_id) {
+      last_mc_camps_by_id[campItem.campaign_id] = campItem;
+    }
+  }
 
   const searchInput = document.getElementById("mcSearchInput");
   const clearBtn = document.getElementById("btnClearMcSearch");
@@ -5828,6 +6087,8 @@ function render_mc_table_rows() {
   const mcTotalResultBadge = document.getElementById("mcTotalResultBadge");
   const mcDateRangeText = document.getElementById("mcDateRangeText");
   const mcTotalSpendText = document.getElementById("mcTotalSpendText");
+  const mcTotalBudgetDivider = document.getElementById("mcTotalBudgetDivider");
+  const mcTotalBudgetText = document.getElementById("mcTotalBudgetText");
   const mcTableBody = document.getElementById("mcTableBody");
   const mcTableFoot = document.getElementById("mcTableFoot");
   const mcEmptyState = document.getElementById("mcEmptyState");
@@ -5839,6 +6100,28 @@ function render_mc_table_rows() {
   const totalResults = filtered.reduce((acc, c) => acc + (countsByCampId[c.campaign_id] || 0), 0);
   const totalClosed = filtered.reduce((acc, c) => acc + (closedByCampId[c.campaign_id] || 0), 0);
 
+  let totalActiveDailyBudget = 0;
+  let activeDailyCount = 0;
+  let totalAllDailyBudget = 0;
+  let allDailyCount = 0;
+  let hasAnyBudgetData = false;
+  for (const c of filtered) {
+    const dailyB = parseFloat(c.daily_budget || 0) || 0;
+    const lifeB = parseFloat(c.lifetime_budget || 0) || 0;
+    const isPaused = Boolean(c.effective_status && c.effective_status !== "ACTIVE");
+    if (dailyB > 0) {
+      hasAnyBudgetData = true;
+      allDailyCount += 1;
+      totalAllDailyBudget += dailyB;
+      if (!isPaused) {
+        activeDailyCount += 1;
+        totalActiveDailyBudget += dailyB;
+      }
+    } else if (lifeB > 0) {
+      hasAnyBudgetData = true;
+    }
+  }
+
   if (mcMktBadge) mcMktBadge.textContent = ten_mkt;
   if (mcCampCountBadge) mcCampCountBadge.textContent = `${filtered.length} Camp`;
   if (mcTotalResultBadge) mcTotalResultBadge.textContent = `${totalResults} kết quả`;
@@ -5849,6 +6132,20 @@ function render_mc_table_rows() {
         : `Từ ${format_date_vn_display(activeStart)} → ${format_date_vn_display(activeEnd)}`;
   }
   if (mcTotalSpendText) mcTotalSpendText.textContent = `Tổng tiêu: ${format_tien_vnd(totalSpend)}`;
+  if (mcTotalBudgetDivider && mcTotalBudgetText) {
+    if (totalActiveDailyBudget > 0) {
+      mcTotalBudgetText.textContent = `Ngân sách chạy: ${format_tien_vnd(totalActiveDailyBudget)}/ngày`;
+      mcTotalBudgetDivider.classList.remove("hidden");
+      mcTotalBudgetText.classList.remove("hidden");
+    } else if (totalAllDailyBudget > 0) {
+      mcTotalBudgetText.textContent = `Ngân sách: ${format_tien_vnd(totalAllDailyBudget)}/ngày`;
+      mcTotalBudgetDivider.classList.remove("hidden");
+      mcTotalBudgetText.classList.remove("hidden");
+    } else {
+      mcTotalBudgetDivider.classList.add("hidden");
+      mcTotalBudgetText.classList.add("hidden");
+    }
+  }
 
   if (mcTableBody) mcTableBody.innerHTML = "";
   if (mcTableFoot) mcTableFoot.innerHTML = "";
@@ -5877,6 +6174,9 @@ function render_mc_table_rows() {
   const frag = document.createDocumentFragment();
   filtered.forEach((c, idx) => {
     const tr = document.createElement("tr");
+    tr.className = "mc-row-clickable";
+    tr.dataset.campId = c.campaign_id || "";
+    tr.title = "Bấm để xem danh sách khách hàng đã đặt từ Camp này";
     const kq = countsByCampId[c.campaign_id] || 0;
     const chot = closedByCampId[c.campaign_id] || 0;
     const spend = c.spend || 0;
@@ -5890,6 +6190,30 @@ function render_mc_table_rows() {
       : "0 đ/số";
     const campNameSafe = escape_html(c.campaign_name || "(Không tên)");
 
+    const dailyB = parseFloat(c.daily_budget || 0) || 0;
+    const lifeB = parseFloat(c.lifetime_budget || 0) || 0;
+    const isPaused = Boolean(c.effective_status && c.effective_status !== "ACTIVE");
+    let budgetCellHtml = `<span class="mc-metric-val">-</span>`;
+    if (dailyB > 0) {
+      const subLabel = isPaused
+        ? "Đã tắt"
+        : (c.budget_type === "ABO_DAILY" ? "Nhóm QC/ngày" : "Hàng ngày");
+      budgetCellHtml = `
+        <div class="mc-budget-wrap">
+          <span class="mc-budget-val ${isPaused ? "is-paused" : ""}">${escape_html(format_tien_vnd(dailyB))}</span>
+          <div class="mc-budget-sub ${isPaused ? "is-paused" : ""}">${escape_html(subLabel)}</div>
+        </div>
+      `;
+    } else if (lifeB > 0) {
+      const subLabel = isPaused ? "Trọn đời • Đã tắt" : "Trọn đời";
+      budgetCellHtml = `
+        <div class="mc-budget-wrap">
+          <span class="mc-budget-val ${isPaused ? "is-paused" : ""}">${escape_html(format_tien_vnd(lifeB))}</span>
+          <div class="mc-budget-sub ${isPaused ? "is-paused" : ""}">${escape_html(subLabel)}</div>
+        </div>
+      `;
+    }
+
     tr.innerHTML = `
       <td class="mc-col-stt"><span class="mc-stt-badge">${idx + 1}</span></td>
       <td class="mc-col-name">
@@ -5897,6 +6221,7 @@ function render_mc_table_rows() {
         <div class="mc-camp-sub">
           ${c.sp ? `<span class="mc-sp-tag">${escape_html(c.sp)}</span>` : ""}
           <span class="mc-id-badge">ID: ${escape_html(c.campaign_id || "-")}</span>
+          <span class="mc-camp-open-hint">Xem khách →</span>
         </div>
       </td>
       <td class="mc-col-result">
@@ -5905,6 +6230,7 @@ function render_mc_table_rows() {
           <div class="mc-cpa-sub">${escape_html(kqSubText)}</div>
         </div>
       </td>
+      <td class="mc-col-budget">${budgetCellHtml}</td>
       <td class="mc-col-spend"><span class="mc-spend-val">${escape_html(format_tien_vnd(spend))}</span></td>
       <td class="mc-col-cpm"><span class="mc-metric-val">${cpmVal > 0 ? escape_html(format_tien_vnd(cpmVal)) : "-"}</span></td>
       <td class="mc-col-ctr"><span class="mc-ctr-badge">${ctrVal > 0 ? `${ctrVal.toFixed(2)}%` : "0.00%"}</span></td>
@@ -5920,6 +6246,30 @@ function render_mc_table_rows() {
     const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
     const avgCpa = totalResults > 0 ? totalSpend / totalResults : 0;
 
+    let footBudgetHtml = `<span class="mc-metric-val">-</span>`;
+    if (totalActiveDailyBudget > 0 && activeDailyCount < allDailyCount) {
+      footBudgetHtml = `
+        <div class="mc-budget-wrap" title="Tổng tất cả kể cả đã tắt: ${escape_html(format_tien_vnd(totalAllDailyBudget))}">
+          <span class="mc-budget-val">${escape_html(format_tien_vnd(totalActiveDailyBudget))}</span>
+          <div class="mc-budget-sub">${escape_html(`Đang bật (${activeDailyCount}/${filtered.length})`)}</div>
+        </div>
+      `;
+    } else if (totalActiveDailyBudget > 0) {
+      footBudgetHtml = `
+        <div class="mc-budget-wrap">
+          <span class="mc-budget-val">${escape_html(format_tien_vnd(totalActiveDailyBudget))}</span>
+          <div class="mc-budget-sub">Hàng ngày</div>
+        </div>
+      `;
+    } else if (totalAllDailyBudget > 0) {
+      footBudgetHtml = `
+        <div class="mc-budget-wrap">
+          <span class="mc-budget-val is-paused">${escape_html(format_tien_vnd(totalAllDailyBudget))}</span>
+          <div class="mc-budget-sub is-paused">Đã tắt</div>
+        </div>
+      `;
+    }
+
     const footTr = document.createElement("tr");
     footTr.className = "mc-foot-row";
     footTr.innerHTML = `
@@ -5931,6 +6281,7 @@ function render_mc_table_rows() {
           ${totalResults > 0 ? `<div class="mc-cpa-sub">${escape_html(format_tien_vnd(avgCpa))}/số${totalClosed > 0 ? ` • Chốt ${totalClosed}` : ""}</div>` : ""}
         </div>
       </td>
+      <td class="mc-col-budget">${footBudgetHtml}</td>
       <td class="mc-col-spend"><span class="mc-spend-val">${escape_html(format_tien_vnd(totalSpend))}</span></td>
       <td class="mc-col-cpm"><span class="mc-metric-val">${avgCpm > 0 ? escape_html(format_tien_vnd(avgCpm)) : "-"}</span></td>
       <td class="mc-col-ctr"><span class="mc-ctr-badge">${avgCtr > 0 ? `${avgCtr.toFixed(2)}%` : "0.00%"}</span></td>
@@ -5942,10 +6293,14 @@ function render_mc_table_rows() {
   if (mcFooterSummary) {
     const noteMissingColQ =
       Array.isArray(data_tong_don_upyo) && data_tong_don_upyo.length > 1 && !hasAnyCampColData
-        ? " • ⚠️ Chưa thấy dữ liệu Cột Q (Campaign ID) từ applam.gs"
+        ? " • ⚠️ Chưa thấy dữ liệu Campaign ID"
         : "";
     const loadingSuffix = mc_is_loading_fb ? " • ⏳ Đang đồng bộ mới nhất..." : "";
-    mcFooterSummary.textContent = `Hiển thị ${filtered.length} chiến dịch • Tổng ${totalResults} kết quả thực tế (Cột Q)${noteMissingColQ}${loadingSuffix}`;
+    mcFooterSummary.textContent = `Hiển thị ${filtered.length} chiến dịch • Tổng ${totalResults} kết quả thực tế • Bấm vào Camp để xem khách đặt hàng${noteMissingColQ}${loadingSuffix}`;
+  }
+
+  if (current_cc_camp_id) {
+    render_camp_customers_modal();
   }
 }
 
@@ -8254,6 +8609,62 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // Sự kiện Modal Khách hàng theo Camp (v8.6.239)
+  document.getElementById("mcTableBody")?.addEventListener("click", (e) => {
+    const row = e.target.closest("tr.mc-row-clickable");
+    if (!row) return;
+    const cid = row.dataset.campId || "";
+    if (cid) mo_bang_khach_hang_camp(cid);
+  });
+  document.getElementById("ccTableBody")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".cc-sdt-btn");
+    if (!btn) return;
+    e.stopPropagation();
+    const sdt = btn.dataset.copySdt || "";
+    if (sdt) {
+      show_toast_copy(sdt, `Đã copy SĐT: ${sdt}`, e.clientX, e.clientY);
+    }
+  });
+  [
+    ["ccFilterAll", "all"],
+    ["ccFilterClosed", "closed"],
+    ["ccFilterUnclosed", "unclosed"],
+  ].forEach(([btnId, filterVal]) => {
+    document.getElementById(btnId)?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      current_cc_filter = filterVal;
+      render_camp_customers_modal();
+    });
+  });
+  const ccSearchInput = document.getElementById("ccSearchInput");
+  const ccClearBtn = document.getElementById("btnClearCcSearch");
+  ccSearchInput?.addEventListener("input", () => {
+    render_camp_customers_modal();
+  });
+  ccClearBtn?.addEventListener("click", () => {
+    if (ccSearchInput) {
+      ccSearchInput.value = "";
+      ccSearchInput.focus();
+      render_camp_customers_modal();
+    }
+  });
+  document.getElementById("btnCloseCampCust")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dong_bang_khach_hang_camp();
+  });
+  document.getElementById("btnBackToCampList")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dong_bang_khach_hang_camp();
+  });
+  document.getElementById("campCustomersModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "campCustomersModal") {
+      dong_bang_khach_hang_camp();
+    }
+  });
+  document.getElementById("campCustCard")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
   // TỰ ĐỘNG CẬP NHẬT TỨC THÌ KHI MÁY TÍNH BẮT ĐƯỢC SÓNG WI-FI / INTERNET
   window.addEventListener("online", () => {
     console.log("Phát hiện Windows vừa kết nối Internet thành công!");
@@ -8302,6 +8713,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         calPop.classList.remove("is-modal-cal");
         document.getElementById("btnMcDateRange")?.classList.remove("is-open");
         current_cal_target = null;
+        return;
+      }
+      const ccModal = document.getElementById("campCustomersModal");
+      if (ccModal && !ccModal.classList.contains("hidden")) {
+        dong_bang_khach_hang_camp();
         return;
       }
       hide_all_popups();
