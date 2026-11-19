@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.230";
+const APP_FRONTEND_VERSION = "8.6.231";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -960,25 +960,25 @@ const I18N = {
     calMonthYearFmt: (m, y) => `Tháng ${m} / ${y}`,
     weekdays: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
     settingsTitle: "⚙ CÀI ĐẶT HỆ THỐNG",
-    lblVoice: "1. Âm thanh (Chị Google):",
+    lblVoice: "1. Âm thanh (Chuông nhẹ & Giọng đọc):",
     lblPopup: "2. Popup Góc Màn Hình:",
-    lblFireworks: "3. Hiệu ứng Pháo Hoa:",
-    lblFontSize: "1. Cỡ chữ:",
-    lblUiScale: "2. Kích thước UI:",
-    lblTheme: "3. Giao diện (Dark Mode):",
-    lblLang: "4. Ngôn ngữ (Language):",
-    lblAutoStart: "5. Khởi động cùng Windows:",
+    lblFireworks: "Hiệu ứng:",
+    lblFontSize: "3. Cỡ chữ:",
+    lblUiScale: "4. Kích thước UI:",
+    lblTheme: "5. Giao diện (Dark Mode):",
+    lblLang: "6. Ngôn ngữ (Language):",
+    lblAutoStart: "7. Khởi động cùng Windows:",
     lblUpdate: "8. Tự động cập nhật (GitHub):",
     btnSaveUpdateUrl: "💾 Lưu & Cập nhật",
     btnCheckUpdateNow: "🔄 Kiểm tra ngay",
     updateUrlPlaceholder: "Dán link GitHub repo (vd: https://github.com/ten/app-lam)...",
     stateOn: "ĐANG BẬT",
     stateOff: "ĐANG TẮT",
-    btnTestVoice: "🔊 Nghe thử",
-    btnTestPopup: "🎉 Xem thử Popup",
+    btnTestVoice: "🔔 Nghe thử",
+    btnTestPopup: "💬 Xem thử Popup",
     themeLight: "☀️ Sáng (Kem Cozy)",
     themeDark: "🌙 Tối (Nâu Be Cozy)",
-    scannerStatus: "Đang Online",
+    scannerStatus: "Đang Online: Quét đơn (2.5s/lần)",
     knownCodesFmt: (n) => `Đang nhận diện: ${n} mã SP`,
     ctxCopyCp: "📋 Copy CP",
     toastCopiedCp: "Đã copy CP",
@@ -1047,14 +1047,14 @@ const I18N = {
     calMonthYearFmt: (m, y) => `${y}年 ${m}月`,
     weekdays: ["日", "一", "二", "三", "四", "五", "六"],
     settingsTitle: "⚙ 系统设置",
-    lblVoice: "1. 语音播报 (Google 语音):",
+    lblVoice: "1. 提示音与语音 (轻柔铃声):",
     lblPopup: "2. 屏幕右下角弹窗:",
-    lblFireworks: "3. 烟花庆祝特效:",
-    lblFontSize: "1. 字体大小:",
-    lblUiScale: "2. 界面缩放:",
-    lblTheme: "3. 界面主题 (深色模式):",
-    lblLang: "4. 语言选择 (Language):",
-    lblAutoStart: "5. 开机自动启动:",
+    lblFireworks: "特效:",
+    lblFontSize: "3. 字体大小:",
+    lblUiScale: "4. 界面缩放:",
+    lblTheme: "5. 界面主题 (深色模式):",
+    lblLang: "6. 语言选择 (Language):",
+    lblAutoStart: "7. 开机自动启动:",
     lblUpdate: "8. 自动更新 (GitHub):",
     btnSaveUpdateUrl: "💾 保存并更新",
     btnCheckUpdateNow: "🔄 立即检查",
@@ -1065,7 +1065,7 @@ const I18N = {
     btnTestPopup: "🎉 预览弹窗",
     themeLight: "☀️ 浅色 (温暖米色)",
     themeDark: "🌙 深色 (摩卡棕米)",
-    scannerStatus: "在线运行",
+    scannerStatus: "实时监控: 每2.5秒扫描新订单",
     knownCodesFmt: (n) => `当前识别: ${n} 个产品代码`,
     ctxCopyCp: "📋 复制广告费",
     toastCopiedCp: "已复制广告费",
@@ -1134,14 +1134,14 @@ const I18N = {
     calMonthYearFmt: (m, y) => `Month ${m} / ${y}`,
     weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     settingsTitle: "⚙ SYSTEM SETTINGS",
-    lblVoice: "1. Voice Alert (Google TTS):",
+    lblVoice: "1. Sound (Soft Chime & Voice):",
     lblPopup: "2. Corner Popup Alert:",
-    lblFireworks: "3. Fireworks Celebration:",
-    lblFontSize: "1. Font Size:",
-    lblUiScale: "2. UI Scale:",
-    lblTheme: "3. Appearance (Dark Mode):",
-    lblLang: "4. Language:",
-    lblAutoStart: "5. Start with Windows:",
+    lblFireworks: "Effects:",
+    lblFontSize: "3. Font Size:",
+    lblUiScale: "4. UI Scale:",
+    lblTheme: "5. Appearance (Dark Mode):",
+    lblLang: "6. Language:",
+    lblAutoStart: "7. Start with Windows:",
     lblUpdate: "8. Auto-Update (GitHub):",
     btnSaveUpdateUrl: "💾 Save & Update",
     btnCheckUpdateNow: "🔄 Check Now",
@@ -1152,7 +1152,7 @@ const I18N = {
     btnTestPopup: "🎉 Test Popup",
     themeLight: "☀️ Light (Cozy Cream)",
     themeDark: "🌙 Dark (Cozy Mocha)",
-    scannerStatus: "Online",
+    scannerStatus: "Online: Scanning orders (2.5s)",
     knownCodesFmt: (n) => `Recognizing: ${n} product codes`,
     ctxCopyCp: "📋 Copy Spend",
     toastCopiedCp: "Copied Spend",
@@ -7960,7 +7960,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("btnTestVoice")?.addEventListener("click", () => {
     doc_am_thanh(
-      "App Lâm đang trực chiến. Chúc team chốt đơn mỏi tay!",
+      "Lâm, đơn mới",
       true
     );
   });
@@ -7975,13 +7975,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("btnTestPopup")?.addEventListener("click", () => {
     hien_thi_popup_goc_man_hinh(
       t().testPopupTitle,
-      "MKT LÂM\nMONTIA",
+      "MKT LÂM\nJULIAN",
       true,
       true,
-      "Lâm ơi, có đơn rồi. Mẫu Mon ti a"
+      "Lâm, đơn mới"
     );
     if (!native_exe_mode) {
-      doc_am_thanh("Lâm ơi, có đơn rồi. Mẫu Mon ti a", true);
+      doc_am_thanh("Lâm, đơn mới", true);
     }
   });
 
