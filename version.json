@@ -1,26 +1,26 @@
 {
     "version":  "8.6.268",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "9aed04b50f3e3c73dd44dad5fb17d7491c0be2f209d719e9d59c2a64b8f6b069",
+    "exe_sha256":  "ac83b5deb053e51407514df0bac4e8fc9d0ba4cb3543683def3dc83a2a425008",
     "index.html_sha256":  "0fe7c2193e6f365f9a3c27420952d933c4230a5a4b6d595fa29cd684c15665b4",
-    "styles.css_sha256":  "1797e16d4f886149b6171a67f6c24328e7156f3e72ac4592432c2e2e0d2d63c0",
-    "app.js_sha256":  "6eb7d757661fb11adce2100e05dd837fc62d51161ccc4bdd9ee25c20bc7a82ec",
+    "styles.css_sha256":  "8d30b16c7091d1a38fb5e60a074bd7da31422aae46564d54699e8054538e3bfa",
+    "app.js_sha256":  "d4d669d1306141d765a65082ebc5fef986e0e756ff5e8a55e0e146166eeae654",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "9aed04b50f3e3c73dd44dad5fb17d7491c0be2f209d719e9d59c2a64b8f6b069",
-                                     "size":  653312
+                                     "sha256":  "ac83b5deb053e51407514df0bac4e8fc9d0ba4cb3543683def3dc83a2a425008",
+                                     "size":  656384
                                  },
                   "app.js":  {
-                                 "sha256":  "6eb7d757661fb11adce2100e05dd837fc62d51161ccc4bdd9ee25c20bc7a82ec",
-                                 "size":  352943
+                                 "sha256":  "d4d669d1306141d765a65082ebc5fef986e0e756ff5e8a55e0e146166eeae654",
+                                 "size":  355780
                              },
                   "index.html":  {
                                      "sha256":  "0fe7c2193e6f365f9a3c27420952d933c4230a5a4b6d595fa29cd684c15665b4",
                                      "size":  46699
                                  },
                   "styles.css":  {
-                                     "sha256":  "1797e16d4f886149b6171a67f6c24328e7156f3e72ac4592432c2e2e0d2d63c0",
-                                     "size":  132605
+                                     "sha256":  "8d30b16c7091d1a38fb5e60a074bd7da31422aae46564d54699e8054538e3bfa",
+                                     "size":  132948
                                  }
               }
 }

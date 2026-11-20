@@ -3981,7 +3981,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   const card = document.createElement("div");
   card.className = "cozy-card clickable-card company-summary-card";
   card.style.setProperty("--card-index", "0");
-  card.title = `Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người`;
+  card.title = "Bấm để xem danh sách Camp của toàn công ty";
 
   const topRow = document.createElement("div");
   topRow.className = "card-top-row";
@@ -3989,6 +3989,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
     <div class="card-title-group">
       <span class="card-name">${dict.companySummaryTitle}</span>
       <span class="card-sub-label">${date_label}</span>
+      ${build_card_camp_pill_html("__ALL__", "")}
       <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">📋 Chi tiết đơn →</span>
     </div>
     <div class="card-count-group js-company-count-group" style="cursor: pointer;" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng">
@@ -4007,6 +4008,13 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
     hien_thi_bang_don_hang_chi_tiet(null, null);
   };
 
+  const btnViewCompanyCamps = topRow.querySelector(".js-btn-view-card-camps");
+  if (btnViewCompanyCamps) {
+    btnViewCompanyCamps.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_camp_mkt("__ALL__", "");
+    });
+  }
   const btnViewCompanyOrders = topRow.querySelector(".js-btn-view-company-orders");
   if (btnViewCompanyOrders) {
     btnViewCompanyOrders.addEventListener("click", openCompanyOrders);
@@ -4015,7 +4023,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   if (companyCountGroup) {
     companyCountGroup.addEventListener("click", openCompanyOrders);
   }
-  card.addEventListener("click", () => hien_thi_bang_don_hang_chi_tiet(null, null));
+  card.addEventListener("click", () => hien_thi_bang_camp_mkt("__ALL__", ""));
 
   attach_right_click_copy(card, tong_cp);
 
@@ -5863,7 +5871,10 @@ function render_camp_customers_modal() {
   const activeStart = mc_date_start || current_start_date;
   const activeEnd = mc_date_end || current_end_date;
 
-  if (ccMktBadge) ccMktBadge.textContent = current_mc_mkt || "MKT";
+  const ccMktDisplay = (camp && camp._ownerMkt)
+    ? camp._ownerMkt
+    : (current_mc_mkt === "__ALL__" ? "TỔNG CÔNG TY" : (current_mc_mkt || "MKT"));
+  if (ccMktBadge) ccMktBadge.textContent = ccMktDisplay;
   if (ccSpBadge) {
     if (isUnmatchedMode) {
       ccSpBadge.textContent = "NGOÀI CAMP";
@@ -6043,7 +6054,8 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
   }
 
   const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
-  const targetMktNorm = chuan_hoa_mkt_so_sanh(ten_mkt);
+  const isAllMkt = (ten_mkt === "__ALL__");
+  const targetMktNorm = isAllMkt ? "" : chuan_hoa_mkt_so_sanh(ten_mkt);
   const spFilterNorm = String(spFilter || "").trim().toUpperCase();
 
   let colTg = 0;
@@ -6101,7 +6113,11 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
       if (!prefix14Map.has(p14)) prefix14Map.set(p14, cid);
     }
     if (cid.length >= 11) {
-      prefix11List.push({ p11: cid.slice(0, 11), cid });
+      prefix11List.push({
+        p11: cid.slice(0, 11),
+        cid,
+        ownerMktNorm: c._ownerMkt ? chuan_hoa_mkt_so_sanh(c._ownerMkt) : "",
+      });
     }
   }
 
@@ -6188,11 +6204,11 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
     // 3. Dự phòng khớp 11 chữ số đầu cùng MKT (nếu Ladipage đổ Adset ID vào Cột Q)
     if (!matchedCid) {
       const rowMktNorm = chuan_hoa_mkt_so_sanh(r[colMkt]);
-      if (rowMktNorm && rowMktNorm === targetMktNorm) {
+      if (rowMktNorm && (isAllMkt || rowMktNorm === targetMktNorm)) {
         for (const cand of candidates) {
           if (cand.length >= 11) {
             const c11 = cand.slice(0, 11);
-            const hit = prefix11List.find((x) => x.p11 === c11);
+            const hit = prefix11List.find((x) => x.p11 === c11 && (!isAllMkt || !x.ownerMktNorm || x.ownerMktNorm === rowMktNorm));
             if (hit) {
               matchedCid = hit.cid;
               break;
@@ -6314,7 +6330,7 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
         if (rawSpText && !["DÒNG SP", "TÊN SP", "SẢN PHẨM", "MÃ SP", "MÃ"].includes(rawSpText.toUpperCase())) {
           tenMau = trich_xuat_ten_mau_thong_minh(rawSpText);
         }
-        if (mktRowNorm !== "KHÁC" && chuan_hoa_mkt_so_sanh(mktRowNorm) === targetMktNorm && tenMau && (!spFilterNorm || tenMau.toUpperCase() === spFilterNorm)) {
+        if (mktRowNorm !== "KHÁC" && (isAllMkt || chuan_hoa_mkt_so_sanh(mktRowNorm) === targetMktNorm) && tenMau && (!spFilterNorm || tenMau.toUpperCase() === spFilterNorm)) {
           outsideMktRows.push({
             gKey: effSdt && ymd ? `${effSdt}|${ymd}` : "",
             tg: tgStr,
@@ -6467,7 +6483,8 @@ function cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReco
     const pctOutBadge = (rec.outsideTotalDs > 0 && fullMktSpend > 0)
       ? `<span class="cpds-pill mc-cpds-pill ${pctClsOut}">${pctOut.toFixed(1)}%</span>`
       : "";
-    const scopeText = spFilterNorm ? `${escape_html(ten_mkt)} (${escape_html(spFilterNorm)})` : escape_html(ten_mkt);
+    const mktDisplayName = ten_mkt === "__ALL__" ? "TỔNG CÔNG TY" : ten_mkt;
+    const scopeText = spFilterNorm ? `${escape_html(mktDisplayName)} (${escape_html(spFilterNorm)})` : escape_html(mktDisplayName);
     reconcileRight.innerHTML =
       `<span>Tổng ${scopeText}: <strong class="mc-rec-total-val">${escape_html(format_tien_vnd(rec.outsideTotalDs))}</strong> (${rec.outsideTotalCount} đơn)</span>` +
       pctOutBadge;
@@ -6493,13 +6510,31 @@ function loc_camp_theo_sp(campsList, spFilter = "") {
   });
 }
 
+function lay_tat_ca_camp_cong_ty(sourceCampsMap) {
+  const result = [];
+  if (!sourceCampsMap || typeof sourceCampsMap !== "object") return result;
+  for (const mktKey of Object.keys(sourceCampsMap)) {
+    if (mktKey === "__ALL__") continue;
+    const arr = sourceCampsMap[mktKey];
+    if (!Array.isArray(arr)) continue;
+    for (const c of arr) {
+      if (c) result.push({ ...c, _ownerMkt: mktKey });
+    }
+  }
+  return result;
+}
+
 function build_card_camp_pill_html(ten_mkt, spFilter = "") {
   if (!ten_mkt) return "";
-  const rawCamps = (cached_fb_camps && cached_fb_camps[ten_mkt]) || [];
+  const isAll = (ten_mkt === "__ALL__");
+  const rawCamps = isAll
+    ? lay_tat_ca_camp_cong_ty(cached_fb_camps)
+    : ((cached_fb_camps && cached_fb_camps[ten_mkt]) || []);
   const filtered = loc_camp_theo_sp(rawCamps, spFilter);
   const campCount = filtered.length;
   if (campCount <= 0) return "";
-  const scopeLabel = spFilter ? `mã ${spFilter} (${ten_mkt})` : ten_mkt;
+  const mktLabel = isAll ? "toàn công ty" : ten_mkt;
+  const scopeLabel = spFilter ? `mã ${spFilter} (${mktLabel})` : mktLabel;
   const title = `Bấm để xem ${campCount} Camp đang chạy của ${scopeLabel}`;
   return `<span class="card-camp-hint clickable-hint js-btn-view-card-camps" title="${escape_html(title)}">📢 ${campCount} Camp</span>`;
 }
@@ -6512,10 +6547,13 @@ function render_mc_table_rows() {
   const activeEnd = mc_date_end || current_end_date;
   const sourceCampsMap = mc_custom_camps_map || cached_fb_camps || {};
 
+  const isAllMkt = (ten_mkt === "__ALL__");
   const spFilterNorm = String(current_mc_sp || "").trim().toUpperCase();
-  const rawCampsList = Array.isArray(sourceCampsMap && sourceCampsMap[ten_mkt])
-    ? [...sourceCampsMap[ten_mkt]]
-    : [];
+  const rawCampsList = isAllMkt
+    ? lay_tat_ca_camp_cong_ty(sourceCampsMap)
+    : (Array.isArray(sourceCampsMap && sourceCampsMap[ten_mkt])
+      ? [...sourceCampsMap[ten_mkt]]
+      : []);
   const campsList = loc_camp_theo_sp(rawCampsList, spFilterNorm);
 
   const { countsByCampId, closedByCampId, ordersByCampId, revenueByCampId, outsideReconcile, hasAnyCampColData } = tinh_ket_qua_camp_tu_tong_don(
@@ -6548,11 +6586,14 @@ function render_mc_table_rows() {
     const nameNd = bo_dau_tieng_viet(nameL).toLowerCase();
     const idL = String(c.campaign_id || "").toLowerCase();
     const spL = String(c.sp || "").toLowerCase();
+    const ownerL = String(c._ownerMkt || "").toLowerCase();
+    const ownerNd = ownerL ? bo_dau_tieng_viet(ownerL).toLowerCase() : "";
     return (
       nameL.includes(qRaw) ||
       nameNd.includes(qNoDau) ||
       idL.includes(qRaw) ||
-      spL.includes(qRaw)
+      spL.includes(qRaw) ||
+      (ownerL && (ownerL.includes(qRaw) || ownerNd.includes(qNoDau)))
     );
   });
 
@@ -6608,7 +6649,7 @@ function render_mc_table_rows() {
     }
   }
 
-  if (mcMktBadge) mcMktBadge.textContent = ten_mkt;
+  if (mcMktBadge) mcMktBadge.textContent = isAllMkt ? "TỔNG CÔNG TY" : ten_mkt;
   const mcSpFilterBadge = document.getElementById("mcSpFilterBadge");
   const btnMcClearSpFilter = document.getElementById("btnMcClearSpFilter");
   const mcTitleText = document.getElementById("mcTitleText");
@@ -6761,6 +6802,7 @@ function render_mc_table_rows() {
       <td class="mc-col-name">
         <div class="mc-camp-name" title="${campNameSafe}">${campNameSafe}</div>
         <div class="mc-camp-sub">
+          ${isAllMkt && c._ownerMkt ? `<span class="mc-mkt-owner-tag">${escape_html(c._ownerMkt)}</span>` : ""}
           ${c.sp ? `<span class="mc-sp-tag">${escape_html(c.sp)}</span>` : ""}
           <span class="mc-id-badge">ID: ${escape_html(c.campaign_id || "-")}</span>
           <span class="mc-camp-open-hint">Xem khách →</span>
@@ -7200,7 +7242,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
   card.className = `cozy-card ${cls}`;
   card.style.setProperty("--card-index", String(rank));
   card.style.cursor = "pointer";
-  card.title = `Nhấn để xem ${count} đơn hàng chi tiết của ${name_str}`;
+  card.title = `Nhấn để xem danh sách Camp của ${name_str}`;
 
   const topRow = document.createElement("div");
   topRow.className = "card-top-row";
@@ -7209,9 +7251,10 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
       ${build_sp_closing_rate_pill_html(name_str, null)}
-      <span class="card-view-orders-hint" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
+      ${build_card_camp_pill_html("__ALL__", name_str)}
+      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
     </div>
-    <div class="card-count-group">
+    <div class="card-count-group js-top-sp-count-group" style="cursor: pointer;" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
       <span class="card-count-unit">${dict.ordersUnit}</span>
     </div>
@@ -7241,9 +7284,30 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
-  // Click vào top SP để hiện bảng thông tin đơn hàng chi tiết toàn công ty
-  card.addEventListener("click", () => {
+  const openTopSpOrders = (e) => {
+    if (e) e.stopPropagation();
     hien_thi_bang_don_hang_chi_tiet(null, name_str);
+  };
+  const btnViewTopSpOrders = topRow.querySelector(".js-btn-view-sp-orders");
+  if (btnViewTopSpOrders) {
+    btnViewTopSpOrders.addEventListener("click", openTopSpOrders);
+  }
+  const topSpCountGroup = topRow.querySelector(".js-top-sp-count-group");
+  if (topSpCountGroup) {
+    topSpCountGroup.addEventListener("click", openTopSpOrders);
+  }
+
+  const btnViewCardCamps = topRow.querySelector(".js-btn-view-card-camps");
+  if (btnViewCardCamps) {
+    btnViewCardCamps.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_camp_mkt("__ALL__", name_str);
+    });
+  }
+
+  // Click vào thẻ top SP (ngoài vùng Chi tiết đơn / số đơn) để hiện danh sách Camp toàn công ty của mã SP đó
+  card.addEventListener("click", () => {
+    hien_thi_bang_camp_mkt("__ALL__", name_str);
   });
 
   attach_right_click_copy(card, spend);
