@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.286";
+const APP_FRONTEND_VERSION = "8.6.288";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -201,31 +201,44 @@ function parse_pancake_utc_to_vn(isoStr) {
   };
 }
 
-const PANCAKE_CONV_CACHE_IDB_KEY = "pancake_conv_map_v2";
+const PANCAKE_CONV_CACHE_IDB_KEY = "pancake_conv_map_v3";
 
-function get_pancake_phone_info(conv, msgs = null) {
+function get_pancake_phone_info(conv, msgs = null, msgJson = null) {
   const valid = [];
   const fallback = [];
+  const orderLinked = [];
   const seen = new Set();
-  const pushCandidate = (raw) => {
+  const seenOrderLinked = new Set();
+  const pushCandidate = (raw, isOrderLinked = false) => {
     const norm = chuan_hoa_sdt_so_sanh(raw);
-    if (!norm || PANCAKE_SHOP_PHONES.has(norm) || seen.has(norm)) return;
-    if (/^0[35789]\d{8}$/.test(norm)) {
-      seen.add(norm);
-      valid.push(norm);
-    } else if (/^0\d{7,10}$/.test(norm) || /^1[89]00\d{4,6}$/.test(norm)) {
-      seen.add(norm);
-      fallback.push(norm);
+    if (!norm || PANCAKE_SHOP_PHONES.has(norm)) return;
+    const isStd = /^0[35789]\d{8}$/.test(norm);
+    const isFb = !isStd && (/^0\d{7,10}$/.test(norm) || /^1[89]00\d{4,6}$/.test(norm));
+    if (!isStd && !isFb) return;
+    if (isOrderLinked && !seenOrderLinked.has(norm)) {
+      seenOrderLinked.add(norm);
+      orderLinked.push(norm);
     }
+    if (seen.has(norm)) return;
+    seen.add(norm);
+    if (isStd) valid.push(norm);
+    else fallback.push(norm);
   };
 
   const rawList = Array.isArray(conv && conv.recent_phone_numbers) ? conv.recent_phone_numbers : [];
   for (const item of rawList) {
-    pushCandidate(item && (item.phone_number || item.captured || item));
+    pushCandidate(item && (item.phone_number || item.captured || item), Boolean(item && item.order_id));
   }
-  const custPhones = Array.isArray(conv && conv.customers) ? conv.customers : [];
-  for (const c of custPhones) {
-    if (c && c.phone_number) pushCandidate(c.phone_number);
+  const custLists = [
+    ...(Array.isArray(conv && conv.customers) ? conv.customers : []),
+    ...(Array.isArray(msgJson && msgJson.customers) ? msgJson.customers : []),
+  ];
+  for (const c of custLists) {
+    if (c && c.phone_number) pushCandidate(c.phone_number, false);
+    const cPhones = Array.isArray(c && c.recent_phone_numbers) ? c.recent_phone_numbers : [];
+    for (const cp of cPhones) {
+      pushCandidate(cp && (cp.phone_number || cp.captured || cp), Boolean(cp && cp.order_id));
+    }
   }
 
   // Nếu sidebar Pancake chưa bắt được SĐT chuẩn 10 số -> quét thêm SĐT chuẩn trong nội dung chat
@@ -235,7 +248,7 @@ function get_pancake_phone_info(conv, msgs = null) {
       if (!txt) continue;
       const matches = txt.match(/(?:\+?84|0)[35789](?:[\s.-]?\d){8}\b/g);
       if (matches) {
-        for (const m of matches) pushCandidate(m);
+        for (const m of matches) pushCandidate(m, false);
       }
     }
   }
@@ -243,6 +256,7 @@ function get_pancake_phone_info(conv, msgs = null) {
   const phones = valid.length > 0 ? valid : fallback;
   return {
     phones,
+    orderLinkedPhones: orderLinked,
     hasInvalidPhone: valid.length === 0 && fallback.length > 0,
   };
 }
@@ -392,9 +406,9 @@ function parse_pancake_receipt_attachment(msg, convPhones) {
   return null;
 }
 
-function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
+function extract_confirmed_pancake_orders(conv, msgs, pageCfg, msgJson = null) {
   if (!Array.isArray(msgs) || msgs.length === 0) return [];
-  const phoneInfo = get_pancake_phone_info(conv, msgs);
+  const phoneInfo = get_pancake_phone_info(conv, msgs, msgJson);
   const phones = phoneInfo.phones;
   if (phones.length === 0) return [];
 
@@ -495,16 +509,37 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
     giaBan: (receiptHit && receiptHit.giaBan > 0) ? receiptHit.giaBan : bestPrice,
     hasReceipt: Boolean(receiptHit),
     hasInvalidPhone: Boolean(phoneInfo.hasInvalidPhone),
+    orderLinkedPhones: phoneInfo.orderLinkedPhones || [],
   };
   const results = [];
   const convTags = get_pancake_conv_tags_norm(conv);
   const isCancelledTag = convTags.some((tg) => tg.includes("HUY") || tg.includes("BOOM") || tg.includes("KHONG MUA"));
+  const allCustomers = [
+    ...(Array.isArray(conv && conv.customers) ? conv.customers : []),
+    ...(Array.isArray(msgJson && msgJson.customers) ? msgJson.customers : []),
+  ];
+  const hasCustomerOrder = allCustomers.some((c) => {
+    if (!c) return false;
+    const ordCnt = Number(c.order_count || 0);
+    const hasLinkedOrd = Array.isArray(c.recent_phone_numbers) && c.recent_phone_numbers.some((p) => p && p.order_id);
+    if (ordCnt <= 0 && !hasLinkedOrd) return false;
+    if (c.last_order_at) {
+      const lastOrdInfo = parse_pancake_utc_to_vn(c.last_order_at);
+      if (lastOrdInfo.timeMs && lastOrdInfo.timeMs < cutoffMs && Number(c.succeed_order_count || 0) >= ordCnt) {
+        return false;
+      }
+    }
+    return true;
+  });
+  const hasRecentOrdersArr = Array.isArray(msgJson && msgJson.recent_orders) && msgJson.recent_orders.length > 0;
   const hasPurchaseSignal =
     !isCancelledTag &&
     (
       convTags.some((tg) => tg.includes("MUA HANG") || tg.includes("HOA TOC")) ||
       Number((conv && conv.order_count) || 0) > 0 ||
-      Boolean(conv && conv.has_order)
+      Boolean(conv && conv.has_order) ||
+      hasCustomerOrder ||
+      hasRecentOrdersArr
     );
   const fallbackTimeInfo = latestActInfo || parse_pancake_utc_to_vn(conv && conv.updated_at);
 
@@ -648,7 +683,7 @@ async function tai_du_lieu_pancake(force = false) {
             if (!Array.isArray(msgs)) {
               return [];
             }
-            const extracted = extract_confirmed_pancake_orders(conv, msgs, pageCfg);
+            const extracted = extract_confirmed_pancake_orders(conv, msgs, pageCfg, msgJson);
             pancake_conv_msg_cache.set(cacheKey, extracted);
             hasNewConvCached = true;
             return extracted;
@@ -4894,7 +4929,10 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
       addedSyntheticKeys.add(dedupKey);
       syntheticId += 1;
       const qtyVal = pk.soLuong || 1;
-      const badPhoneNote = pk.hasInvalidPhone && pk.phones[0] ? ` • SĐT thiếu/lệch: ${pk.phones[0]}` : "";
+      const primarySdt = pk.phones[0] || "";
+      const extraOrderPhones = (Array.isArray(pk.orderLinkedPhones) ? pk.orderLinkedPhones : []).filter((p) => p && p !== primarySdt);
+      const orderPhoneNote = extraOrderPhones.length > 0 ? ` • SĐT đơn Pancake: ${extraOrderPhones.join(", ")}` : "";
+      const badPhoneNote = pk.hasInvalidPhone && primarySdt ? ` • SĐT thiếu/lệch: ${primarySdt}` : "";
       results.push({
         row_num: syntheticId,
         group_id: syntheticId,
@@ -4902,7 +4940,7 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
         ngay_only: pk.dmy || pk.ymd,
         ma_van_don: pk.pkeCode || "",
         ho_ten: pk.hoTen || pk.custName || "",
-        sdt: pk.phones[0] || "",
+        sdt: primarySdt,
         dia_chi: pk.diaChi || "",
         dong_sp: pk.dongSp || "",
         mau_sac: pk.mauSac || "",
@@ -4922,8 +4960,8 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
           : pk.hasReceipt
           ? `Đơn POS trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`
           : pk.isDraftTagOrder
-          ? `Tag Mua hàng / Đơn Mới trên Pancake Page ${pk.mktSheet} chưa xác nhận vào bảng TH`
-          : `Khách chốt trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`) + badPhoneNote,
+          ? `Đơn Mới / Tag Mua hàng trên Pancake Page ${pk.mktSheet} chưa xác nhận vào bảng TH`
+          : `Khách chốt trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`) + orderPhoneNote + badPhoneNote,
       });
       continue;
     }
