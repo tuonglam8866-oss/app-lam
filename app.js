@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.280";
+const APP_FRONTEND_VERSION = "8.6.282";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1961,8 +1961,6 @@ async function fetch_csv_with_fallback(primaryUrl, fallbackUrl, apiType) {
   return null;
 }
 
-let pending_nguon_tag_sync = null;
-
 async function dong_bo_ma_sp_tu_nguon_tag() {
   try {
     const rows = await fetch_csv_with_fallback(
@@ -2002,6 +2000,7 @@ let thong_ke_loaded_start = "";
 let thong_ke_loaded_end = "";
 let thong_ke_fetch_promise = null;
 let thong_ke_fetch_range_key = "";
+let thong_ke_is_full = false;
 
 function dich_ngay_ymd(ymdStr, deltaDays) {
   const dt = parse_ymd_date(ymdStr);
@@ -2179,7 +2178,7 @@ function doc_cache_fb_last(start_str, end_str) {
   return null;
 }
 
-async function tai_du_lieu_google_sheets(force = false, customStart = "", customEnd = "") {
+async function tai_du_lieu_google_sheets(force = false, customStart = "", customEnd = "", allMode = false) {
   doc_cau_hinh_tu_storage();
 
   let hasCachedCodes = false;
@@ -2187,15 +2186,25 @@ async function tai_du_lieu_google_sheets(force = false, customStart = "", custom
     hasCachedCodes = Boolean(localStorage.getItem(STORAGE_KEY_SHEET_CODES));
   } catch (e) {}
 
+  if (force && !allMode) {
+    thong_ke_is_full = false;
+  }
+  if (!force && thong_ke_is_full && Array.isArray(data_hien_tai) && data_hien_tai.length > 0) {
+    return true;
+  }
+
   const todayStr = format_ymd_date(new Date());
   const effStart = customStart || current_start_date || todayStr;
   const effEnd = customEnd || current_end_date || effStart;
-  const targetStart = dich_ngay_ymd(effStart, -35);
+  const targetStart = allMode ? "2000-01-01" : dich_ngay_ymd(effStart, -35);
   const plus3 = dich_ngay_ymd(effEnd, 3);
-  const targetEnd = effEnd <= todayStr && plus3 > todayStr ? todayStr : plus3;
-  const rangeKey = `${targetStart}|${targetEnd}`;
+  const targetEnd = allMode
+    ? "2099-12-31"
+    : (effEnd <= todayStr && plus3 > todayStr ? todayStr : plus3);
+  const rangeKey = allMode ? "ALL" : `${targetStart}|${targetEnd}`;
 
   const rangeCovered = Boolean(
+    !allMode &&
     thong_ke_loaded_start &&
     thong_ke_loaded_end &&
     thong_ke_loaded_start <= targetStart &&
@@ -2209,9 +2218,10 @@ async function tai_du_lieu_google_sheets(force = false, customStart = "", custom
     return thong_ke_fetch_promise;
   }
 
-  const directUrl = build_apps_script_url(
-    `gid=1227181736&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`
-  );
+  const queryStr = allMode
+    ? "gid=1227181736&all=1"
+    : `gid=1227181736&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`;
+  const directUrl = build_apps_script_url(queryStr);
   if (!directUrl) return false;
 
   thong_ke_fetch_range_key = rangeKey;
@@ -2236,12 +2246,16 @@ async function tai_du_lieu_google_sheets(force = false, customStart = "", custom
         data_hien_tai = rowsThongKe;
         thong_ke_loaded_start = targetStart;
         thong_ke_loaded_end = targetEnd;
+        thong_ke_is_full = Boolean(allMode);
         rebuild_cust_first_mkt_index();
-        luu_cache_thong_ke(rowsThongKe);
+        // Chỉ lưu cache khởi động khi tải cho Dashboard chính (không để Modal hay all=1 ghi đè)
+        if (!customStart && !allMode) {
+          luu_cache_thong_ke(rowsThongKe);
+        }
         if (!hasCachedCodes) {
           await dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
         }
-        if (!customStart) {
+        if (!customStart && !allMode) {
           kich_hoat_tai_nen_sau_bang_chinh(150);
         }
         return true;
@@ -2368,13 +2382,6 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
       }
     })
   );
-
-  // Đảm bảo đã đồng bộ danh sách mã SP từ tab NGUỒN TAG trước khi tách tên SP từ chiến dịch Ads
-  if (pending_nguon_tag_sync) {
-    try {
-      await pending_nguon_tag_sync;
-    } catch (e) {}
-  }
 
   for (const item of rawFbSpends) {
     const {
@@ -5595,6 +5602,19 @@ function hien_thi_bang_loc_don_tong_hop() {
   apply_od_filters_and_render(true);
 
   modal.classList.remove("hidden");
+  if (!thong_ke_is_full) {
+    if (dateRangeText) {
+      dateRangeText.textContent = `Đang hiện ${orders.length} đơn gần nhất • ⏳ Đang tải toàn bộ bảng...`;
+    }
+    tai_du_lieu_google_sheets(false, "", "", true).then((ok) => {
+      if (!ok || modal.classList.contains("hidden") || current_od_mode !== "all_table") return;
+      current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+      if (dateRangeText) {
+        dateRangeText.textContent = `Tổng cộng ${current_od_raw_list.length} đơn hàng trong bảng`;
+      }
+      apply_od_filters_and_render(false);
+    }).catch(() => {});
+  }
   setTimeout(() => {
     if (searchInput) searchInput.focus();
   }, 80);
@@ -5694,6 +5714,30 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   }, 80);
 }
 
+function khoi_phuc_du_lieu_dashboard_neu_lech_ngay() {
+  if (!current_start_date || !current_end_date) return;
+  const needTk =
+    !thong_ke_is_full &&
+    (!thong_ke_loaded_start ||
+      !thong_ke_loaded_end ||
+      thong_ke_loaded_start > current_start_date ||
+      thong_ke_loaded_end < current_end_date);
+  const needTb =
+    !thong_bao_loaded_start ||
+    !thong_bao_loaded_end ||
+    thong_bao_loaded_start > current_start_date ||
+    thong_bao_loaded_end < current_end_date;
+
+  if (needTk) {
+    tai_du_lieu_google_sheets(false).then((ok) => {
+      if (ok) run_silent_dashboard_rerender();
+    }).catch(() => {});
+  }
+  if (needTb) {
+    tai_du_lieu_thong_bao_ngam(false).catch(() => {});
+  }
+}
+
 function dong_bang_don_hang_chi_tiet() {
   close_od_excel_filter();
   if (current_cal_target === "od_filter") {
@@ -5705,6 +5749,7 @@ function dong_bang_don_hang_chi_tiet() {
   }
   const modal = document.getElementById("orderDetailModal");
   if (modal) modal.classList.add("hidden");
+  khoi_phuc_du_lieu_dashboard_neu_lech_ngay();
 }
 
 function dong_bang_camp_mkt() {
@@ -5720,6 +5765,7 @@ function dong_bang_camp_mkt() {
   current_mc_sp = "";
   const modal = document.getElementById("mktCampModal");
   if (modal) modal.classList.add("hidden");
+  khoi_phuc_du_lieu_dashboard_neu_lech_ngay();
 }
 
 function update_mc_date_btn_ui() {
@@ -7641,7 +7687,10 @@ function run_silent_dashboard_rerender() {
   }
 }
 
+let _syncRequestId = 0;
+
 async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded = false) {
+  const mySyncId = ++_syncRequestId;
   const isStartupSync = _isFirstDashboardSync;
   _isFirstDashboardSync = false;
   _isDashboardSyncRunning = true;
@@ -7682,6 +7731,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
   if (!canReuseSheets && !isAutoRetry) {
     if (!(Array.isArray(data_hien_tai) && data_hien_tai.length > 0)) {
       const cachedRows = doc_cache_thong_ke() || (await doc_cache_thong_ke_async());
+      if (mySyncId !== _syncRequestId) return;
       if (cachedRows) {
         data_hien_tai = cachedRows;
         try {
@@ -7689,7 +7739,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
         } catch (e) {}
       }
     }
-    softMode = Array.isArray(data_hien_tai) && data_hien_tai.length > 0;
+    softMode = Boolean((isStartupSync || tkRangeCovered) && Array.isArray(data_hien_tai) && data_hien_tai.length > 0);
   }
   let sheetRefreshOk = true;
 
@@ -7734,9 +7784,11 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
         cached_fb_tong = instantFb.local_tong;
         cached_fb_camps = instantFb.local_camps || {};
       }
-      // Vẽ NGAY ở khung hình đầu tiên bằng cache có sẵn trước khi mở cửa sổ -> Tổng Công Ty + 2 cột đồng bộ 100%, không nháy nhảy!
-      ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
-      trigger_opening_reveal();
+      // Chỉ vẽ khung hình đầu tiên kèm animation đếm số khi mới khởi động; bấm Tải Lại hoặc đổi ngày giữ nguyên số đang xem rồi cập nhật êm
+      if (isStartupSync) {
+        ve_noi_dung_dashboard(current_start_date, current_end_date, cached_fb_chi_tiet, cached_fb_tong);
+        trigger_opening_reveal();
+      }
       if (loadingOverlay) loadingOverlay.classList.add("hidden");
       const lastSyncSoft = document.getElementById("lastSyncText");
       if (lastSyncSoft) lastSyncSoft.textContent = "⏳ Đang làm mới dữ liệu ngầm...";
@@ -7744,18 +7796,21 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       // Nhường main thread & băng thông ~700ms cho animation mở app (đặc biệt lúc Windows mới khởi động) chạy trọn 60fps rồi mới tải mạng ngầm
       if (isStartupSync) {
         await new Promise((r) => setTimeout(r, 700));
+        if (mySyncId !== _syncRequestId) return;
       }
 
-      const sheetsPromise = tai_du_lieu_google_sheets();
+      const sheetsPromise = tai_du_lieu_google_sheets(!skipSheetsIfLoaded);
       const fbPromise = buildFbPromise();
 
       fbResult = await fbPromise;
+      if (mySyncId !== _syncRequestId) return;
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
       cached_fb_camps = fbResult.local_camps || {};
       run_silent_dashboard_rerender();
 
       gsResult = await sheetsPromise;
+      if (mySyncId !== _syncRequestId) return;
       sheetRefreshOk = Boolean(gsResult);
       gsSuccess = Boolean(data_hien_tai && data_hien_tai.length > 0);
       run_silent_dashboard_rerender();
@@ -7765,6 +7820,7 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
         canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(!skipSheetsIfLoaded),
         fbPromise,
       ]);
+      if (mySyncId !== _syncRequestId) return;
       gsSuccess = Boolean(gsResult && data_hien_tai && data_hien_tai.length > 0);
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
@@ -7799,20 +7855,24 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
   } catch (e) {
     console.error("Lỗi khi tải dữ liệu:", e);
   } finally {
-    _isDashboardSyncRunning = false;
-    // CHỈ ẨN MÀN HÌNH BLUR XOAY XOAY KHI VÀ CHỈ KHI ĐÃ TẢI DỮ LIỆU THÀNH CÔNG!
-    if (gsSuccess) {
-      initial_load_success = true;
-      auto_retry_count = 0;
-      if (auto_retry_timer) {
-        clearInterval(auto_retry_timer);
-        auto_retry_timer = null;
+    if (mySyncId === _syncRequestId) {
+      _isDashboardSyncRunning = false;
+      // CHỈ ẨN MÀN HÌNH BLUR XOAY XOAY KHI VÀ CHỈ KHI ĐÃ TẢI DỮ LIỆU THÀNH CÔNG!
+      if (gsSuccess) {
+        initial_load_success = true;
+        auto_retry_count = 0;
+        if (auto_retry_timer) {
+          clearInterval(auto_retry_timer);
+          auto_retry_timer = null;
+        }
+        if (loadingOverlay) loadingOverlay.classList.add("hidden");
+        if (btnRefresh) btnRefresh.disabled = false;
+        if (refreshIcon) refreshIcon.classList.remove("spinning");
       }
-      if (loadingOverlay) loadingOverlay.classList.add("hidden");
-      if (btnRefresh) btnRefresh.disabled = false;
-      if (refreshIcon) refreshIcon.classList.remove("spinning");
     }
   }
+
+  if (mySyncId !== _syncRequestId) return;
 
   // NẾU CHƯA CÓ MẠNG (Máy tính vừa bật, Wi-Fi chưa kịp kết nối):
   // TIẾP TỤC GIỮ NGUYÊN MÀN HÌNH BLUR XOAY XOAY VÀ ĐẾM NGƯỢC THỬ LẠI!
@@ -8099,6 +8159,12 @@ function ap_dung_khoang_ngay_loc_don(st, en) {
       }).catch(() => {});
     }
     tai_du_lieu_thong_bao_ngam(false, effSt, effEn).catch(() => {});
+  } else if (!isCardMode && !thong_ke_is_full) {
+    tai_du_lieu_google_sheets(false, "", "", true).then((ok) => {
+      if (!ok || current_od_mode !== "all_table") return;
+      current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+      apply_od_filters_and_render(true);
+    }).catch(() => {});
   }
 }
 
@@ -8393,135 +8459,8 @@ function cap_nhat_giao_dien_toggle_init() {
 }
 
 // ==============================================================
-// LUỒNG QUÉT ĐƠN MỚI MỖI 3 GIÂY (quet_don) - Universal Signature Engine v8.6.62
+// LUỒNG ĐỒNG BỘ SỰ KIỆN NATIVE EXE (quet_don_dinh_ky)
 // ==============================================================
-let known_signatures_web = new Set();
-let announced_phone_keys_web = new Set();
-
-function chuan_hoa_sdt_vn(sdt) {
-  if (!sdt) return "";
-  let clean = String(sdt).replace(/[\s.-]/g, "").trim();
-  if (clean.startsWith("+84")) clean = "0" + clean.slice(3);
-  else if (clean.startsWith("84") && clean.length > 9) clean = "0" + clean.slice(2);
-  else if (!clean.startsWith("0") && clean.length === 9) clean = "0" + clean;
-  return clean;
-}
-
-function chuan_hoa_mkt_ten(mkt) {
-  if (!mkt) return "";
-  const clean = String(mkt).trim();
-  const upper = clean.toUpperCase();
-  if (["MKT", "MARKETER", "TÊN MKT", "SALE", "TÊN", "NAME"].includes(upper)) return "";
-  return clean;
-}
-
-function chuan_hoa_sp_ten(sp) {
-  if (!sp) return "Sản phẩm";
-  const clean = String(sp).trim();
-  const upper = clean.toUpperCase();
-  if (["DÒNG SP", "DONG SP", "SẢN PHẨM", "SAN PHAM", "MÃ SP"].includes(upper)) return "Sản phẩm";
-  return clean;
-}
-
-function extract_orders_web_tb(rows) {
-  const list = [];
-  if (!Array.isArray(rows) || rows.length < 2) return list;
-
-  let colTg = 0, colTen = 1, colSdt = 2, colMkt = 6, colSp = 7, colSaleNote = 20;
-  const h = rows[0];
-  if (Array.isArray(h)) {
-    for (let c = 0; c < h.length; c++) {
-      const name = String(h[c] || "").trim().toLowerCase();
-      if (name === "thời gian" || name === "thoi gian" || name === "ngày") colTg = c;
-      else if (name === "họ tên" || name === "ho ten" || name === "tên khách") colTen = c;
-      else if (name === "số điện thoại" || name === "so dien thoai" || name === "sđt" || name === "sdt") colSdt = c;
-      else if (name === "mkt" || name === "marketer" || name === "tên mkt") colMkt = c;
-      else if (name === "dòng sp" || name === "dong sp" || name === "sản phẩm" || name === "san pham") colSp = c;
-      else if (name.includes("ghi chú sale") || name.includes("trạng thái")) colSaleNote = c;
-    }
-  }
-
-  for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
-    if (!Array.isArray(r) || r.length === 0) continue;
-
-    const tg = String(r[colTg] || "").trim();
-    const ten = String(r[colTen] || "").trim();
-    const sdt = String(r[colSdt] || "").trim();
-    const mkt = String(r[colMkt] || "").trim();
-    const sp = String(r[colSp] || "").trim();
-    const note = String(r[colSaleNote] || "").trim().toLowerCase();
-
-    if (!sdt && !ten) continue;
-    if (note.includes("huỷ") || note.includes("huy") || note.includes("trùng") || note.includes("trung")) continue;
-
-    const mktClean = chuan_hoa_mkt_ten(mkt);
-    const spClean = chuan_hoa_sp_ten(sp);
-    const sdtClean = chuan_hoa_sdt_vn(sdt);
-
-    const sig = `TB|${tg}|${sdtClean}|${spClean.toUpperCase()}|${mktClean.toUpperCase()}`;
-    const phoneKey = sdtClean && sdtClean.length >= 8 ? `${sdtClean}_${spClean.toUpperCase()}` : "";
-
-    const voice = mktClean ? `${mktClean} ơi, có đơn rồi` : "Có đơn mới rồi";
-    const toast = mktClean ? `MKT ${mktClean}\n${spClean}` : `Vừa có đơn mới!\n${spClean}`;
-
-    list.push({ sig, phoneKey, mkt: mktClean, sp: spClean, voice, toast });
-  }
-  return list;
-}
-
-function extract_orders_web_tk(rows) {
-  const list = [];
-  if (!Array.isArray(rows) || rows.length < 2) return list;
-
-  let colTg = 0, colMvd = 1, colTen = 2, colSdt = 3, colSp = 5, colMkt = 12, colTt = 13;
-  const h = rows[0];
-  if (Array.isArray(h)) {
-    for (let c = 0; c < h.length; c++) {
-      const name = String(h[c] || "").trim().toLowerCase();
-      if (name === "thời gian" || name === "thoi gian" || name === "ngày") colTg = c;
-      else if (name === "mã vận đơn" || name === "ma van don" || name === "mã đơn") colMvd = c;
-      else if (name === "họ tên" || name === "ho ten" || name === "tên khách") colTen = c;
-      else if (name === "số điện thoại" || name === "so dien thoai" || name === "sđt" || name === "sdt") colSdt = c;
-      else if (name === "dòng sp" || name === "dong sp" || name === "sản phẩm" || name === "san pham") colSp = c;
-      else if (name === "mkt" || name === "marketer" || name === "tên mkt") colMkt = c;
-      else if (name.includes("trạng thái")) colTt = c;
-    }
-  }
-
-  for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
-    if (!Array.isArray(r) || r.length === 0) continue;
-
-    const tg = String(r[colTg] || "").trim();
-    const mvd = String(r[colMvd] || "").trim();
-    const ten = String(r[colTen] || "").trim();
-    const sdt = String(r[colSdt] || "").trim();
-    const sp = String(r[colSp] || "").trim();
-    const mkt = String(r[colMkt] || "").trim();
-    const tt = String(r[colTt] || "").trim().toLowerCase();
-
-    if (!sdt && !ten && !mvd) continue;
-    if (tt.includes("huỷ") || tt.includes("huy") || tt.includes("trùng") || tt.includes("trung") || tt.includes("test")) continue;
-
-    const mktClean = chuan_hoa_mkt_ten(mkt);
-    const spClean = chuan_hoa_sp_ten(sp);
-    const sdtClean = chuan_hoa_sdt_vn(sdt);
-
-    const sig = (mvd && mvd.length > 4 && !mvd.toLowerCase().includes("test"))
-      ? `TK_MVD|${mvd.toUpperCase()}`
-      : `TK_INFO|${tg}|${sdtClean}|${spClean.toUpperCase()}|${mktClean.toUpperCase()}|${ten.toLowerCase()}`;
-
-    const phoneKey = sdtClean && sdtClean.length >= 8 ? `${sdtClean}_${spClean.toUpperCase()}` : "";
-
-    const voice = mktClean ? `${mktClean} ơi, có đơn rồi` : "Có đơn mới rồi";
-    const toast = mktClean ? `MKT ${mktClean}\n${spClean}` : `Vừa có đơn mới!\n${spClean}`;
-
-    list.push({ sig, phoneKey, mkt: mktClean, sp: spClean, voice, toast });
-  }
-  return list;
-}
-
 async function quet_don_dinh_ky() {
   try {
     // Chế độ Native EXE: Chỉ nhận sự kiện cập nhật phiên bản từ C# server (đã bỏ hoàn toàn quét & thông báo đơn mới)
@@ -8982,7 +8921,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   const ensureTongDonUpyoLoaded = async () => {
-    await tai_du_lieu_thong_bao_ngam(false).catch(() => {});
+    const todayStr = format_ymd_date(new Date());
+    const tbSt = od_date_start || lui_ngay_ymd(todayStr, 75);
+    const tbEn = od_date_end || todayStr;
+    await tai_du_lieu_thong_bao_ngam(false, tbSt, tbEn).catch(() => {});
   };
 
   const resetQuickFilterBtnLabels = () => {
@@ -9005,10 +8947,20 @@ window.addEventListener("DOMContentLoaded", async () => {
     // Hiển thị ngay kết quả từ dữ liệu hiện có trong RAM, đồng thời cập nhật ngầm nếu thiếu hoặc cũ
     apply_od_filters_and_render(true);
 
+    const todayStr = format_ymd_date(new Date());
+    const tbReqStart = od_date_start ? lui_ngay_ymd(od_date_start, 15) : lui_ngay_ymd(todayStr, 90);
+    const tbReqEnd = od_date_end || todayStr;
+    const tbRangeCovered = Boolean(
+      thong_bao_loaded_start &&
+      thong_bao_loaded_end &&
+      thong_bao_loaded_start <= tbReqStart &&
+      thong_bao_loaded_end >= tbReqEnd
+    );
     const needThongBao =
       Boolean(thong_bao_fetch_promise) ||
       !Array.isArray(data_tong_don_upyo) ||
       data_tong_don_upyo.length === 0 ||
+      !tbRangeCovered ||
       Date.now() - thong_bao_last_fetch_ms >= 120000;
     const needPancake =
       Boolean(pancake_fetch_promise) ||
