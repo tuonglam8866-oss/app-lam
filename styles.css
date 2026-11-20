@@ -3373,8 +3373,7 @@ input::-ms-clear {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   user-select: none;
 }
-.card-view-orders-hint.clickable-hint:hover,
-.cozy-card:has(.card-count-group[class*="js-"]:hover) .card-view-orders-hint.clickable-hint {
+.card-view-orders-hint.clickable-hint:hover {
   background: #B45309;
   color: #FFFFFF !important;
   border-color: #B45309;
@@ -3386,26 +3385,12 @@ input::-ms-clear {
   color: #F5B041;
   border-color: rgba(245, 176, 65, 0.3);
 }
-[data-theme="dark"] .card-view-orders-hint.clickable-hint:hover,
-[data-theme="dark"] .cozy-card:has(.card-count-group[class*="js-"]:hover) .card-view-orders-hint.clickable-hint {
+[data-theme="dark"] .card-view-orders-hint.clickable-hint:hover {
   background: #F5B041;
   color: #1A120B !important;
   border-color: #F5B041;
   transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(245, 176, 65, 0.28);
-}
-
-.card-count-group[class*="js-"] {
-  padding: 2px 8px;
-  margin: -2px -8px;
-  border-radius: 10px;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-.card-count-group[class*="js-"]:hover {
-  background: rgba(180, 83, 9, 0.09);
-}
-[data-theme="dark"] .card-count-group[class*="js-"]:hover {
-  background: rgba(245, 176, 65, 0.14);
 }
 
 /* Pill xem Camp trên thẻ MKT / SP / Tổng công ty */

@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.285";
+const APP_FRONTEND_VERSION = "8.6.286";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -201,17 +201,65 @@ function parse_pancake_utc_to_vn(isoStr) {
   };
 }
 
-function get_pancake_valid_phones(conv) {
-  const out = [];
+const PANCAKE_CONV_CACHE_IDB_KEY = "pancake_conv_map_v2";
+
+function get_pancake_phone_info(conv, msgs = null) {
+  const valid = [];
+  const fallback = [];
   const seen = new Set();
+  const pushCandidate = (raw) => {
+    const norm = chuan_hoa_sdt_so_sanh(raw);
+    if (!norm || PANCAKE_SHOP_PHONES.has(norm) || seen.has(norm)) return;
+    if (/^0[35789]\d{8}$/.test(norm)) {
+      seen.add(norm);
+      valid.push(norm);
+    } else if (/^0\d{7,10}$/.test(norm) || /^1[89]00\d{4,6}$/.test(norm)) {
+      seen.add(norm);
+      fallback.push(norm);
+    }
+  };
+
   const rawList = Array.isArray(conv && conv.recent_phone_numbers) ? conv.recent_phone_numbers : [];
   for (const item of rawList) {
-    const raw = item && (item.phone_number || item.captured || item);
-    const norm = chuan_hoa_sdt_so_sanh(raw);
-    if (!norm || !/^0[35789]\d{8}$/.test(norm)) continue;
-    if (PANCAKE_SHOP_PHONES.has(norm) || seen.has(norm)) continue;
-    seen.add(norm);
-    out.push(norm);
+    pushCandidate(item && (item.phone_number || item.captured || item));
+  }
+  const custPhones = Array.isArray(conv && conv.customers) ? conv.customers : [];
+  for (const c of custPhones) {
+    if (c && c.phone_number) pushCandidate(c.phone_number);
+  }
+
+  // Nếu sidebar Pancake chưa bắt được SĐT chuẩn 10 số -> quét thêm SĐT chuẩn trong nội dung chat
+  if (valid.length === 0 && Array.isArray(msgs)) {
+    for (const msg of msgs) {
+      const txt = String((msg && (msg.original_message || msg.message)) || "");
+      if (!txt) continue;
+      const matches = txt.match(/(?:\+?84|0)[35789](?:[\s.-]?\d){8}\b/g);
+      if (matches) {
+        for (const m of matches) pushCandidate(m);
+      }
+    }
+  }
+
+  const phones = valid.length > 0 ? valid : fallback;
+  return {
+    phones,
+    hasInvalidPhone: valid.length === 0 && fallback.length > 0,
+  };
+}
+
+function get_pancake_valid_phones(conv, allowFallback = false) {
+  const info = get_pancake_phone_info(conv, null);
+  return allowFallback ? info.phones : info.phones.filter((p) => /^0[35789]\d{8}$/.test(p));
+}
+
+function get_pancake_conv_tags_norm(conv) {
+  const tags = Array.isArray(conv && conv.tags) ? conv.tags : [];
+  const out = [];
+  for (const t of tags) {
+    if (!t) continue;
+    const raw = typeof t === "string" ? t : (t.text || t.name || t.title || t.label || "");
+    const clean = bo_dau_tieng_viet(String(raw || "").trim()).toUpperCase();
+    if (clean) out.push(clean);
   }
   return out;
 }
@@ -346,7 +394,8 @@ function parse_pancake_receipt_attachment(msg, convPhones) {
 
 function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
   if (!Array.isArray(msgs) || msgs.length === 0) return [];
-  const phones = get_pancake_valid_phones(conv);
+  const phoneInfo = get_pancake_phone_info(conv, msgs);
+  const phones = phoneInfo.phones;
   if (phones.length === 0) return [];
 
   const cutoffMs = Date.now() + 7 * 3600 * 1000 - 14 * 86400 * 1000;
@@ -355,6 +404,7 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
   const pkeMap = new Map();
   let expressHit = null;
   let receiptHit = null;
+  let latestActInfo = null;
   let bestPrice = 0;
   let bestSale = "";
   let bestSaleMs = -1;
@@ -365,8 +415,12 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
   for (const msg of msgs) {
     const isPage = Boolean(msg && msg.from && String(msg.from.id || "") === pageCfg.pageId);
     const txt = String((msg && (msg.original_message || msg.message)) || "").trim();
+    const hasAtt = Array.isArray(msg && msg.attachments) && msg.attachments.length > 0;
     const tInfo = parse_pancake_utc_to_vn(msg && msg.inserted_at);
     if (tInfo.timeMs && tInfo.timeMs < cutoffMs) continue;
+    if (tInfo.ymd && (!latestActInfo || (tInfo.timeMs || 0) >= (latestActInfo.timeMs || 0))) {
+      latestActInfo = tInfo;
+    }
 
     if (!chatSize && txt) {
       const mSz = txt.match(/\bsize\s*[:=]?\s*(3[5-9]|4[0-6])\b/i);
@@ -374,7 +428,7 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
     }
 
     if (!isPage) {
-      if (txt && !/^\s*(?:<div>\s*<\/div>)?\s*$/i.test(txt)) hasCustMsg = true;
+      if ((txt && !/^\s*(?:<div>\s*<\/div>)?\s*$/i.test(txt)) || hasAtt) hasCustMsg = true;
       if (/qua đi thử|tự qua|ghé shop|đến tận nơi/i.test(txt)) custWentOffice = true;
       continue;
     }
@@ -440,8 +494,19 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
     sale: bestSale || "",
     giaBan: (receiptHit && receiptHit.giaBan > 0) ? receiptHit.giaBan : bestPrice,
     hasReceipt: Boolean(receiptHit),
+    hasInvalidPhone: Boolean(phoneInfo.hasInvalidPhone),
   };
   const results = [];
+  const convTags = get_pancake_conv_tags_norm(conv);
+  const isCancelledTag = convTags.some((tg) => tg.includes("HUY") || tg.includes("BOOM") || tg.includes("KHONG MUA"));
+  const hasPurchaseSignal =
+    !isCancelledTag &&
+    (
+      convTags.some((tg) => tg.includes("MUA HANG") || tg.includes("HOA TOC")) ||
+      Number((conv && conv.order_count) || 0) > 0 ||
+      Boolean(conv && conv.has_order)
+    );
+  const fallbackTimeInfo = latestActInfo || parse_pancake_utc_to_vn(conv && conv.updated_at);
 
   if (pkeMap.size > 0) {
     pkeMap.forEach((info) => {
@@ -487,6 +552,21 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg) {
       timeMs: expressHit.timeMs,
       ...detailFields,
     });
+  } else if (hasPurchaseSignal && fallbackTimeInfo && fallbackTimeInfo.ymd && (!fallbackTimeInfo.timeMs || fallbackTimeInfo.timeMs >= cutoffMs)) {
+    results.push({
+      convId: conv.id,
+      pageId: pageCfg.pageId,
+      mkt: pageCfg.mkt,
+      mktSheet: pageCfg.mktSheet,
+      custName,
+      phones,
+      pkeCode: "",
+      isDraftTagOrder: true,
+      ymd: fallbackTimeInfo.ymd,
+      dmy: fallbackTimeInfo.dmy,
+      timeMs: fallbackTimeInfo.timeMs,
+      ...detailFields,
+    });
   }
 
   return results;
@@ -502,7 +582,7 @@ async function tai_du_lieu_pancake(force = false) {
   pancake_fetch_promise = (async () => {
     if (!_pancakeConvCacheHydrated) {
       _pancakeConvCacheHydrated = true;
-      const savedConvs = await idb_cache_get("pancake_conv_map");
+      const savedConvs = await idb_cache_get(PANCAKE_CONV_CACHE_IDB_KEY);
       if (Array.isArray(savedConvs)) {
         for (const pair of savedConvs) {
           if (Array.isArray(pair) && pair.length === 2 && !pancake_conv_msg_cache.has(pair[0])) {
@@ -544,7 +624,12 @@ async function tai_du_lieu_pancake(force = false) {
         if (!lastId || (oldestInfo.timeMs && oldestInfo.timeMs < cutoffMs)) break;
       }
 
-      const phoneConvs = convs.filter((c) => get_pancake_valid_phones(c).length > 0);
+      const phoneConvs = convs.filter((c) =>
+        get_pancake_valid_phones(c, true).length > 0 ||
+        get_pancake_conv_tags_norm(c).some((tg) => tg.includes("MUA HANG") || tg.includes("HOA TOC")) ||
+        Number((c && c.order_count) || 0) > 0 ||
+        Boolean(c && c.has_order)
+      );
       const BATCH_SIZE = 3;
       for (let i = 0; i < phoneConvs.length; i += BATCH_SIZE) {
         if (i > 0) await new Promise((r) => setTimeout(r, 150));
@@ -578,7 +663,7 @@ async function tai_du_lieu_pancake(force = false) {
     if (hasNewConvCached) {
       const entries = Array.from(pancake_conv_msg_cache.entries());
       const trimmed = entries.length > 800 ? entries.slice(entries.length - 800) : entries;
-      idb_cache_set("pancake_conv_map", trimmed).catch(() => {});
+      idb_cache_set(PANCAKE_CONV_CACHE_IDB_KEY, trimmed).catch(() => {});
     }
 
     data_pancake_orders = allOrders;
@@ -3992,7 +4077,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
       ${build_card_camp_pill_html("__ALL__", "")}
       <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">📋 Chi tiết đơn →</span>
     </div>
-    <div class="card-count-group js-company-count-group" style="cursor: pointer;" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng">
+    <div class="card-count-group">
       <span class="card-count-val js-total-orders" style="color: var(--color-highlight)">0</span>
       <span class="card-count-unit">${dict.totalOrdersUnit}</span>
     </div>
@@ -4018,10 +4103,6 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   const btnViewCompanyOrders = topRow.querySelector(".js-btn-view-company-orders");
   if (btnViewCompanyOrders) {
     btnViewCompanyOrders.addEventListener("click", openCompanyOrders);
-  }
-  const companyCountGroup = topRow.querySelector(".js-company-count-group");
-  if (companyCountGroup) {
-    companyCountGroup.addEventListener("click", openCompanyOrders);
   }
   card.addEventListener("click", () => hien_thi_bang_camp_mkt("__ALL__", ""));
 
@@ -4059,7 +4140,7 @@ function create_mkt_table_card(
       ${build_card_camp_pill_html(name_str, "")}
       <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
     </div>
-    <div class="card-count-group js-count-group" title="B\u1ea5m \u0111\u1ec3 xem chi ti\u1ebft t\u1ea5t c\u1ea3 ${count} \u0111\u01a1n c\u1ee7a ${name_str}" style="cursor: pointer;">
+    <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
       <span class="card-count-unit">${dict.ordersUnit}</span>
     </div>
@@ -4100,14 +4181,6 @@ function create_mkt_table_card(
   const btnViewOrders = topRow.querySelector(".js-btn-view-mkt-orders");
   if (btnViewOrders) {
     btnViewOrders.addEventListener("click", (e) => {
-      e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(name_str, null);
-    });
-  }
-
-  const countGroup = topRow.querySelector(".js-count-group");
-  if (countGroup) {
-    countGroup.addEventListener("click", (e) => {
       e.stopPropagation();
       hien_thi_bang_don_hang_chi_tiet(name_str, null);
     });
@@ -4821,6 +4894,7 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
       addedSyntheticKeys.add(dedupKey);
       syntheticId += 1;
       const qtyVal = pk.soLuong || 1;
+      const badPhoneNote = pk.hasInvalidPhone && pk.phones[0] ? ` • SĐT thiếu/lệch: ${pk.phones[0]}` : "";
       results.push({
         row_num: syntheticId,
         group_id: syntheticId,
@@ -4840,14 +4914,16 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
         nen_tang: "PANCAKE",
         sale: pk.sale || "",
         mkt: pk.mktSheet || pk.mkt,
-        trang_thai: "CHƯA VÀO BẢNG TH",
+        trang_thai: pk.isDraftTagOrder ? "CHƯA XÁC NHẬN POS" : "CHƯA VÀO BẢNG TH",
         so_luong: String(qtyVal),
         so_luong_num: qtyVal,
-        ghi_chu: pk.pkeCode
+        ghi_chu: (pk.pkeCode
           ? `Pancake Page ${pk.mktSheet} (${pk.pkeCode}) chưa vào bảng TH`
           : pk.hasReceipt
           ? `Đơn POS trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`
-          : `Khách chốt trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`,
+          : pk.isDraftTagOrder
+          ? `Tag Mua hàng / Đơn Mới trên Pancake Page ${pk.mktSheet} chưa xác nhận vào bảng TH`
+          : `Khách chốt trên Pancake Page ${pk.mktSheet} nhưng chưa vào bảng TH`) + badPhoneNote,
       });
       continue;
     }
@@ -7221,7 +7297,7 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
       ${build_card_camp_pill_html(current_mkt_detail, ma_str)}
       <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem ${count} đơn hàng chi tiết của ${ma_str}">📋 Chi tiết đơn →</span>
     </div>
-    <div class="card-count-group js-sp-count-group" style="cursor: pointer;" title="Bấm để xem ${count} đơn hàng chi tiết của ${ma_str}">
+    <div class="card-count-group">
       <span class="card-count-val js-count" style="color: var(--color-highlight)">0</span>
       <span class="card-count-unit">${dict.ordersUnit}</span>
     </div>
@@ -7247,17 +7323,10 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
-  // Click nút Xem đơn / số đơn để xem chi tiết đơn hàng của mã SP
+  // Chỉ nút Chi tiết đơn mới mở chi tiết đơn hàng; bấm các vùng khác (kể cả số đơn) đều mở Camp
   const btnViewSpOrders = topRow.querySelector(".js-btn-view-sp-orders");
   if (btnViewSpOrders) {
     btnViewSpOrders.addEventListener("click", (e) => {
-      e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str);
-    });
-  }
-  const spCountGroup = topRow.querySelector(".js-sp-count-group");
-  if (spCountGroup) {
-    spCountGroup.addEventListener("click", (e) => {
       e.stopPropagation();
       hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str);
     });
@@ -7299,7 +7368,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
       ${build_card_camp_pill_html("__ALL__", name_str)}
       <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
     </div>
-    <div class="card-count-group js-top-sp-count-group" style="cursor: pointer;" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">
+    <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
       <span class="card-count-unit">${dict.ordersUnit}</span>
     </div>
@@ -7329,17 +7398,12 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
-  const openTopSpOrders = (e) => {
-    if (e) e.stopPropagation();
-    hien_thi_bang_don_hang_chi_tiet(null, name_str);
-  };
   const btnViewTopSpOrders = topRow.querySelector(".js-btn-view-sp-orders");
   if (btnViewTopSpOrders) {
-    btnViewTopSpOrders.addEventListener("click", openTopSpOrders);
-  }
-  const topSpCountGroup = topRow.querySelector(".js-top-sp-count-group");
-  if (topSpCountGroup) {
-    topSpCountGroup.addEventListener("click", openTopSpOrders);
+    btnViewTopSpOrders.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_don_hang_chi_tiet(null, name_str);
+    });
   }
 
   const btnViewCardCamps = topRow.querySelector(".js-btn-view-card-camps");
