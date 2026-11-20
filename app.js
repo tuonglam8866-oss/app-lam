@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.293";
+const APP_FRONTEND_VERSION = "8.6.294";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -607,9 +607,11 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg, msgJson = null) {
   return results;
 }
 
+const PANCAKE_CACHE_TTL_MS = 600000; // Cache Pancake 10 phút và chỉ tải khi bấm Lỗi vào đơn / Đơn trùng MKT
+
 async function tai_du_lieu_pancake(force = false) {
   const now = Date.now();
-  if (!force && data_pancake_orders.length > 0 && now - pancake_last_fetch_ms < 120000) {
+  if (!force && data_pancake_orders.length > 0 && now - pancake_last_fetch_ms < PANCAKE_CACHE_TTL_MS) {
     return data_pancake_orders;
   }
   if (pancake_fetch_promise) return pancake_fetch_promise;
@@ -2238,12 +2240,15 @@ function tai_du_lieu_thong_bao_ngam(
 let background_sync_timer = null;
 
 function kich_hoat_tai_nen_sau_bang_chinh(delayMs = 150, bypassServerCache = false) {
+  if (bypassServerCache) {
+    // Khi người dùng chủ động bấm Tải Lại: đánh dấu hết hạn cache Pancake để lần sau bấm Lỗi vào đơn sẽ tải mới, không tự bắn ngầm mỗi lần tải bảng chính
+    pancake_last_fetch_ms = 0;
+  }
   if (background_sync_timer) clearTimeout(background_sync_timer);
   background_sync_timer = setTimeout(() => {
     background_sync_timer = null;
     dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
     tai_du_lieu_thong_bao_ngam(true, "", "", bypassServerCache).catch(() => {});
-    tai_du_lieu_pancake(true).catch(() => {});
   }, delayMs);
 }
 
@@ -2313,6 +2318,10 @@ function doc_cache_fb_last(start_str, end_str) {
   return null;
 }
 
+let _dashboard_tk_snapshot = null;
+let _full_tk_cache = null;
+const FULL_TK_CACHE_TTL_MS = 300000; // Cache bản full (all=1) 5 phút cho modal Lọc đơn
+
 async function tai_du_lieu_google_sheets(
   force = false,
   customStart = "",
@@ -2327,8 +2336,27 @@ async function tai_du_lieu_google_sheets(
     hasCachedCodes = Boolean(localStorage.getItem(STORAGE_KEY_SHEET_CODES));
   } catch (e) {}
 
-  if (force && !allMode) {
-    thong_ke_is_full = false;
+  if (force || bypassServerCache) {
+    _full_tk_cache = null;
+    if (!allMode) {
+      thong_ke_is_full = false;
+      _dashboard_tk_snapshot = null;
+    }
+  }
+  if (allMode && !force && !bypassServerCache && _full_tk_cache && Array.isArray(_full_tk_cache.rows) && _full_tk_cache.rows.length > 0 && Date.now() - _full_tk_cache.timeMs < FULL_TK_CACHE_TTL_MS) {
+    if (!thong_ke_is_full && Array.isArray(data_hien_tai) && data_hien_tai.length > 1) {
+      _dashboard_tk_snapshot = {
+        rows: data_hien_tai,
+        start: thong_ke_loaded_start,
+        end: thong_ke_loaded_end,
+      };
+    }
+    data_hien_tai = _full_tk_cache.rows;
+    thong_ke_loaded_start = "2000-01-01";
+    thong_ke_loaded_end = "2099-12-31";
+    thong_ke_is_full = true;
+    rebuild_cust_first_mkt_index();
+    return true;
   }
   if (!force && thong_ke_is_full && Array.isArray(data_hien_tai) && data_hien_tai.length > 0) {
     return true;
@@ -2386,6 +2414,22 @@ async function tai_du_lieu_google_sheets(
 
       const rowsThongKe = parse_csv_lines(text);
       if (rowsThongKe && rowsThongKe.length > 0) {
+        if (allMode) {
+          if (!thong_ke_is_full && Array.isArray(data_hien_tai) && data_hien_tai.length > 1) {
+            _dashboard_tk_snapshot = {
+              rows: data_hien_tai,
+              start: thong_ke_loaded_start,
+              end: thong_ke_loaded_end,
+            };
+          }
+          _full_tk_cache = { rows: rowsThongKe, timeMs: Date.now() };
+        } else if (!customStart) {
+          _dashboard_tk_snapshot = {
+            rows: rowsThongKe,
+            start: targetStart,
+            end: targetEnd,
+          };
+        }
         data_hien_tai = rowsThongKe;
         thong_ke_loaded_start = targetStart;
         thong_ke_loaded_end = targetEnd;
@@ -5858,6 +5902,22 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
 
 function khoi_phuc_du_lieu_dashboard_neu_lech_ngay() {
   if (!current_start_date || !current_end_date) return;
+  // Nếu vừa đóng Lọc đơn (all=1), khôi phục ngay lát cắt nhẹ của Dashboard từ RAM để không giữ toàn bộ lịch sử trong data_hien_tai
+  if (
+    thong_ke_is_full &&
+    _dashboard_tk_snapshot &&
+    Array.isArray(_dashboard_tk_snapshot.rows) &&
+    _dashboard_tk_snapshot.rows.length > 1 &&
+    _dashboard_tk_snapshot.start &&
+    _dashboard_tk_snapshot.end &&
+    _dashboard_tk_snapshot.start <= current_start_date &&
+    _dashboard_tk_snapshot.end >= current_end_date
+  ) {
+    data_hien_tai = _dashboard_tk_snapshot.rows;
+    thong_ke_loaded_start = _dashboard_tk_snapshot.start;
+    thong_ke_loaded_end = _dashboard_tk_snapshot.end;
+    thong_ke_is_full = false;
+  }
   const needTk =
     !thong_ke_is_full &&
     (!thong_ke_loaded_start ||
@@ -9217,7 +9277,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       Boolean(pancake_fetch_promise) ||
       !Array.isArray(data_pancake_orders) ||
       data_pancake_orders.length === 0 ||
-      Date.now() - pancake_last_fetch_ms >= 120000;
+      Date.now() - pancake_last_fetch_ms >= PANCAKE_CACHE_TTL_MS;
 
     if (!needThongBao && !needPancake) {
       resetQuickFilterBtnLabels();
@@ -9229,7 +9289,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     const hasNoDataYet =
       !Array.isArray(data_tong_don_upyo) ||
       data_tong_don_upyo.length === 0 ||
-      !Array.isArray(data_pancake_orders);
+      !Array.isArray(data_pancake_orders) ||
+      data_pancake_orders.length === 0;
     if (activeBtn && hasNoDataYet) {
       activeBtn.textContent = "Đang tải...";
     }
