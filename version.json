@@ -1,17 +1,17 @@
 {
-    "version":  "8.6.269",
+    "version":  "8.6.280",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "8ccce878654270fb1cc976d8aa55f6c3776176908f7c7c5b09fb664c75c31ce0",
+    "exe_sha256":  "1f78a229d73c27753f064386f21e64eadfa4502a2d4ce9d2c0c4a64edac663f6",
     "index.html_sha256":  "0fe7c2193e6f365f9a3c27420952d933c4230a5a4b6d595fa29cd684c15665b4",
-    "styles.css_sha256":  "90244e93b62e1bedf90f134c97f802ba485945bd62cb860eb9f53a38251118b1",
-    "app.js_sha256":  "60069463dd6d5f447023c52332b7198f1fccaafb9d9c78708dc4447ec220c395",
+    "styles.css_sha256":  "146a3d16241a03cf583b04b57d7b7ccc8f26021d94e9a9f7a443437c1e471bcc",
+    "app.js_sha256":  "bc9d60d2878eb8ad65d70fe1241b452a4d57013e50eb1a36da271496518024b5",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "8ccce878654270fb1cc976d8aa55f6c3776176908f7c7c5b09fb664c75c31ce0",
-                                     "size":  658432
+                                     "sha256":  "1f78a229d73c27753f064386f21e64eadfa4502a2d4ce9d2c0c4a64edac663f6",
+                                     "size":  659968
                                  },
                   "app.js":  {
-                                 "sha256":  "60069463dd6d5f447023c52332b7198f1fccaafb9d9c78708dc4447ec220c395",
+                                 "sha256":  "bc9d60d2878eb8ad65d70fe1241b452a4d57013e50eb1a36da271496518024b5",
                                  "size":  357008
                              },
                   "index.html":  {
@@ -19,8 +19,8 @@
                                      "size":  46699
                                  },
                   "styles.css":  {
-                                     "sha256":  "90244e93b62e1bedf90f134c97f802ba485945bd62cb860eb9f53a38251118b1",
-                                     "size":  133916
+                                     "sha256":  "146a3d16241a03cf583b04b57d7b7ccc8f26021d94e9a9f7a443437c1e471bcc",
+                                     "size":  135091
                                  }
               }
 }

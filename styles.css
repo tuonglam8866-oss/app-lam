@@ -1059,34 +1059,38 @@ html, body {
 
 .cozy-card:hover {
   transform: translateY(-2px);
-  border-color: #BCA38D;
+  background: linear-gradient(135deg, #FFFBF3 0%, #F7EBDA 100%);
+  border-color: #B99776;
   box-shadow:
-    0 8px 22px rgba(61, 35, 20, 0.08),
-    0 2px 6px rgba(61, 35, 20, 0.03),
-    inset 0 1px 0 #FFFFFF;
+    0 8px 22px rgba(92, 58, 33, 0.11),
+    0 2px 6px rgba(92, 58, 33, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 [data-theme="dark"] .cozy-card:hover {
-  border-color: #705442;
+  background: linear-gradient(135deg, #382A22 0%, #2E221B 100%);
+  border-color: #8A6A52;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.38),
     0 2px 6px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 240, 225, 0.08);
+    inset 0 1px 0 rgba(255, 240, 225, 0.1);
 }
 
 .cozy-card.rank-1:hover {
-  border-color: #DEB571;
+  background: linear-gradient(135deg, #FFF6E4 0%, #FAE8C7 100%);
+  border-color: #D6A154;
   box-shadow:
-    0 8px 22px rgba(180, 83, 9, 0.1),
-    0 2px 6px rgba(180, 83, 9, 0.04),
-    inset 0 1px 0 #FFFFFF;
+    0 8px 22px rgba(180, 83, 9, 0.12),
+    0 2px 6px rgba(180, 83, 9, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 [data-theme="dark"] .cozy-card.rank-1:hover {
-  border-color: #9E7339;
+  background: linear-gradient(135deg, #46331F 0%, #372817 100%);
+  border-color: #A87B3E;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 225, 180, 0.1);
+    inset 0 1px 0 rgba(255, 225, 180, 0.12);
 }
 
 .cozy-card.clickable-card:active {
@@ -1158,6 +1162,43 @@ html, body {
 [data-theme="dark"] .cozy-card.rank-n {
   background: linear-gradient(180deg, #2A1F19 0%, #231914 100%);
   border-color: var(--rn-outline);
+}
+
+/* Sáng toàn thẻ tone nâu be dịu mắt khi di chuột vào từng biến thể thẻ */
+.cozy-card.company-summary-card:hover {
+  background: linear-gradient(135deg, #FFF9EE 0%, #F5E6D0 100%);
+  border-color: #B48F6C;
+}
+[data-theme="dark"] .cozy-card.company-summary-card:hover {
+  background: linear-gradient(135deg, #3F2F25 0%, #33251D 100%);
+  border-color: #84644E;
+}
+
+.cozy-card.rank-2:hover {
+  background: linear-gradient(135deg, #FCF5EC 0%, #EFE0CC 100%);
+  border-color: #B89878;
+}
+[data-theme="dark"] .cozy-card.rank-2:hover {
+  background: linear-gradient(135deg, #3B2C23 0%, #30231B 100%);
+  border-color: #876850;
+}
+
+.cozy-card.rank-3:hover {
+  background: linear-gradient(135deg, #FDF2E9 0%, #F1DBCB 100%);
+  border-color: #BF9072;
+}
+[data-theme="dark"] .cozy-card.rank-3:hover {
+  background: linear-gradient(135deg, #3F2A21 0%, #32211A 100%);
+  border-color: #8D654E;
+}
+
+.cozy-card.rank-n:hover {
+  background: linear-gradient(135deg, #FFFBF3 0%, #F7EBDA 100%);
+  border-color: #B99776;
+}
+[data-theme="dark"] .cozy-card.rank-n:hover {
+  background: linear-gradient(135deg, #362820 0%, #2C201A 100%);
+  border-color: #866750;
 }
 
 .card-top-row {
@@ -3384,8 +3425,7 @@ input::-ms-clear {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
 }
-.card-camp-hint.clickable-hint:hover,
-.cozy-card.camp-primary-card:hover:not(:has(.card-view-orders-hint:hover, .card-count-group[class*="js-"]:hover)) .card-camp-hint.clickable-hint {
+.card-camp-hint.clickable-hint:hover {
   background: #059669;
   color: #FFFFFF !important;
   border-color: #059669;
@@ -3397,8 +3437,7 @@ input::-ms-clear {
   color: #34D399;
   border-color: rgba(52, 211, 153, 0.32);
 }
-[data-theme="dark"] .card-camp-hint.clickable-hint:hover,
-[data-theme="dark"] .cozy-card.camp-primary-card:hover:not(:has(.card-view-orders-hint:hover, .card-count-group[class*="js-"]:hover)) .card-camp-hint.clickable-hint {
+[data-theme="dark"] .card-camp-hint.clickable-hint:hover {
   background: #10B981;
   color: #0B1410 !important;
   border-color: #10B981;
