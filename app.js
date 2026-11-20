@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.282";
+const APP_FRONTEND_VERSION = "8.6.283";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2040,7 +2040,7 @@ function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd =
   }
 
   const directUrl = build_apps_script_url(
-    `gid=0&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`
+    `gid=0&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}${force ? "&nocache=1" : ""}`
   );
   if (!directUrl) return Promise.resolve(data_tong_don_upyo);
 
@@ -2218,9 +2218,9 @@ async function tai_du_lieu_google_sheets(force = false, customStart = "", custom
     return thong_ke_fetch_promise;
   }
 
-  const queryStr = allMode
+  const queryStr = (allMode
     ? "gid=1227181736&all=1"
-    : `gid=1227181736&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`;
+    : `gid=1227181736&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`) + (force ? "&nocache=1" : "");
   const directUrl = build_apps_script_url(queryStr);
   if (!directUrl) return false;
 
@@ -2275,7 +2275,7 @@ async function tai_du_lieu_google_sheets(force = false, customStart = "", custom
 // ==============================================================
 // QUÉT CHI PHÍ FACEBOOK ADS (CÓ PHÂN TRANG & GIỚI HẠN 100 CHIẾN DỊCH)
 // ==============================================================
-async function quet_chi_phi_facebook_helper(start_str, end_str) {
+async function quet_chi_phi_facebook_helper(start_str, end_str, force = false) {
   const local_chi_tiet = {};
   const local_tong = {};
   const local_camps = {};
@@ -2297,11 +2297,12 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
   }
 
   const rawFbSpends = [];
+  const fbErrors = [];
 
   await Promise.all(
     uniqueAccounts.map(async (actId) => {
       const baseInsightsUrl = build_apps_script_url(
-        `fb_act=${encodeURIComponent(actId)}&time_range=${encodeURIComponent(time_range)}`
+        `fb_act=${encodeURIComponent(actId)}&time_range=${encodeURIComponent(time_range)}${force ? "&nocache=1" : ""}`
       );
       if (!baseInsightsUrl) return;
 
@@ -2327,7 +2328,13 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
           }
         }
 
-        if (!res || res.error) {
+        if (!res) {
+          break;
+        }
+        if (res.fb_error || res.error) {
+          const errObj = res.fb_error || res.error;
+          const errMsg = (errObj && errObj.message) ? String(errObj.message) : String(errObj);
+          if (errMsg) fbErrors.push(errMsg);
           break;
         }
 
@@ -2453,7 +2460,7 @@ async function quet_chi_phi_facebook_helper(start_str, end_str) {
     }
   }
 
-  return { local_chi_tiet, local_tong, local_camps };
+  return { local_chi_tiet, local_tong, local_camps, local_fb_errors: fbErrors };
 }
 
 // ==============================================================
@@ -2487,22 +2494,11 @@ function tao_cac_dang_ngay_khop(start_str, end_str) {
   const date_patterns = new Set();
   const curr = new Date(start_date.getTime());
   while (curr <= end_date) {
-    const y = curr.getFullYear();
-    const m = curr.getMonth() + 1;
-    const d = curr.getDate();
-    const dd = String(d).padStart(2, "0");
-    const mm = String(m).padStart(2, "0");
-
-    date_patterns.add(`${dd}/${mm}/${y}`);
-    date_patterns.add(`${y}-${mm}-${dd}`);
-    date_patterns.add(`${d}/${m}/${y}`);
-    date_patterns.add(`${d}/${mm}/${y}`);
-    date_patterns.add(`${dd}/${m}/${y}`);
-
+    date_patterns.add(format_ymd_date(curr));
     curr.setDate(curr.getDate() + 1);
   }
 
-  return Array.from(date_patterns);
+  return date_patterns;
 }
 
 const DATE_TOKEN_EXTRACT_RE = /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})|(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/;
@@ -5824,6 +5820,9 @@ async function tai_camp_mkt_theo_ngay(st, en) {
   try {
     const fbRes = await quet_chi_phi_facebook_helper(st, en);
     if (mc_date_start === st && mc_date_end === en) {
+      if (Array.isArray(fbRes?.local_fb_errors) && fbRes.local_fb_errors.length > 0) {
+        show_update_toast_notification(`⚠️ Lỗi Facebook Ads: ${fbRes.local_fb_errors[0]}`);
+      }
       mc_custom_camps_map = (fbRes && fbRes.local_camps) || {};
       mc_is_loading_fb = false;
       render_mc_table_rows();
@@ -7766,9 +7765,11 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
     const buildFbPromise = () =>
       canReuseFb
         ? Promise.resolve(cachedFbEntry.result)
-        : quet_chi_phi_facebook_helper(current_start_date, current_end_date).then((res) => {
-            fb_range_cache.set(fbCacheKey, { timeMs: Date.now(), result: res });
-            luu_cache_fb_last(current_start_date, current_end_date, res);
+        : quet_chi_phi_facebook_helper(current_start_date, current_end_date, !skipSheetsIfLoaded).then((res) => {
+            if (!res.local_fb_errors || res.local_fb_errors.length === 0) {
+              fb_range_cache.set(fbCacheKey, { timeMs: Date.now(), result: res });
+              luu_cache_fb_last(current_start_date, current_end_date, res);
+            }
             return res;
           });
 
@@ -7800,6 +7801,9 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       }
 
       const sheetsPromise = tai_du_lieu_google_sheets(!skipSheetsIfLoaded);
+      if (!skipSheetsIfLoaded) {
+        tai_du_lieu_thong_bao_ngam(true).catch(() => {});
+      }
       const fbPromise = buildFbPromise();
 
       fbResult = await fbPromise;
@@ -7807,6 +7811,9 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
       cached_fb_camps = fbResult.local_camps || {};
+      if (Array.isArray(fbResult.local_fb_errors) && fbResult.local_fb_errors.length > 0) {
+        show_update_toast_notification(`⚠️ Lỗi Facebook Ads: ${fbResult.local_fb_errors[0]}`);
+      }
       run_silent_dashboard_rerender();
 
       gsResult = await sheetsPromise;
@@ -7816,6 +7823,9 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       run_silent_dashboard_rerender();
     } else {
       const fbPromise = buildFbPromise();
+      if (!skipSheetsIfLoaded) {
+        tai_du_lieu_thong_bao_ngam(true).catch(() => {});
+      }
       [gsResult, fbResult] = await Promise.all([
         canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(!skipSheetsIfLoaded),
         fbPromise,
@@ -7825,6 +7835,9 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       cached_fb_chi_tiet = fbResult.local_chi_tiet;
       cached_fb_tong = fbResult.local_tong;
       cached_fb_camps = fbResult.local_camps || {};
+      if (Array.isArray(fbResult.local_fb_errors) && fbResult.local_fb_errors.length > 0) {
+        show_update_toast_notification(`⚠️ Lỗi Facebook Ads: ${fbResult.local_fb_errors[0]}`);
+      }
       ve_noi_dung_dashboard(
         current_start_date,
         current_end_date,
