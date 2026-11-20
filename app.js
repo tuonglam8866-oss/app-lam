@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.283";
+const APP_FRONTEND_VERSION = "8.6.285";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -1993,6 +1993,7 @@ async function dong_bo_ma_sp_tu_nguon_tag() {
 }
 
 let thong_bao_fetch_promise = null;
+let thong_bao_fetch_range_key = "";
 let thong_bao_last_fetch_ms = 0;
 let thong_bao_loaded_start = "";
 let thong_bao_loaded_end = "";
@@ -2012,12 +2013,18 @@ function lui_ngay_ymd(ymdStr, days) {
   return dich_ngay_ymd(ymdStr, -days);
 }
 
-function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd = "") {
+function tai_du_lieu_thong_bao_ngam(
+  force = false,
+  customStart = "",
+  customEnd = "",
+  bypassServerCache = false
+) {
   const todayStr = format_ymd_date(new Date());
   const effStart = customStart || current_start_date || todayStr;
   const effEnd = customEnd || current_end_date || effStart;
   const targetEnd = effEnd;
   const targetStart = lui_ngay_ymd(effStart, 15);
+  const tbRangeKey = `${targetStart}|${targetEnd}`;
 
   const rangeCovered = Boolean(
     thong_bao_loaded_start &&
@@ -2026,11 +2033,17 @@ function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd =
     thong_bao_loaded_end >= targetEnd
   );
 
-  if (thong_bao_fetch_promise && !force && rangeCovered) {
+  // Tránh bắn 2 request gid=0 trùng nhau khi đang tải cùng khoảng ngày
+  if (
+    thong_bao_fetch_promise &&
+    !bypassServerCache &&
+    thong_bao_fetch_range_key === tbRangeKey
+  ) {
     return thong_bao_fetch_promise;
   }
   if (
     !force &&
+    !bypassServerCache &&
     rangeCovered &&
     Array.isArray(data_tong_don_upyo) &&
     data_tong_don_upyo.length > 0 &&
@@ -2040,10 +2053,11 @@ function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd =
   }
 
   const directUrl = build_apps_script_url(
-    `gid=0&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}${force ? "&nocache=1" : ""}`
+    `gid=0&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}${bypassServerCache ? "&nocache=1" : ""}`
   );
   if (!directUrl) return Promise.resolve(data_tong_don_upyo);
 
+  thong_bao_fetch_range_key = tbRangeKey;
   thong_bao_fetch_promise = (async () => {
     try {
       const controller = new AbortController();
@@ -2094,6 +2108,7 @@ function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd =
       return data_tong_don_upyo;
     } finally {
       thong_bao_fetch_promise = null;
+      thong_bao_fetch_range_key = "";
     }
   })();
 
@@ -2102,12 +2117,12 @@ function tai_du_lieu_thong_bao_ngam(force = false, customStart = "", customEnd =
 
 let background_sync_timer = null;
 
-function kich_hoat_tai_nen_sau_bang_chinh(delayMs = 150) {
+function kich_hoat_tai_nen_sau_bang_chinh(delayMs = 150, bypassServerCache = false) {
   if (background_sync_timer) clearTimeout(background_sync_timer);
   background_sync_timer = setTimeout(() => {
     background_sync_timer = null;
     dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
-    tai_du_lieu_thong_bao_ngam(true).catch(() => {});
+    tai_du_lieu_thong_bao_ngam(true, "", "", bypassServerCache).catch(() => {});
     tai_du_lieu_pancake(true).catch(() => {});
   }, delayMs);
 }
@@ -2178,7 +2193,13 @@ function doc_cache_fb_last(start_str, end_str) {
   return null;
 }
 
-async function tai_du_lieu_google_sheets(force = false, customStart = "", customEnd = "", allMode = false) {
+async function tai_du_lieu_google_sheets(
+  force = false,
+  customStart = "",
+  customEnd = "",
+  allMode = false,
+  bypassServerCache = false
+) {
   doc_cau_hinh_tu_storage();
 
   let hasCachedCodes = false;
@@ -2218,9 +2239,11 @@ async function tai_du_lieu_google_sheets(force = false, customStart = "", custom
     return thong_ke_fetch_promise;
   }
 
-  const queryStr = (allMode
-    ? "gid=1227181736&all=1"
-    : `gid=1227181736&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`) + (force ? "&nocache=1" : "");
+  const queryStr =
+    (allMode
+      ? "gid=1227181736&all=1"
+      : `gid=1227181736&start=${encodeURIComponent(targetStart)}&end=${encodeURIComponent(targetEnd)}`) +
+    (bypassServerCache ? "&nocache=1" : "");
   const directUrl = build_apps_script_url(queryStr);
   if (!directUrl) return false;
 
@@ -2256,7 +2279,7 @@ async function tai_du_lieu_google_sheets(force = false, customStart = "", custom
           await dong_bo_ma_sp_tu_nguon_tag().catch(() => {});
         }
         if (!customStart && !allMode) {
-          kich_hoat_tai_nen_sau_bang_chinh(150);
+          kich_hoat_tai_nen_sau_bang_chinh(150, bypassServerCache);
         }
         return true;
       }
@@ -3140,33 +3163,7 @@ function calc_working_call_seconds(dtStart, dtEnd) {
 }
 
 function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
-  let start_date = parse_ymd_date(start_str);
-  let end_date = parse_ymd_date(end_str);
-  if (start_date > end_date) {
-    const tmp = start_date;
-    start_date = end_date;
-    end_date = tmp;
-  }
-
-  const date_patterns = new Set();
-  const curr = new Date(start_date.getTime());
-  while (curr <= end_date) {
-    const y = curr.getFullYear();
-    const m = curr.getMonth() + 1;
-    const d = curr.getDate();
-    const dd = String(d).padStart(2, "0");
-    const mm = String(m).padStart(2, "0");
-
-    date_patterns.add(`${dd}/${mm}/${y}`);
-    date_patterns.add(`${y}-${mm}-${dd}`);
-    date_patterns.add(`${d}/${m}/${y}`);
-    date_patterns.add(`${d}/${mm}/${y}`);
-    date_patterns.add(`${dd}/${m}/${y}`);
-
-    curr.setDate(curr.getDate() + 1);
-  }
-
-  const patternsArr = Array.from(date_patterns);
+  const patternsArr = tao_cac_dang_ngay_khop(start_str, end_str);
 
   let colTg = 0;
   let colMkt = 6;
@@ -7688,7 +7685,11 @@ function run_silent_dashboard_rerender() {
 
 let _syncRequestId = 0;
 
-async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded = false) {
+async function tai_va_cap_nhat_theo_ngay(
+  isAutoRetry = false,
+  skipSheetsIfLoaded = false,
+  bypassServerCache = false
+) {
   const mySyncId = ++_syncRequestId;
   const isStartupSync = _isFirstDashboardSync;
   _isFirstDashboardSync = false;
@@ -7765,7 +7766,11 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
     const buildFbPromise = () =>
       canReuseFb
         ? Promise.resolve(cachedFbEntry.result)
-        : quet_chi_phi_facebook_helper(current_start_date, current_end_date, !skipSheetsIfLoaded).then((res) => {
+        : quet_chi_phi_facebook_helper(
+            current_start_date,
+            current_end_date,
+            bypassServerCache
+          ).then((res) => {
             if (!res.local_fb_errors || res.local_fb_errors.length === 0) {
               fb_range_cache.set(fbCacheKey, { timeMs: Date.now(), result: res });
               luu_cache_fb_last(current_start_date, current_end_date, res);
@@ -7800,10 +7805,14 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
         if (mySyncId !== _syncRequestId) return;
       }
 
-      const sheetsPromise = tai_du_lieu_google_sheets(!skipSheetsIfLoaded);
-      if (!skipSheetsIfLoaded) {
-        tai_du_lieu_thong_bao_ngam(true).catch(() => {});
-      }
+      // Đã bỏ lời gọi trùng tai_du_lieu_thong_bao_ngam(true) tại đây vì tai_du_lieu_google_sheets sẽ tự kích hoạt đúng 1 lần
+      const sheetsPromise = tai_du_lieu_google_sheets(
+        !skipSheetsIfLoaded,
+        "",
+        "",
+        false,
+        bypassServerCache
+      );
       const fbPromise = buildFbPromise();
 
       fbResult = await fbPromise;
@@ -7823,11 +7832,10 @@ async function tai_va_cap_nhat_theo_ngay(isAutoRetry = false, skipSheetsIfLoaded
       run_silent_dashboard_rerender();
     } else {
       const fbPromise = buildFbPromise();
-      if (!skipSheetsIfLoaded) {
-        tai_du_lieu_thong_bao_ngam(true).catch(() => {});
-      }
       [gsResult, fbResult] = await Promise.all([
-        canReuseSheets ? Promise.resolve(true) : tai_du_lieu_google_sheets(!skipSheetsIfLoaded),
+        canReuseSheets
+          ? Promise.resolve(true)
+          : tai_du_lieu_google_sheets(!skipSheetsIfLoaded, "", "", false, bypassServerCache),
         fbPromise,
       ]);
       if (mySyncId !== _syncRequestId) return;
@@ -8650,7 +8658,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document
     .getElementById("btnRefresh")
-    ?.addEventListener("click", () => tai_va_cap_nhat_theo_ngay(false, false));
+    ?.addEventListener("click", () => tai_va_cap_nhat_theo_ngay(false, false, true));
 
   const btnSettings = document.getElementById("btnSettings");
   btnSettings?.addEventListener("click", (e) => {
