@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.292";
+const APP_FRONTEND_VERSION = "8.6.293";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -2442,96 +2442,129 @@ async function quet_chi_phi_facebook_helper(start_str, end_str, force = false) {
   const rawFbSpends = [];
   const fbErrors = [];
 
-  await Promise.all(
-    uniqueAccounts.map(async (actId) => {
-      const baseInsightsUrl = build_apps_script_url(
-        `fb_act=${encodeURIComponent(actId)}&time_range=${encodeURIComponent(time_range)}${force ? "&nocache=1" : ""}`
-      );
-      if (!baseInsightsUrl) return;
+  const pushFbItems = (actId, dataArr) => {
+    const data = Array.isArray(dataArr) ? dataArr : [];
+    for (const item of data) {
+      const camp_id = String(item.campaign_id || "").trim();
+      const camp_name = String(item.campaign_name || "").trim();
+      const spend = parseFloat(item.spend || 0.0) || 0.0;
+      if (!spend || spend <= 0) continue;
 
-      let url = baseInsightsUrl;
+      const impressions = parseFloat(item.impressions || 0.0) || 0.0;
+      const hasLinkClicks = item.inline_link_clicks !== undefined && item.inline_link_clicks !== null;
+      const link_clicks = hasLinkClicks
+        ? parseFloat(item.inline_link_clicks || 0.0) || 0.0
+        : parseFloat(item.clicks || 0.0) || 0.0;
+      const cpm = parseFloat(item.cpm || 0.0) || (impressions > 0 ? (spend / impressions) * 1000 : 0.0);
+      const hasLinkCtr = item.inline_link_click_ctr !== undefined && item.inline_link_click_ctr !== null;
+      const ctr = hasLinkCtr
+        ? parseFloat(item.inline_link_click_ctr || 0.0) || 0.0
+        : parseFloat(item.ctr || 0.0) || (impressions > 0 ? (link_clicks / impressions) * 100 : 0.0);
+      const hasLinkCpc = item.cost_per_inline_link_click !== undefined && item.cost_per_inline_link_click !== null;
+      const cpc = hasLinkCpc
+        ? parseFloat(item.cost_per_inline_link_click || 0.0) || 0.0
+        : parseFloat(item.cpc || 0.0) || (link_clicks > 0 ? spend / link_clicks : 0.0);
+      const daily_budget = parseFloat(item.daily_budget || 0.0) || 0.0;
+      const lifetime_budget = parseFloat(item.lifetime_budget || 0.0) || 0.0;
+      const budget_type = String(item.budget_type || "").trim();
+      const effective_status = String(item.effective_status || "").trim();
 
-      while (url) {
-        let res = null;
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 25000);
-          try {
-            const response = await fetch(url, { signal: controller.signal });
-            clearTimeout(timer);
-            if (!response.ok) throw new Error("HTTP " + response.status);
-            res = await response.json();
-            break;
-          } catch (e) {
-            clearTimeout(timer);
-            res = null;
-            if (attempt === 0) {
-              await new Promise((r) => setTimeout(r, 700));
-            }
-          }
-        }
+      rawFbSpends.push({
+        actId,
+        camp_id,
+        camp_name,
+        spend,
+        impressions,
+        link_clicks,
+        cpm,
+        ctr,
+        cpc,
+        daily_budget,
+        lifetime_budget,
+        budget_type,
+        effective_status,
+      });
+    }
+  };
 
-        if (!res) {
-          break;
-        }
-        if (res.fb_error || res.error) {
-          const errObj = res.fb_error || res.error;
+  // 1. Ưu tiên gọi gộp 1 request duy nhất (?fb_acts=...) để giảm từ 6 luồng Apps Script xuống 1 luồng
+  let batchSucceeded = false;
+  const batchUrl = build_apps_script_url(
+    `fb_acts=${encodeURIComponent(uniqueAccounts.join(","))}&time_range=${encodeURIComponent(time_range)}${force ? "&nocache=1" : ""}`
+  );
+  if (batchUrl) {
+    let batchRes = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 35000);
+      try {
+        const response = await fetch(batchUrl, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        batchRes = await response.json();
+        break;
+      } catch (e) {
+        clearTimeout(timer);
+        batchRes = null;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 700));
+      }
+    }
+    if (batchRes && batchRes.accounts && typeof batchRes.accounts === "object") {
+      batchSucceeded = true;
+      for (const actId of uniqueAccounts) {
+        const accRes = batchRes.accounts[actId];
+        if (!accRes) continue;
+        if (accRes.fb_error || accRes.error) {
+          const errObj = accRes.fb_error || accRes.error;
           const errMsg = (errObj && errObj.message) ? String(errObj.message) : String(errObj);
           if (errMsg) fbErrors.push(errMsg);
-          break;
+          continue;
         }
-
-        const data = Array.isArray(res.data) ? res.data : [];
-        for (const item of data) {
-          const camp_id = String(item.campaign_id || "").trim();
-          const camp_name = String(item.campaign_name || "").trim();
-          const spend = parseFloat(item.spend || 0.0) || 0.0;
-          if (!spend || spend <= 0) continue;
-
-          const impressions = parseFloat(item.impressions || 0.0) || 0.0;
-          const hasLinkClicks = item.inline_link_clicks !== undefined && item.inline_link_clicks !== null;
-          const link_clicks = hasLinkClicks
-            ? parseFloat(item.inline_link_clicks || 0.0) || 0.0
-            : parseFloat(item.clicks || 0.0) || 0.0;
-          const cpm = parseFloat(item.cpm || 0.0) || (impressions > 0 ? (spend / impressions) * 1000 : 0.0);
-          const hasLinkCtr = item.inline_link_click_ctr !== undefined && item.inline_link_click_ctr !== null;
-          const ctr = hasLinkCtr
-            ? parseFloat(item.inline_link_click_ctr || 0.0) || 0.0
-            : parseFloat(item.ctr || 0.0) || (impressions > 0 ? (link_clicks / impressions) * 100 : 0.0);
-          const hasLinkCpc = item.cost_per_inline_link_click !== undefined && item.cost_per_inline_link_click !== null;
-          const cpc = hasLinkCpc
-            ? parseFloat(item.cost_per_inline_link_click || 0.0) || 0.0
-            : parseFloat(item.cpc || 0.0) || (link_clicks > 0 ? spend / link_clicks : 0.0);
-          const daily_budget = parseFloat(item.daily_budget || 0.0) || 0.0;
-          const lifetime_budget = parseFloat(item.lifetime_budget || 0.0) || 0.0;
-          const budget_type = String(item.budget_type || "").trim();
-          const effective_status = String(item.effective_status || "").trim();
-
-          rawFbSpends.push({
-            actId,
-            camp_id,
-            camp_name,
-            spend,
-            impressions,
-            link_clicks,
-            cpm,
-            ctr,
-            cpc,
-            daily_budget,
-            lifetime_budget,
-            budget_type,
-            effective_status,
-          });
-        }
-
-        if (res.paging && res.paging.next) {
-          url = res.paging.next;
-        } else {
-          url = null;
-        }
+        pushFbItems(actId, accRes.data);
       }
-    })
-  );
+    }
+  }
+
+  // 2. Tự động dự phòng cách gọi lẻ từng tài khoản nếu Apps Script chưa bấm triển khai bản mới
+  if (!batchSucceeded) {
+    await Promise.all(
+      uniqueAccounts.map(async (actId) => {
+        const baseInsightsUrl = build_apps_script_url(
+          `fb_act=${encodeURIComponent(actId)}&time_range=${encodeURIComponent(time_range)}${force ? "&nocache=1" : ""}`
+        );
+        if (!baseInsightsUrl) return;
+
+        let url = baseInsightsUrl;
+        while (url) {
+          let res = null;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 25000);
+            try {
+              const response = await fetch(url, { signal: controller.signal });
+              clearTimeout(timer);
+              if (!response.ok) throw new Error("HTTP " + response.status);
+              res = await response.json();
+              break;
+            } catch (e) {
+              clearTimeout(timer);
+              res = null;
+              if (attempt === 0) await new Promise((r) => setTimeout(r, 700));
+            }
+          }
+          if (!res) break;
+          if (res.fb_error || res.error) {
+            const errObj = res.fb_error || res.error;
+            const errMsg = (errObj && errObj.message) ? String(errObj.message) : String(errObj);
+            if (errMsg) fbErrors.push(errMsg);
+            break;
+          }
+          pushFbItems(actId, res.data);
+          url = (res.paging && res.paging.next) ? res.paging.next : null;
+        }
+      })
+    );
+  }
 
   for (const item of rawFbSpends) {
     const {
