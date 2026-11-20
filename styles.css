@@ -3208,7 +3208,7 @@ input::-ms-clear {
   color: var(--choco-muted);
 }
 
-/* Card hover hint */
+/* Card hover hint (chỉ sáng nút Chi tiết đơn khi di chuột đúng vào nút hoặc vùng số đơn) */
 .card-view-orders-hint {
   font-size: 11px;
   font-weight: 700;
@@ -3217,11 +3217,6 @@ input::-ms-clear {
   padding: 2px 8px;
   border-radius: 999px;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
-}
-
-.cozy-card:hover .card-view-orders-hint {
-  background: rgba(180, 83, 9, 0.15);
-  color: #B45309;
 }
 
 /* Dark mode theme support */
@@ -3321,11 +3316,6 @@ input::-ms-clear {
   color: #B8A08C;
 }
 
-[data-theme="dark"] .cozy-card:hover .card-view-orders-hint {
-  background: rgba(245, 176, 65, 0.18);
-  color: #F5B041;
-}
-
 /* Nút xem chi tiết đơn trên thẻ MKT */
 .card-view-orders-hint.clickable-hint {
   cursor: pointer;
@@ -3339,10 +3329,11 @@ input::-ms-clear {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   user-select: none;
 }
-.card-view-orders-hint.clickable-hint:hover {
+.card-view-orders-hint.clickable-hint:hover,
+.cozy-card:has(.card-count-group[class*="js-"]:hover) .card-view-orders-hint.clickable-hint {
   background: #B45309;
   color: #FFFFFF !important;
   border-color: #B45309;
@@ -3354,13 +3345,29 @@ input::-ms-clear {
   color: #F5B041;
   border-color: rgba(245, 176, 65, 0.3);
 }
-[data-theme="dark"] .card-view-orders-hint.clickable-hint:hover {
+[data-theme="dark"] .card-view-orders-hint.clickable-hint:hover,
+[data-theme="dark"] .cozy-card:has(.card-count-group[class*="js-"]:hover) .card-view-orders-hint.clickable-hint {
   background: #F5B041;
   color: #1A120B !important;
   border-color: #F5B041;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(245, 176, 65, 0.28);
 }
 
-/* Pill xem Camp trên thẻ MKT / SP */
+.card-count-group[class*="js-"] {
+  padding: 2px 8px;
+  margin: -2px -8px;
+  border-radius: 10px;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-count-group[class*="js-"]:hover {
+  background: rgba(180, 83, 9, 0.09);
+}
+[data-theme="dark"] .card-count-group[class*="js-"]:hover {
+  background: rgba(245, 176, 65, 0.14);
+}
+
+/* Pill xem Camp trên thẻ MKT / SP / Tổng công ty */
 .card-camp-hint.clickable-hint {
   cursor: pointer;
   display: inline-flex;
@@ -3374,10 +3381,11 @@ input::-ms-clear {
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
 }
-.card-camp-hint.clickable-hint:hover {
+.card-camp-hint.clickable-hint:hover,
+.cozy-card.camp-primary-card:hover:not(:has(.card-view-orders-hint:hover, .card-count-group[class*="js-"]:hover)) .card-camp-hint.clickable-hint {
   background: #059669;
   color: #FFFFFF !important;
   border-color: #059669;
@@ -3389,10 +3397,13 @@ input::-ms-clear {
   color: #34D399;
   border-color: rgba(52, 211, 153, 0.32);
 }
-[data-theme="dark"] .card-camp-hint.clickable-hint:hover {
+[data-theme="dark"] .card-camp-hint.clickable-hint:hover,
+[data-theme="dark"] .cozy-card.camp-primary-card:hover:not(:has(.card-view-orders-hint:hover, .card-count-group[class*="js-"]:hover)) .card-camp-hint.clickable-hint {
   background: #10B981;
   color: #0B1410 !important;
   border-color: #10B981;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.28);
 }
 
 /* Nút xem tất cả đơn dạng pill trên thanh tiêu đề chi tiết MKT */
