@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.289";
+const APP_FRONTEND_VERSION = "8.6.292";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -6196,6 +6196,30 @@ function render_camp_customers_modal() {
   }
 }
 
+function chuan_hoa_ten_camp_khop(raw, compactDash = false) {
+  const clean = bo_dau_tieng_viet(String(raw || "").trim())
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean) return "";
+  return compactDash ? clean.replace(/\s*-\s*/g, "-") : clean;
+}
+
+function extract_utm_campaign_name_from_url(linkRaw) {
+  const s = String(linkRaw || "");
+  if (!s) return "";
+  const m = s.match(/(?:utm_campaign|utm_id)=([^&#\s]+)/i);
+  if (!m || !m[1]) return "";
+  let val = m[1].replace(/\+/g, " ");
+  try {
+    val = decodeURIComponent(val);
+  } catch (e) {}
+  val = val.trim();
+  // Bỏ qua chuỗi thuần số (đã xử lý ở extract_utm_campaign_from_url) hoặc placeholder chưa thay {{...}}
+  if (!val || /^\d+$/.test(val) || /\{\{[^}]+\}\}/.test(val)) return "";
+  return val;
+}
+
 function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, spFilter = "") {
   const countsByCampId = {};
   const closedByCampId = {};
@@ -6229,6 +6253,7 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
   let colSp = 7;
   let colSize = 10;
   let colLink = 12;
+  let colNguon = 13;  // Cột N: Nguồn (Tên Camp)
   let colMaQc = 15;   // Cột P: Mã QC
   let colCampId = 16; // Cột Q: Campaign ID
   let colNoteU = 20;
@@ -6252,6 +6277,7 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
       else if (h === "dong sp" || h === "san pham" || h === "ten sp") colSp = i;
       else if (h === "size") colSize = i;
       else if (h === "link landing") colLink = i;
+      else if (h === "nguon" || h === "nguon don") colNguon = i;
       else if (h === "ma qc") colMaQc = i;
       else if (h === "campaign id") colCampId = i;
       else if (h === "ghi chu sale") colNoteU = i;
@@ -6261,13 +6287,21 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
     }
   }
 
-  // Xây dựng bảng tra cứu nhanh các Camp của MKT đang xem
+  // Xây dựng bảng tra cứu nhanh các Camp của MKT đang xem (theo ID số và theo Tên Camp ở cột Nguồn)
   const exactMap = new Map();
   const prefix14Map = new Map();
   const prefix11List = [];
+  const nameExactMap = new Map();
+  const nameCompactMap = new Map();
+  const pushNameEntry = (mapObj, key, entry) => {
+    if (!key) return;
+    if (!mapObj.has(key)) mapObj.set(key, []);
+    mapObj.get(key).push(entry);
+  };
   for (const c of campsList || []) {
     const cid = chuan_hoa_id_camp_digits(c.campaign_id);
     if (!cid) continue;
+    const ownerMktNorm = c._ownerMkt ? chuan_hoa_mkt_so_sanh(c._ownerMkt) : "";
     if (!exactMap.has(cid)) exactMap.set(cid, cid);
     if (cid.length >= 14) {
       const p14 = cid.slice(0, 14);
@@ -6277,10 +6311,78 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
       prefix11List.push({
         p11: cid.slice(0, 11),
         cid,
-        ownerMktNorm: c._ownerMkt ? chuan_hoa_mkt_so_sanh(c._ownerMkt) : "",
+        ownerMktNorm,
       });
     }
+    const nameEntry = {
+      cid,
+      ownerMktNorm,
+      isPaused: is_fb_camp_paused(c) ? 1 : 0,
+      spend: Number(c.spend || 0) || 0,
+    };
+    pushNameEntry(nameExactMap, chuan_hoa_ten_camp_khop(c.campaign_name, false), nameEntry);
+    pushNameEntry(nameCompactMap, chuan_hoa_ten_camp_khop(c.campaign_name, true), nameEntry);
   }
+  const sortNameEntries = (arr) => arr.sort((a, b) => (a.isPaused - b.isPaused) || (b.spend - a.spend));
+  nameExactMap.forEach(sortNameEntries);
+  nameCompactMap.forEach(sortNameEntries);
+
+  const resolveMatchedCampFromRow = (r) => {
+    const idQ = r.length > colCampId ? chuan_hoa_id_camp_digits(r[colCampId]) : "";
+    const idP = r.length > colMaQc ? chuan_hoa_id_camp_digits(r[colMaQc]) : "";
+    const urlCamp = r.length > colLink ? extract_utm_campaign_from_url(r[colLink]) : "";
+    const rowMktNorm = r.length > colMkt ? chuan_hoa_mkt_so_sanh(r[colMkt]) : "";
+
+    const candidates = [idQ, idP, urlCamp].filter(Boolean);
+    let matchedCid = "";
+    for (const cand of candidates) {
+      if (exactMap.has(cand)) {
+        matchedCid = exactMap.get(cand);
+        break;
+      }
+    }
+    if (!matchedCid) {
+      for (const cand of candidates) {
+        if (cand.length >= 14 && prefix14Map.has(cand.slice(0, 14))) {
+          matchedCid = prefix14Map.get(cand.slice(0, 14));
+          break;
+        }
+      }
+    }
+    if (!matchedCid && rowMktNorm && (isAllMkt || rowMktNorm === targetMktNorm)) {
+      for (const cand of candidates) {
+        if (cand.length >= 11) {
+          const c11 = cand.slice(0, 11);
+          const hit = prefix11List.find((x) => x.p11 === c11 && (!isAllMkt || !x.ownerMktNorm || x.ownerMktNorm === rowMktNorm));
+          if (hit) {
+            matchedCid = hit.cid;
+            break;
+          }
+        }
+      }
+    }
+
+    // 4. Dự phòng khớp theo Tên Camp ở cột N (Nguồn) hoặc utm_campaign=<tên> khi thiếu ID số
+    if (!matchedCid && (!rowMktNorm || isAllMkt || rowMktNorm === targetMktNorm)) {
+      const nguonRaw = r.length > colNguon ? String(r[colNguon] || "").trim() : "";
+      const urlNameRaw = r.length > colLink ? extract_utm_campaign_name_from_url(r[colLink]) : "";
+      const nameCandidates = [nguonRaw, urlNameRaw].filter(Boolean);
+      for (const rawName of nameCandidates) {
+        const kExact = chuan_hoa_ten_camp_khop(rawName, false);
+        const kCompact = chuan_hoa_ten_camp_khop(rawName, true);
+        const pool = (kExact && nameExactMap.get(kExact)) || (kCompact && nameCompactMap.get(kCompact)) || null;
+        if (pool && pool.length > 0) {
+          const hit = pool.find((x) => !isAllMkt || !x.ownerMktNorm || !rowMktNorm || x.ownerMktNorm === rowMktNorm);
+          if (hit) {
+            matchedCid = hit.cid;
+            break;
+          }
+        }
+      }
+    }
+
+    return { matchedCid, hasIdData: Boolean(idQ || idP || urlCamp || matchedCid) };
+  };
 
   let hasAnyCampColData = false;
   let totalMatchedOrders = 0;
@@ -6291,6 +6393,7 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
     if (!Array.isArray(r) || r.length === 0) continue;
 
     const tg = String(r[colTg] || "").trim();
+    const rowResolved = resolveMatchedCampFromRow(r);
     const sdtRawPre = String(r[colSdt] || "").trim();
     const sdtNormPre = chuan_hoa_sdt_so_sanh(sdtRawPre);
     const r0YmdPre = tach_ngay_ymd_tu_chuoi(tg);
@@ -6299,7 +6402,8 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
       const noteVPre = (r.length > colNoteV ? String(r[colNoteV] || "") : "").toLowerCase();
       const isDupPre = noteUPre.includes("capture form") || noteVPre.includes("capture form") || noteUPre.includes("trùng") || noteVPre.includes("trùng");
       const demPre = r.length > colDemDon ? String(r[colDemDon] || "").trim() === "0" : false;
-      const cidPre = (r.length > colCampId ? chuan_hoa_id_camp_digits(r[colCampId]) : "") ||
+      const cidPre = rowResolved.matchedCid ||
+        (r.length > colCampId ? chuan_hoa_id_camp_digits(r[colCampId]) : "") ||
         (r.length > colMaQc ? chuan_hoa_id_camp_digits(r[colMaQc]) : "") ||
         (r.length > colLink ? extract_utm_campaign_from_url(r[colLink]) : "");
       if (!r0PhoneHistory.has(sdtNormPre)) r0PhoneHistory.set(sdtNormPre, []);
@@ -6334,50 +6438,8 @@ function tinh_ket_qua_camp_tu_tong_don(ten_mkt, campsList, start_str, end_str, s
       if (demStr === "0") continue;
     }
 
-    const idQ = r.length > colCampId ? chuan_hoa_id_camp_digits(r[colCampId]) : "";
-    const idP = r.length > colMaQc ? chuan_hoa_id_camp_digits(r[colMaQc]) : "";
-    const urlCamp = r.length > colLink ? extract_utm_campaign_from_url(r[colLink]) : "";
-
-    if (idQ || idP || urlCamp) hasAnyCampColData = true;
-
-    const candidates = [idQ, idP, urlCamp].filter(Boolean);
-    if (candidates.length === 0) continue;
-
-    // 1. Ưu tiên khớp chính xác hoàn toàn
-    let matchedCid = "";
-    for (const cand of candidates) {
-      if (exactMap.has(cand)) {
-        matchedCid = exactMap.get(cand);
-        break;
-      }
-    }
-
-    // 2. Dự phòng khớp 14 chữ số đầu (nếu Google Sheet làm tròn 18 số)
-    if (!matchedCid) {
-      for (const cand of candidates) {
-        if (cand.length >= 14 && prefix14Map.has(cand.slice(0, 14))) {
-          matchedCid = prefix14Map.get(cand.slice(0, 14));
-          break;
-        }
-      }
-    }
-
-    // 3. Dự phòng khớp 11 chữ số đầu cùng MKT (nếu Ladipage đổ Adset ID vào Cột Q)
-    if (!matchedCid) {
-      const rowMktNorm = chuan_hoa_mkt_so_sanh(r[colMkt]);
-      if (rowMktNorm && (isAllMkt || rowMktNorm === targetMktNorm)) {
-        for (const cand of candidates) {
-          if (cand.length >= 11) {
-            const c11 = cand.slice(0, 11);
-            const hit = prefix11List.find((x) => x.p11 === c11 && (!isAllMkt || !x.ownerMktNorm || x.ownerMktNorm === rowMktNorm));
-            if (hit) {
-              matchedCid = hit.cid;
-              break;
-            }
-          }
-        }
-      }
-    }
+    if (rowResolved.hasIdData) hasAnyCampColData = true;
+    const matchedCid = rowResolved.matchedCid;
 
     if (matchedCid) {
       countsByCampId[matchedCid] = (countsByCampId[matchedCid] || 0) + 1;
@@ -6700,6 +6762,11 @@ function build_card_camp_pill_html(ten_mkt, spFilter = "") {
   return `<span class="card-camp-hint clickable-hint js-btn-view-card-camps" title="${escape_html(title)}">📢 ${campCount} Camp</span>`;
 }
 
+function is_fb_camp_paused(camp) {
+  const eff = String((camp && camp.effective_status) || "").trim().toUpperCase();
+  return Boolean(eff && eff !== "ACTIVE");
+}
+
 function render_mc_table_rows() {
   const ten_mkt = current_mc_mkt;
   if (!ten_mkt) return;
@@ -6749,20 +6816,29 @@ function render_mc_table_rows() {
     const spL = String(c.sp || "").toLowerCase();
     const ownerL = String(c._ownerMkt || "").toLowerCase();
     const ownerNd = ownerL ? bo_dau_tieng_viet(ownerL).toLowerCase() : "";
+    const statusL = is_fb_camp_paused(c) ? "đang tắt" : "đang bật";
+    const statusNd = bo_dau_tieng_viet(statusL).toLowerCase();
     return (
       nameL.includes(qRaw) ||
       nameNd.includes(qNoDau) ||
       idL.includes(qRaw) ||
       spL.includes(qRaw) ||
+      statusL.includes(qRaw) ||
+      statusNd.includes(qNoDau) ||
       (ownerL && (ownerL.includes(qRaw) || ownerNd.includes(qNoDau)))
     );
   });
 
+  // Ưu tiên Camp Đang bật & tiêu nhiều ở trên, Đang tắt & tiêu ít ở dưới
   filtered.sort((a, b) => {
-    const resA = countsByCampId[a.campaign_id] || 0;
-    const resB = countsByCampId[b.campaign_id] || 0;
-    if (resB !== resA) return resB - resA;
-    return (b.spend || 0) - (a.spend || 0);
+    const pausedA = is_fb_camp_paused(a) ? 1 : 0;
+    const pausedB = is_fb_camp_paused(b) ? 1 : 0;
+    if (pausedA !== pausedB) return pausedA - pausedB;
+    const spendDiff = (b.spend || 0) - (a.spend || 0);
+    if (Math.abs(spendDiff) > 0.001) return spendDiff;
+    const resDiff = (countsByCampId[b.campaign_id] || 0) - (countsByCampId[a.campaign_id] || 0);
+    if (resDiff !== 0) return resDiff;
+    return String(a.campaign_name || "").localeCompare(String(b.campaign_name || ""), "vi");
   });
 
   const mcMktBadge = document.getElementById("mcMktBadge");
@@ -6790,13 +6866,17 @@ function render_mc_table_rows() {
 
   let totalActiveDailyBudget = 0;
   let activeDailyCount = 0;
+  let activeCampCount = 0;
+  let pausedCampCount = 0;
   let totalAllDailyBudget = 0;
   let allDailyCount = 0;
   let hasAnyBudgetData = false;
   for (const c of filtered) {
     const dailyB = parseFloat(c.daily_budget || 0) || 0;
     const lifeB = parseFloat(c.lifetime_budget || 0) || 0;
-    const isPaused = Boolean(c.effective_status && c.effective_status !== "ACTIVE");
+    const isPaused = is_fb_camp_paused(c);
+    if (isPaused) pausedCampCount += 1;
+    else activeCampCount += 1;
     if (dailyB > 0) {
       hasAnyBudgetData = true;
       allDailyCount += 1;
@@ -6909,8 +6989,9 @@ function render_mc_table_rows() {
 
   const frag = document.createDocumentFragment();
   filtered.forEach((c, idx) => {
+    const isPaused = is_fb_camp_paused(c);
     const tr = document.createElement("tr");
-    tr.className = "mc-row-clickable";
+    tr.className = isPaused ? "mc-row-clickable is-paused" : "mc-row-clickable";
     tr.dataset.campId = c.campaign_id || "";
     tr.title = "Bấm để xem danh sách khách hàng đã đặt từ Camp này";
     const kq = countsByCampId[c.campaign_id] || 0;
@@ -6936,7 +7017,6 @@ function render_mc_table_rows() {
 
     const dailyB = parseFloat(c.daily_budget || 0) || 0;
     const lifeB = parseFloat(c.lifetime_budget || 0) || 0;
-    const isPaused = Boolean(c.effective_status && c.effective_status !== "ACTIVE");
     let budgetCellHtml = `<span class="mc-metric-val">-</span>`;
     if (dailyB > 0) {
       const subLabel = isPaused
@@ -6958,6 +7038,10 @@ function render_mc_table_rows() {
       `;
     }
 
+    const statusBadgeHtml = isPaused
+      ? `<span class="mc-status-pill is-paused"><span class="mc-status-dot"></span>Đang tắt</span>`
+      : `<span class="mc-status-pill is-active"><span class="mc-status-dot"></span>Đang bật</span>`;
+
     tr.innerHTML = `
       <td class="mc-col-stt"><span class="mc-stt-badge">${idx + 1}</span></td>
       <td class="mc-col-name">
@@ -6969,6 +7053,7 @@ function render_mc_table_rows() {
           <span class="mc-camp-open-hint">Xem khách →</span>
         </div>
       </td>
+      <td class="mc-col-status">${statusBadgeHtml}</td>
       <td class="mc-col-result">
         <div class="mc-result-wrap">
           <span class="mc-result-pill ${kq === 0 ? "is-zero" : ""}">${kq}</span>
@@ -7025,11 +7110,19 @@ function render_mc_table_rows() {
         })()
       : `<span class="mc-metric-val">-</span>`;
 
+    const footStatusHtml = `
+      <div class="mc-foot-status-wrap">
+        <span class="mc-foot-status-on">${activeCampCount} bật</span>
+        ${pausedCampCount > 0 ? `<span class="mc-foot-status-off">${pausedCampCount} tắt</span>` : ""}
+      </div>
+    `;
+
     const footTr = document.createElement("tr");
     footTr.className = "mc-foot-row";
     footTr.innerHTML = `
       <td class="mc-col-stt">Σ</td>
       <td class="mc-col-name">TỔNG CỘNG (${filtered.length} Camp)</td>
+      <td class="mc-col-status">${footStatusHtml}</td>
       <td class="mc-col-result">
         <div class="mc-result-wrap">
           <span class="mc-result-pill ${totalResults === 0 ? "is-zero" : ""}">${totalResults}</span>
