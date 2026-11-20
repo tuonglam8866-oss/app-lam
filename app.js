@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.288";
+const APP_FRONTEND_VERSION = "8.6.289";
 let last_notified_update_version = (function () {
   try {
     return (
@@ -201,7 +201,7 @@ function parse_pancake_utc_to_vn(isoStr) {
   };
 }
 
-const PANCAKE_CONV_CACHE_IDB_KEY = "pancake_conv_map_v3";
+const PANCAKE_CONV_CACHE_IDB_KEY = "pancake_conv_map_v4";
 
 function get_pancake_phone_info(conv, msgs = null, msgJson = null) {
   const valid = [];
@@ -518,27 +518,27 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg, msgJson = null) {
     ...(Array.isArray(conv && conv.customers) ? conv.customers : []),
     ...(Array.isArray(msgJson && msgJson.customers) ? msgJson.customers : []),
   ];
-  const hasCustomerOrder = allCustomers.some((c) => {
+  const hasPriorCompletedOrder = allCustomers.some((c) =>
+    c && (Number(c.succeed_order_count || 0) > 0 || Number(c.purchased_amount || 0) > 0 || Boolean(c.last_order_at))
+  );
+  const hasPendingFirstOrder = allCustomers.some((c) => {
     if (!c) return false;
     const ordCnt = Number(c.order_count || 0);
+    const succCnt = Number(c.succeed_order_count || 0);
     const hasLinkedOrd = Array.isArray(c.recent_phone_numbers) && c.recent_phone_numbers.some((p) => p && p.order_id);
-    if (ordCnt <= 0 && !hasLinkedOrd) return false;
-    if (c.last_order_at) {
-      const lastOrdInfo = parse_pancake_utc_to_vn(c.last_order_at);
-      if (lastOrdInfo.timeMs && lastOrdInfo.timeMs < cutoffMs && Number(c.succeed_order_count || 0) >= ordCnt) {
-        return false;
-      }
-    }
-    return true;
+    // Chỉ coi là đơn Mới/Nháp POS khi khách chưa từng có đơn hoàn thành trước đó (tránh báo giả khách cũ chat CSKH/đổi size)
+    if (succCnt > 0 || Number(c.purchased_amount || 0) > 0 || c.last_order_at) return false;
+    return ordCnt > 0 || hasLinkedOrd;
   });
   const hasRecentOrdersArr = Array.isArray(msgJson && msgJson.recent_orders) && msgJson.recent_orders.length > 0;
   const hasPurchaseSignal =
     !isCancelledTag &&
+    !hasPriorCompletedOrder &&
     (
       convTags.some((tg) => tg.includes("MUA HANG") || tg.includes("HOA TOC")) ||
       Number((conv && conv.order_count) || 0) > 0 ||
       Boolean(conv && conv.has_order) ||
-      hasCustomerOrder ||
+      hasPendingFirstOrder ||
       hasRecentOrdersArr
     );
   const fallbackTimeInfo = latestActInfo || parse_pancake_utc_to_vn(conv && conv.updated_at);
@@ -4892,9 +4892,11 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
     if (!thYmd || !pkYmd) return null;
     return (parse_ymd_date(thYmd).getTime() - parse_ymd_date(pkYmd).getTime()) / 86400000;
   };
-  const isMatchedWindow = (thYmd, pkYmd) => {
+  const isMatchedWindow = (thYmd, pkYmd, isDraft = false) => {
     const signed = getSignedDays(thYmd, pkYmd);
-    return signed === null || (signed >= -2 && signed <= 14);
+    if (signed === null) return true;
+    const minDays = isDraft ? -30 : -2;
+    return signed >= minDays && signed <= 14;
   };
 
   const results = [];
@@ -4915,7 +4917,7 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
       for (const ph of pk.phones) {
         const listForPh = thBySdt.get(ph) || [];
         for (const o of listForPh) {
-          if (isMatchedWindow(parse_order_ymd(o), pk.ymd)) {
+          if (isMatchedWindow(parse_order_ymd(o), pk.ymd, Boolean(pk.isDraftTagOrder))) {
             matchedMap.set(o.row_num, o);
           }
         }
