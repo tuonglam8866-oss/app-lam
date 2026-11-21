@@ -2,7 +2,14 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.294";
+const APP_FRONTEND_VERSION = "8.6.295";
+const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
+
+function clamp_min_data_date(ymdStr) {
+  const s = String(ymdStr || "").trim();
+  if (!s) return APP_DATA_MIN_DATE;
+  return s < APP_DATA_MIN_DATE ? APP_DATA_MIN_DATE : s;
+}
 let last_notified_update_version = (function () {
   try {
     return (
@@ -631,7 +638,7 @@ async function tai_du_lieu_pancake(force = false) {
 
     let hasNewConvCached = false;
     const allOrders = [];
-    const cutoffMs = now + 7 * 3600 * 1000 - 14 * 86400 * 1000;
+    const cutoffMs = Math.max(now + 7 * 3600 * 1000 - 14 * 86400 * 1000, Date.UTC(2026, 10, 1));
 
     await ensure_pancake_pages_cfg();
     if (!PANCAKE_PAGES || PANCAKE_PAGES.length === 0) {
@@ -2144,8 +2151,8 @@ function tai_du_lieu_thong_bao_ngam(
   const todayStr = format_ymd_date(new Date());
   const effStart = customStart || current_start_date || todayStr;
   const effEnd = customEnd || current_end_date || effStart;
-  const targetEnd = effEnd;
-  const targetStart = lui_ngay_ymd(effStart, 15);
+  const targetEnd = clamp_min_data_date(effEnd);
+  const targetStart = clamp_min_data_date(lui_ngay_ymd(effStart, 15));
   const tbRangeKey = `${targetStart}|${targetEnd}`;
 
   const rangeCovered = Boolean(
@@ -2352,7 +2359,7 @@ async function tai_du_lieu_google_sheets(
       };
     }
     data_hien_tai = _full_tk_cache.rows;
-    thong_ke_loaded_start = "2000-01-01";
+    thong_ke_loaded_start = APP_DATA_MIN_DATE;
     thong_ke_loaded_end = "2099-12-31";
     thong_ke_is_full = true;
     rebuild_cust_first_mkt_index();
@@ -2365,11 +2372,11 @@ async function tai_du_lieu_google_sheets(
   const todayStr = format_ymd_date(new Date());
   const effStart = customStart || current_start_date || todayStr;
   const effEnd = customEnd || current_end_date || effStart;
-  const targetStart = allMode ? "2000-01-01" : dich_ngay_ymd(effStart, -35);
+  const targetStart = allMode ? APP_DATA_MIN_DATE : clamp_min_data_date(dich_ngay_ymd(effStart, -35));
   const plus3 = dich_ngay_ymd(effEnd, 3);
   const targetEnd = allMode
     ? "2099-12-31"
-    : (effEnd <= todayStr && plus3 > todayStr ? todayStr : plus3);
+    : clamp_min_data_date(effEnd <= todayStr && plus3 > todayStr ? todayStr : plus3);
   const rangeKey = allMode ? "ALL" : `${targetStart}|${targetEnd}`;
 
   const rangeCovered = Boolean(
@@ -2472,7 +2479,14 @@ async function quet_chi_phi_facebook_helper(start_str, end_str, force = false) {
     local_camps[m.ten] = [];
   }
 
-  const time_range = JSON.stringify({ since: start_str, until: end_str });
+  const rawFbSpends = [];
+  const fbErrors = [];
+
+  if (!end_str || end_str < APP_DATA_MIN_DATE) {
+    return { local_chi_tiet, local_tong, local_camps, local_fb_errors: fbErrors };
+  }
+  const effFbStart = clamp_min_data_date(start_str);
+  const time_range = JSON.stringify({ since: effFbStart, until: end_str });
 
   const uniqueAccounts = [];
   const seenActs = new Set();
@@ -2482,9 +2496,6 @@ async function quet_chi_phi_facebook_helper(start_str, end_str, force = false) {
       uniqueAccounts.push(m.id);
     }
   }
-
-  const rawFbSpends = [];
-  const fbErrors = [];
 
   const pushFbItems = (actId, dataArr) => {
     const data = Array.isArray(dataArr) ? dataArr : [];
@@ -7999,7 +8010,7 @@ async function tai_va_cap_nhat_theo_ngay(
     update_date_buttons_text();
   }
 
-  const reqTkStart = dich_ngay_ymd(current_start_date, -30);
+  const reqTkStart = clamp_min_data_date(dich_ngay_ymd(current_start_date, -30));
   const reqTkEnd = current_end_date;
   const tkRangeCovered = Boolean(
     thong_ke_loaded_start &&
@@ -9233,8 +9244,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const ensureTongDonUpyoLoaded = async () => {
     const todayStr = format_ymd_date(new Date());
-    const tbSt = od_date_start || lui_ngay_ymd(todayStr, 75);
-    const tbEn = od_date_end || todayStr;
+    const tbSt = clamp_min_data_date(od_date_start || lui_ngay_ymd(todayStr, 75));
+    const tbEn = clamp_min_data_date(od_date_end || todayStr);
     await tai_du_lieu_thong_bao_ngam(false, tbSt, tbEn).catch(() => {});
   };
 
@@ -9259,8 +9270,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     apply_od_filters_and_render(true);
 
     const todayStr = format_ymd_date(new Date());
-    const tbReqStart = od_date_start ? lui_ngay_ymd(od_date_start, 15) : lui_ngay_ymd(todayStr, 90);
-    const tbReqEnd = od_date_end || todayStr;
+    const tbReqStart = clamp_min_data_date(od_date_start ? lui_ngay_ymd(od_date_start, 15) : lui_ngay_ymd(todayStr, 90));
+    const tbReqEnd = clamp_min_data_date(od_date_end || todayStr);
     const tbRangeCovered = Boolean(
       thong_bao_loaded_start &&
       thong_bao_loaded_end &&
