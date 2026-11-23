@@ -1,26 +1,26 @@
 {
-    "version":  "8.6.295",
+    "version":  "8.6.296",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "7b5593d34a582d00754593e097425111f6879a8d9b586b5df8d0acd9d2f9f69c",
-    "index.html_sha256":  "a510e4d84e84e8b651d54ba768880d95e256a976d1463ca766fbcb59ebf91f55",
-    "styles.css_sha256":  "6b972e017751dfa5cd5e4a2be768ad443b2779af115fd4c285401afb914f3440",
-    "app.js_sha256":  "890347ed97469027eb3140bbe4367702ce50aa20a4c53a825c640a130c03aaf1",
+    "exe_sha256":  "6048195feb98ab22ceac0955f424e7d57233c8dabada06f01a544e8ab156e92f",
+    "index.html_sha256":  "8a26ec977bc34c2d43a26e8ef0f3185d878c59d30e2a3cd808790880eb3b2822",
+    "styles.css_sha256":  "64b88ecc653efe2ba0d1fac3a06fc7ba93501b5d0e734836833dce90ba29ec16",
+    "app.js_sha256":  "d6959495501cede105f42824996379ff2113200d3fdc110626fd2bd6d319fb45",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "7b5593d34a582d00754593e097425111f6879a8d9b586b5df8d0acd9d2f9f69c",
-                                     "size":  690688
+                                     "sha256":  "6048195feb98ab22ceac0955f424e7d57233c8dabada06f01a544e8ab156e92f",
+                                     "size":  711168
                                  },
                   "app.js":  {
-                                 "sha256":  "890347ed97469027eb3140bbe4367702ce50aa20a4c53a825c640a130c03aaf1",
-                                 "size":  369424
+                                 "sha256":  "d6959495501cede105f42824996379ff2113200d3fdc110626fd2bd6d319fb45",
+                                 "size":  383794
                              },
                   "index.html":  {
-                                     "sha256":  "a510e4d84e84e8b651d54ba768880d95e256a976d1463ca766fbcb59ebf91f55",
-                                     "size":  46764
+                                     "sha256":  "8a26ec977bc34c2d43a26e8ef0f3185d878c59d30e2a3cd808790880eb3b2822",
+                                     "size":  48134
                                  },
                   "styles.css":  {
-                                     "sha256":  "6b972e017751dfa5cd5e4a2be768ad443b2779af115fd4c285401afb914f3440",
-                                     "size":  136476
+                                     "sha256":  "64b88ecc653efe2ba0d1fac3a06fc7ba93501b5d0e734836833dce90ba29ec16",
+                                     "size":  141333
                                  }
               }
 }

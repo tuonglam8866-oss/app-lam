@@ -163,7 +163,7 @@
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-default btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon update-arrow-icon" id="headerUpdateIcon">⬇</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.295</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.296</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -661,23 +661,24 @@
       </div>
 
       <div class="od-table-wrapper" id="odTableWrapper">
-        <table class="od-table" id="odTable">
+        <table class="od-table od-sheet-grid" id="odTable">
           <thead>
             <tr>
-              <th class="col-time">Thời gian</th>
-              <th class="col-mvd">Mã vận đơn</th>
-              <th class="col-hoten">Họ tên</th>
-              <th class="col-sdt">Số điện thoại</th>
-              <th class="col-diachi">Địa chỉ</th>
-              <th class="col-dongsp"><div class="od-th-inner"><span class="od-th-label">Dòng SP</span><button type="button" class="od-th-filter-btn hidden" data-col="dong_sp" title="Lọc cột Dòng SP"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
-              <th class="col-mausac">Màu sắc</th>
-              <th class="col-size">Size</th>
-              <th class="col-giaban">Giá bán</th>
-              <th class="col-nentang"><div class="od-th-inner"><span class="od-th-label">Nền tảng</span><button type="button" class="od-th-filter-btn hidden" data-col="nen_tang" title="Lọc cột Nền tảng"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
-              <th class="col-sale"><div class="od-th-inner"><span class="od-th-label">Sale</span><button type="button" class="od-th-filter-btn hidden" data-col="sale" title="Lọc cột Sale"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
-              <th class="col-mkt"><div class="od-th-inner"><span class="od-th-label">MKT</span><button type="button" class="od-th-filter-btn hidden" data-col="mkt" title="Lọc cột MKT"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
-              <th class="col-trangthai col-extra-ap hidden"><div class="od-th-inner"><span class="od-th-label">Trạng thái đơn</span><button type="button" class="od-th-filter-btn hidden" data-col="trang_thai" title="Lọc cột Trạng thái đơn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
-              <th class="col-ghichu col-extra-ap hidden">Ghi chú</th>
+              <th class="col-xl-idx" id="odSelectAllCorner" title="Bấm để chọn toàn bộ bảng (Ctrl+A)">#</th>
+              <th class="col-time" data-col-idx="0" title="Bấm để chọn cả cột Thời gian">Thời gian</th>
+              <th class="col-mvd" data-col-idx="1" title="Bấm để chọn cả cột Mã vận đơn">Mã vận đơn</th>
+              <th class="col-hoten" data-col-idx="2" title="Bấm để chọn cả cột Họ tên">Họ tên</th>
+              <th class="col-sdt" data-col-idx="3" title="Bấm để chọn cả cột Số điện thoại">Số điện thoại</th>
+              <th class="col-diachi" data-col-idx="4" title="Bấm để chọn cả cột Địa chỉ">Địa chỉ</th>
+              <th class="col-dongsp" data-col-idx="5" title="Bấm để chọn cả cột Dòng SP"><div class="od-th-inner"><span class="od-th-label">Dòng SP</span><button type="button" class="od-th-filter-btn hidden" data-col="dong_sp" title="Lọc cột Dòng SP"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-mausac" data-col-idx="6" title="Bấm để chọn cả cột Màu sắc">Màu sắc</th>
+              <th class="col-size" data-col-idx="7" title="Bấm để chọn cả cột Size">Size</th>
+              <th class="col-giaban" data-col-idx="8" title="Bấm để chọn cả cột Giá bán">Giá bán</th>
+              <th class="col-nentang" data-col-idx="9" title="Bấm để chọn cả cột Nền tảng"><div class="od-th-inner"><span class="od-th-label">Nền tảng</span><button type="button" class="od-th-filter-btn hidden" data-col="nen_tang" title="Lọc cột Nền tảng"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-sale" data-col-idx="10" title="Bấm để chọn cả cột Sale"><div class="od-th-inner"><span class="od-th-label">Sale</span><button type="button" class="od-th-filter-btn hidden" data-col="sale" title="Lọc cột Sale"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-mkt" data-col-idx="11" title="Bấm để chọn cả cột MKT"><div class="od-th-inner"><span class="od-th-label">MKT</span><button type="button" class="od-th-filter-btn hidden" data-col="mkt" title="Lọc cột MKT"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-trangthai col-extra-ap hidden" data-col-idx="12" title="Bấm để chọn cả cột Trạng thái đơn"><div class="od-th-inner"><span class="od-th-label">Trạng thái đơn</span><button type="button" class="od-th-filter-btn hidden" data-col="trang_thai" title="Lọc cột Trạng thái đơn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3h13v1.6H1.5V3zm2.2 4.2h8.6v1.6H3.7V7.2zm2.5 4.2h3.6V13H6.2v-1.6z"/></svg></button></div></th>
+              <th class="col-ghichu col-extra-ap hidden" data-col-idx="13" title="Bấm để chọn cả cột Ghi chú">Ghi chú</th>
             </tr>
           </thead>
           <tbody id="odTableBody">
@@ -700,6 +701,10 @@
           Hiển thị 0 đơn hàng
         </div>
         <div class="od-footer-actions">
+          <span id="odSelBadge" class="od-sel-badge hidden"></span>
+          <button type="button" id="btnOdCopySelection" class="rounded-btn od-copy-sel-btn hidden" title="Copy vùng đang chọn để dán vào Excel / Google Sheets (Ctrl+C)">
+            📋 Copy (Ctrl+C)
+          </button>
           <button type="button" id="btnDismissOrderDetail" class="rounded-btn btn-choco" style="padding: 7px 22px; font-weight: 700;">
             Đóng
           </button>

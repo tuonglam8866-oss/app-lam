@@ -3114,6 +3114,192 @@ input::-ms-clear {
   vertical-align: middle;
 }
 
+/* ==============================================================
+   GIAO DIỆN BẢNG ĐƠN HÀNG KIỂU EXCEL / GOOGLE SHEETS (v8.6.296)
+   ============================================================== */
+.od-table.od-sheet-grid {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.od-table.od-sheet-grid thead th {
+  border-right: 1px solid rgba(188, 160, 134, 0.65);
+  border-bottom: 2px solid #C6AC94;
+  box-shadow: none;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.od-table.od-sheet-grid thead th:hover {
+  background: #E6D6C3;
+}
+
+.od-table.od-sheet-grid thead th.col-xl-idx {
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  width: 42px;
+  min-width: 42px;
+  max-width: 48px;
+  text-align: center;
+  padding: 9px 6px;
+  color: #7A5E4C;
+  font-size: 11.5px;
+  border-right: 1.5px solid #C6AC94;
+}
+
+.od-table.od-sheet-grid tbody td {
+  padding: 7px 10px;
+  border-right: 1px solid rgba(205, 183, 163, 0.52);
+  border-bottom: 1px solid rgba(205, 183, 163, 0.52);
+  cursor: cell;
+}
+
+.od-table.od-sheet-grid tbody td.col-xl-idx {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 42px;
+  min-width: 42px;
+  max-width: 48px;
+  text-align: center;
+  padding: 7px 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #7A5E4C;
+  background: #F4EAE0;
+  border-right: 1.5px solid #C6AC94;
+  cursor: pointer;
+}
+
+.od-table.od-sheet-grid tbody tr:nth-child(even) td.col-xl-idx {
+  background: #EFE3D6;
+}
+
+.od-table.od-sheet-grid tbody tr:hover td.col-xl-idx {
+  background: #E6D4C0;
+  color: #3D2314;
+}
+
+.od-table.od-sheet-grid thead th.od-hdr-active,
+.od-table.od-sheet-grid tbody td.col-xl-idx.od-hdr-active {
+  background: #DCE9FA !important;
+  color: #1D4ED8 !important;
+  border-right-color: #93B8F0;
+}
+
+.od-table.od-sheet-grid tbody td.od-cell-selected {
+  background: rgba(37, 99, 235, 0.12) !important;
+  box-shadow:
+    inset 0 var(--sel-t, 0px) 0 0 #2563EB,
+    inset 0 var(--sel-b, 0px) 0 0 #2563EB,
+    inset var(--sel-l, 0px) 0 0 0 #2563EB,
+    inset var(--sel-r, 0px) 0 0 0 #2563EB;
+}
+
+.od-table.od-sheet-grid tbody td.od-cell-anchor {
+  background: rgba(37, 99, 235, 0.2) !important;
+}
+
+.od-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.od-sel-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1D4ED8;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  white-space: nowrap;
+}
+
+.od-copy-sel-btn {
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: linear-gradient(180deg, #EFF6FF 0%, #DBEAFE 100%);
+  color: #1D4ED8;
+  border: 1.5px solid #93C5FD;
+  cursor: pointer;
+}
+
+.od-copy-sel-btn:hover {
+  background: linear-gradient(180deg, #DBEAFE 0%, #BFDBFE 100%);
+  border-color: #3B82F6;
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid thead th {
+  border-right-color: rgba(94, 70, 54, 0.75);
+  border-bottom-color: #5C4435;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid thead th:hover {
+  background: #3A2A1F;
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid thead th.col-xl-idx,
+[data-theme="dark"] .od-table.od-sheet-grid tbody td.col-xl-idx {
+  background: #271C15;
+  color: #B8A08C;
+  border-right-color: #5C4435;
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid tbody tr:nth-child(even) td.col-xl-idx {
+  background: #2D2018;
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid tbody td {
+  border-right-color: rgba(82, 61, 47, 0.65);
+  border-bottom-color: rgba(82, 61, 47, 0.65);
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid thead th.od-hdr-active,
+[data-theme="dark"] .od-table.od-sheet-grid tbody td.col-xl-idx.od-hdr-active {
+  background: #1E3A5F !important;
+  color: #93C5FD !important;
+  border-right-color: #3B82F6;
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid tbody td.od-cell-selected {
+  background: rgba(96, 165, 250, 0.2) !important;
+  box-shadow:
+    inset 0 var(--sel-t, 0px) 0 0 #60A5FA,
+    inset 0 var(--sel-b, 0px) 0 0 #60A5FA,
+    inset var(--sel-l, 0px) 0 0 0 #60A5FA,
+    inset var(--sel-r, 0px) 0 0 0 #60A5FA;
+}
+
+[data-theme="dark"] .od-table.od-sheet-grid tbody td.od-cell-anchor {
+  background: rgba(96, 165, 250, 0.3) !important;
+}
+
+[data-theme="dark"] .od-sel-badge {
+  background: rgba(96, 165, 250, 0.16);
+  color: #93C5FD;
+  border-color: rgba(96, 165, 250, 0.32);
+}
+
+[data-theme="dark"] .od-copy-sel-btn {
+  background: rgba(37, 99, 235, 0.22);
+  color: #93C5FD;
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+[data-theme="dark"] .od-copy-sel-btn:hover {
+  background: rgba(37, 99, 235, 0.34);
+  border-color: #60A5FA;
+}
+
 .od-table .col-stt {
   text-align: center;
   font-weight: 700;

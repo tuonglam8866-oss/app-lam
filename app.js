@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.295";
+const APP_FRONTEND_VERSION = "8.6.296";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -5962,6 +5962,7 @@ function dong_bang_don_hang_chi_tiet() {
   }
   const modal = document.getElementById("orderDetailModal");
   if (modal) modal.classList.add("hidden");
+  clear_od_sheet_selection();
   khoi_phuc_du_lieu_dashboard_neu_lech_ngay();
 }
 
@@ -7425,6 +7426,7 @@ function render_order_detail_table(ordersToRender) {
   }
 
   if (totalMatched === 0) {
+    clear_od_sheet_selection();
     tbody.innerHTML = "";
     if (emptyState) emptyState.classList.remove("hidden");
     if (loadMoreWrap) loadMoreWrap.classList.add("hidden");
@@ -7433,6 +7435,7 @@ function render_order_detail_table(ordersToRender) {
   }
 
   if (emptyState) emptyState.classList.add("hidden");
+  clear_od_sheet_selection();
 
   const sliceCount = Math.min(totalMatched, od_render_limit);
   if (footerSummary) {
@@ -7464,27 +7467,430 @@ function render_order_detail_table(ordersToRender) {
 
     const extraColsHtml = isAllTableMode
       ? `
-        <td class="col-trangthai">${order.trang_thai ? `<span class="pill-status ${get_status_pill_cls(order.trang_thai)}">${escape_html(order.trang_thai)}</span>` : "—"}</td>
-        <td class="col-ghichu" title="${escape_html(order.ghi_chu)}">${escape_html(order.ghi_chu || "—")}</td>`
+        <td class="col-trangthai" data-r="${idx}" data-c="12">${order.trang_thai ? `<span class="pill-status ${get_status_pill_cls(order.trang_thai)}">${escape_html(order.trang_thai)}</span>` : "—"}</td>
+        <td class="col-ghichu" data-r="${idx}" data-c="13" title="${escape_html(order.ghi_chu)}">${escape_html(order.ghi_chu || "—")}</td>`
       : "";
 
     rowsHtml[idx] = `
-      <tr>
-        <td class="col-time">${escape_html(order.thoi_gian || "—")}</td>
-        <td class="col-mvd">${escape_html(order.ma_van_don || "—")}</td>
-        <td class="col-hoten">${escape_html(order.ho_ten || "—")}</td>
-        <td class="col-sdt">${escape_html(order.sdt || "—")}</td>
-        <td class="col-diachi" title="${escape_html(order.dia_chi)}">${escape_html(order.dia_chi || "—")}</td>
-        <td class="col-dongsp">${escape_html(order.dong_sp || "—")}</td>
-        <td class="col-mausac">${escape_html(order.mau_sac || "—")}</td>
-        <td class="col-size">${escape_html(order.size || "—")}</td>
-        <td class="col-giaban">${format_tien_vnd(order.gia_ban)}</td>
-        <td class="col-nentang"><span class="pill-platform ${platformCls}">${escape_html(order.nen_tang || "Khác")}</span></td>
-        <td class="col-sale">${escape_html(order.sale || "—")}</td>
-        <td class="col-mkt"><span class="pill-mkt">${escape_html(order.mkt || "—")}</span></td>${extraColsHtml}
+      <tr data-r="${idx}">
+        <td class="col-xl-idx" data-r="${idx}" title="Bấm để chọn cả hàng ${idx + 1}">${idx + 1}</td>
+        <td class="col-time" data-r="${idx}" data-c="0">${escape_html(order.thoi_gian || "—")}</td>
+        <td class="col-mvd" data-r="${idx}" data-c="1">${escape_html(order.ma_van_don || "—")}</td>
+        <td class="col-hoten" data-r="${idx}" data-c="2">${escape_html(order.ho_ten || "—")}</td>
+        <td class="col-sdt" data-r="${idx}" data-c="3">${escape_html(order.sdt || "—")}</td>
+        <td class="col-diachi" data-r="${idx}" data-c="4" title="${escape_html(order.dia_chi)}">${escape_html(order.dia_chi || "—")}</td>
+        <td class="col-dongsp" data-r="${idx}" data-c="5">${escape_html(order.dong_sp || "—")}</td>
+        <td class="col-mausac" data-r="${idx}" data-c="6">${escape_html(order.mau_sac || "—")}</td>
+        <td class="col-size" data-r="${idx}" data-c="7">${escape_html(order.size || "—")}</td>
+        <td class="col-giaban" data-r="${idx}" data-c="8">${format_tien_vnd(order.gia_ban)}</td>
+        <td class="col-nentang" data-r="${idx}" data-c="9"><span class="pill-platform ${platformCls}">${escape_html(order.nen_tang || "Khác")}</span></td>
+        <td class="col-sale" data-r="${idx}" data-c="10">${escape_html(order.sale || "—")}</td>
+        <td class="col-mkt" data-r="${idx}" data-c="11"><span class="pill-mkt">${escape_html(order.mkt || "—")}</span></td>${extraColsHtml}
       </tr>`;
   }
   tbody.innerHTML = rowsHtml.join("");
+}
+
+// ==============================================================
+// CHỌN Ô / HÀNG / CỘT & COPY TSV KIỂU EXCEL / GOOGLE SHEETS (v8.6.296)
+// ==============================================================
+const odSheetSel = {
+  active: false,
+  r1: -1,
+  c1: -1,
+  r2: -1,
+  c2: -1,
+  mode: "cell", // "cell" | "row" | "col" | "all"
+  dragging: false,
+  styledCells: [],
+  styledHdrs: [],
+};
+
+function get_od_sheet_dims() {
+  const tbody = document.getElementById("odTableBody");
+  const rowCount = tbody ? tbody.rows.length : 0;
+  const colCount = current_od_mode === "all_table" ? 14 : 12;
+  return { rowCount, colCount };
+}
+
+function clear_od_sheet_selection() {
+  for (const el of odSheetSel.styledCells) {
+    el.classList.remove("od-cell-selected", "od-cell-anchor");
+    el.style.removeProperty("--sel-t");
+    el.style.removeProperty("--sel-b");
+    el.style.removeProperty("--sel-l");
+    el.style.removeProperty("--sel-r");
+  }
+  for (const h of odSheetSel.styledHdrs) {
+    h.classList.remove("od-hdr-active");
+  }
+  odSheetSel.styledCells = [];
+  odSheetSel.styledHdrs = [];
+  odSheetSel.active = false;
+  odSheetSel.dragging = false;
+  odSheetSel.r1 = -1;
+  odSheetSel.c1 = -1;
+  odSheetSel.r2 = -1;
+  odSheetSel.c2 = -1;
+
+  const badge = document.getElementById("odSelBadge");
+  const copyBtn = document.getElementById("btnOdCopySelection");
+  if (badge) badge.classList.add("hidden");
+  if (copyBtn) copyBtn.classList.add("hidden");
+}
+
+function render_od_sheet_selection() {
+  for (const el of odSheetSel.styledCells) {
+    el.classList.remove("od-cell-selected", "od-cell-anchor");
+    el.style.removeProperty("--sel-t");
+    el.style.removeProperty("--sel-b");
+    el.style.removeProperty("--sel-l");
+    el.style.removeProperty("--sel-r");
+  }
+  for (const h of odSheetSel.styledHdrs) {
+    h.classList.remove("od-hdr-active");
+  }
+  odSheetSel.styledCells = [];
+  odSheetSel.styledHdrs = [];
+
+  if (!odSheetSel.active) return;
+  const tbody = document.getElementById("odTableBody");
+  const table = document.getElementById("odTable");
+  if (!tbody || !table || tbody.rows.length === 0) {
+    clear_od_sheet_selection();
+    return;
+  }
+
+  const { rowCount, colCount } = get_od_sheet_dims();
+  const minR = Math.max(0, Math.min(odSheetSel.r1, odSheetSel.r2));
+  const maxR = Math.min(rowCount - 1, Math.max(odSheetSel.r1, odSheetSel.r2));
+  const minC = Math.max(0, Math.min(odSheetSel.c1, odSheetSel.c2));
+  const maxC = Math.min(colCount - 1, Math.max(odSheetSel.c1, odSheetSel.c2));
+  if (minR > maxR || minC > maxC) {
+    clear_od_sheet_selection();
+    return;
+  }
+
+  const newCells = [];
+  const newHdrs = [];
+  const thList = table.querySelectorAll("thead th[data-col-idx]");
+  for (let c = minC; c <= maxC; c++) {
+    const th = thList[c];
+    if (th) {
+      th.classList.add("od-hdr-active");
+      newHdrs.push(th);
+    }
+  }
+  if (minR === 0 && maxR === rowCount - 1 && minC === 0 && maxC === colCount - 1) {
+    const corner = document.getElementById("odSelectAllCorner");
+    if (corner) {
+      corner.classList.add("od-hdr-active");
+      newHdrs.push(corner);
+    }
+  }
+
+  for (let r = minR; r <= maxR; r++) {
+    const tr = tbody.rows[r];
+    if (!tr) continue;
+    const idxCell = tr.cells[0];
+    if (idxCell) {
+      idxCell.classList.add("od-hdr-active");
+      newHdrs.push(idxCell);
+    }
+    for (let c = minC; c <= maxC; c++) {
+      const td = tr.cells[c + 1]; // +1 vì cột 0 là số thứ tự hàng (.col-xl-idx)
+      if (!td) continue;
+      td.classList.add("od-cell-selected");
+      if (r === odSheetSel.r1 && c === odSheetSel.c1) {
+        td.classList.add("od-cell-anchor");
+      }
+      if (r === minR) td.style.setProperty("--sel-t", "2px");
+      if (r === maxR) td.style.setProperty("--sel-b", "-2px");
+      if (c === minC) td.style.setProperty("--sel-l", "2px");
+      if (c === maxC) td.style.setProperty("--sel-r", "-2px");
+      newCells.push(td);
+    }
+  }
+
+  odSheetSel.styledCells = newCells;
+  odSheetSel.styledHdrs = newHdrs;
+
+  const rSpan = maxR - minR + 1;
+  const cSpan = maxC - minC + 1;
+  const badge = document.getElementById("odSelBadge");
+  const copyBtn = document.getElementById("btnOdCopySelection");
+  if (badge) {
+    badge.textContent = `${rSpan} hàng × ${cSpan} cột (${rSpan * cSpan} ô)`;
+    badge.classList.remove("hidden");
+  }
+  if (copyBtn) {
+    copyBtn.textContent = "📋 Copy (Ctrl+C)";
+    copyBtn.classList.remove("hidden");
+  }
+}
+
+function get_od_sheet_selection_tsv() {
+  if (!odSheetSel.active) return "";
+  const tbody = document.getElementById("odTableBody");
+  if (!tbody || tbody.rows.length === 0) return "";
+  const { rowCount, colCount } = get_od_sheet_dims();
+  const minR = Math.max(0, Math.min(odSheetSel.r1, odSheetSel.r2));
+  const maxR = Math.min(rowCount - 1, Math.max(odSheetSel.r1, odSheetSel.r2));
+  const minC = Math.max(0, Math.min(odSheetSel.c1, odSheetSel.c2));
+  const maxC = Math.min(colCount - 1, Math.max(odSheetSel.c1, odSheetSel.c2));
+  if (minR > maxR || minC > maxC) return "";
+
+  const lines = [];
+  for (let r = minR; r <= maxR; r++) {
+    const tr = tbody.rows[r];
+    if (!tr) continue;
+    const cols = [];
+    for (let c = minC; c <= maxC; c++) {
+      const td = tr.cells[c + 1];
+      let val = td ? String(td.textContent || "").trim() : "";
+      if (val === "—") val = "";
+      val = val.replace(/[\t\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
+      cols.push(val);
+    }
+    lines.push(cols.join("\t"));
+  }
+  return lines.join("\n");
+}
+
+async function copy_od_sheet_selection() {
+  const tsv = get_od_sheet_selection_tsv();
+  if (!tsv) return false;
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(tsv);
+      ok = true;
+    }
+  } catch (e) {}
+  if (!ok) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = tsv;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (e2) {}
+  }
+  if (ok) {
+    const rSpan = Math.abs(odSheetSel.r2 - odSheetSel.r1) + 1;
+    const cSpan = Math.abs(odSheetSel.c2 - odSheetSel.c1) + 1;
+    const copyBtn = document.getElementById("btnOdCopySelection");
+    if (copyBtn) {
+      copyBtn.textContent = `✓ Đã copy ${rSpan * cSpan} ô`;
+      clearTimeout(copyBtn._resetTimer);
+      copyBtn._resetTimer = setTimeout(() => {
+        if (odSheetSel.active) copyBtn.textContent = "📋 Copy (Ctrl+C)";
+      }, 1500);
+    }
+  }
+  return ok;
+}
+
+let _odSheetInitialized = false;
+function init_od_sheet_interactions() {
+  if (_odSheetInitialized) return;
+  _odSheetInitialized = true;
+
+  const table = document.getElementById("odTable");
+  if (!table) return;
+
+  table.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest(".od-th-filter-btn")) return;
+
+    const { rowCount, colCount } = get_od_sheet_dims();
+    if (rowCount === 0) return;
+
+    // 1. Góc trên trái (#) -> chọn toàn bộ bảng
+    if (e.target.closest("#odSelectAllCorner")) {
+      e.preventDefault();
+      odSheetSel.active = true;
+      odSheetSel.mode = "all";
+      odSheetSel.dragging = false;
+      odSheetSel.r1 = 0;
+      odSheetSel.c1 = 0;
+      odSheetSel.r2 = rowCount - 1;
+      odSheetSel.c2 = colCount - 1;
+      render_od_sheet_selection();
+      return;
+    }
+
+    // 2. Tiêu đề cột -> chọn cả cột (hỗ trợ kéo ngang nhiều cột hoặc Shift+Click)
+    const th = e.target.closest("thead th[data-col-idx]");
+    if (th) {
+      e.preventDefault();
+      const cIdx = parseInt(th.getAttribute("data-col-idx"), 10);
+      if (Number.isNaN(cIdx)) return;
+      odSheetSel.active = true;
+      odSheetSel.mode = "col";
+      odSheetSel.dragging = true;
+      if (e.shiftKey && odSheetSel.c1 >= 0) {
+        odSheetSel.r1 = 0;
+        odSheetSel.r2 = rowCount - 1;
+        odSheetSel.c2 = cIdx;
+      } else {
+        odSheetSel.r1 = 0;
+        odSheetSel.r2 = rowCount - 1;
+        odSheetSel.c1 = cIdx;
+        odSheetSel.c2 = cIdx;
+      }
+      render_od_sheet_selection();
+      return;
+    }
+
+    // 3. Ô số thứ tự hàng -> chọn cả hàng (hỗ trợ kéo dọc nhiều hàng hoặc Shift+Click)
+    const idxTd = e.target.closest("tbody td.col-xl-idx");
+    if (idxTd) {
+      e.preventDefault();
+      const rIdx = parseInt(idxTd.getAttribute("data-r"), 10);
+      if (Number.isNaN(rIdx)) return;
+      odSheetSel.active = true;
+      odSheetSel.mode = "row";
+      odSheetSel.dragging = true;
+      if (e.shiftKey && odSheetSel.r1 >= 0) {
+        odSheetSel.c1 = 0;
+        odSheetSel.c2 = colCount - 1;
+        odSheetSel.r2 = rIdx;
+      } else {
+        odSheetSel.r1 = rIdx;
+        odSheetSel.r2 = rIdx;
+        odSheetSel.c1 = 0;
+        odSheetSel.c2 = colCount - 1;
+      }
+      render_od_sheet_selection();
+      return;
+    }
+
+    // 4. Ô dữ liệu -> chọn ô / kéo vùng chữ nhật (hỗ trợ Shift+Click)
+    const td = e.target.closest("tbody td[data-r][data-c]");
+    if (td) {
+      e.preventDefault();
+      const rIdx = parseInt(td.getAttribute("data-r"), 10);
+      const cIdx = parseInt(td.getAttribute("data-c"), 10);
+      if (Number.isNaN(rIdx) || Number.isNaN(cIdx)) return;
+      odSheetSel.active = true;
+      odSheetSel.mode = "cell";
+      odSheetSel.dragging = true;
+      if (e.shiftKey && odSheetSel.r1 >= 0 && odSheetSel.c1 >= 0) {
+        odSheetSel.r2 = rIdx;
+        odSheetSel.c2 = cIdx;
+      } else {
+        odSheetSel.r1 = rIdx;
+        odSheetSel.c1 = cIdx;
+        odSheetSel.r2 = rIdx;
+        odSheetSel.c2 = cIdx;
+      }
+      render_od_sheet_selection();
+    }
+  });
+
+  table.addEventListener("mouseover", (e) => {
+    if (!odSheetSel.dragging || !odSheetSel.active) return;
+    if (odSheetSel.mode === "col") {
+      const th = e.target.closest("thead th[data-col-idx]");
+      const td = !th ? e.target.closest("tbody td[data-c]") : null;
+      const rawC = th ? th.getAttribute("data-col-idx") : (td ? td.getAttribute("data-c") : null);
+      if (rawC !== null) {
+        const cIdx = parseInt(rawC, 10);
+        if (!Number.isNaN(cIdx) && cIdx !== odSheetSel.c2) {
+          odSheetSel.c2 = cIdx;
+          render_od_sheet_selection();
+        }
+      }
+      return;
+    }
+    if (odSheetSel.mode === "row") {
+      const rowEl = e.target.closest("tbody tr[data-r]");
+      if (rowEl) {
+        const rIdx = parseInt(rowEl.getAttribute("data-r"), 10);
+        if (!Number.isNaN(rIdx) && rIdx !== odSheetSel.r2) {
+          odSheetSel.r2 = rIdx;
+          render_od_sheet_selection();
+        }
+      }
+      return;
+    }
+    const td = e.target.closest("tbody td[data-r][data-c]");
+    if (td) {
+      const rIdx = parseInt(td.getAttribute("data-r"), 10);
+      const cIdx = parseInt(td.getAttribute("data-c"), 10);
+      if (!Number.isNaN(rIdx) && !Number.isNaN(cIdx) && (rIdx !== odSheetSel.r2 || cIdx !== odSheetSel.c2)) {
+        odSheetSel.r2 = rIdx;
+        odSheetSel.c2 = cIdx;
+        render_od_sheet_selection();
+      }
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    odSheetSel.dragging = false;
+  });
+
+  document.getElementById("btnOdCopySelection")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    copy_od_sheet_selection();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const modal = document.getElementById("orderDetailModal");
+    if (!modal || modal.classList.contains("hidden")) return;
+    const tag = document.activeElement ? document.activeElement.tagName : "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+    const { rowCount, colCount } = get_od_sheet_dims();
+    if (rowCount === 0) return;
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && odSheetSel.active) {
+      e.preventDefault();
+      copy_od_sheet_selection();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+      e.preventDefault();
+      odSheetSel.active = true;
+      odSheetSel.mode = "all";
+      odSheetSel.r1 = 0;
+      odSheetSel.c1 = 0;
+      odSheetSel.r2 = rowCount - 1;
+      odSheetSel.c2 = colCount - 1;
+      render_od_sheet_selection();
+      return;
+    }
+    if (odSheetSel.active && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      e.preventDefault();
+      let nr = odSheetSel.r2;
+      let nc = odSheetSel.c2;
+      if (e.key === "ArrowUp") nr = Math.max(0, nr - 1);
+      else if (e.key === "ArrowDown") nr = Math.min(rowCount - 1, nr + 1);
+      else if (e.key === "ArrowLeft") nc = Math.max(0, nc - 1);
+      else if (e.key === "ArrowRight") nc = Math.min(colCount - 1, nc + 1);
+      if (e.shiftKey) {
+        odSheetSel.r2 = nr;
+        odSheetSel.c2 = nc;
+      } else {
+        odSheetSel.r1 = nr;
+        odSheetSel.c1 = nc;
+        odSheetSel.r2 = nr;
+        odSheetSel.c2 = nc;
+      }
+      render_od_sheet_selection();
+      const tbody = document.getElementById("odTableBody");
+      const targetCell = tbody && tbody.rows[nr] && tbody.rows[nr].cells[nc + 1];
+      if (targetCell && targetCell.scrollIntoView) {
+        targetCell.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    }
+  });
 }
 
 function build_sp_closing_rate_pill_html(ma_str, ten_mkt) {
@@ -9237,6 +9643,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Modal Chi Tiết & Lọc Đơn Hàng Tổng Hợp Kiểu Excel (v8.6.106)
+  init_od_sheet_interactions();
   document.getElementById("btnFilterAllOrders")?.addEventListener("click", (e) => {
     e.stopPropagation();
     hien_thi_bang_loc_don_tong_hop();
