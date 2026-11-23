@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.301";
+const APP_FRONTEND_VERSION = "8.6.302";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -744,6 +744,8 @@ function la_don_hop_le_de_dem(trang_thai_raw) {
   return (
     s.includes("\u0110\u00c3 L\u00caN \u0110\u01a0N") ||
     noDau.includes("DA LEN DON") ||
+    s.includes("CH\u01afA L\u00caN \u0110\u01a0N") ||
+    noDau.includes("CHUA LEN DON") ||
     s.includes("CH\u1ed0T CH\u01afA C\u00d3 H\u00c0NG") ||
     noDau.includes("CHOT CHUA CO HANG") ||
     s.includes("\u0110\u01a0N TEST") ||
@@ -4375,6 +4377,7 @@ function get_status_pill_cls(statusRaw) {
   const s = bo_dau_tieng_viet(String(statusRaw || "").trim()).toUpperCase();
   if (!s) return "pill-status-default";
   if (s.includes("DA LEN DON") || s.includes("THANH CONG")) return "pill-status-ok";
+  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG")) return "pill-status-direct";
   if (s.includes("GIAO THANG")) return "pill-status-direct";
   if (s.includes("DOI HANG")) return "pill-status-exchange";
   if (s.includes("TEST")) return "pill-status-test";
