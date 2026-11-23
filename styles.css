@@ -5992,9 +5992,9 @@ input::-ms-clear {
 
 .order-detail-card.od-wide-mode .od-table .col-time      { width: 5.9%; }
 .order-detail-card.od-wide-mode .od-table .col-mvd       { width: 7.3%; }
-.order-detail-card.od-wide-mode .od-table .col-hoten     { width: 7.5%; }
+.order-detail-card.od-wide-mode .od-table .col-hoten     { width: 7.0%; }
 .order-detail-card.od-wide-mode .od-table .col-sdt       { width: 7.0%; }
-.order-detail-card.od-wide-mode .od-table .col-diachi    { width: 14.4%; max-width: none; }
+.order-detail-card.od-wide-mode .od-table .col-diachi    { width: 13.7%; max-width: none; }
 .order-detail-card.od-wide-mode .od-table .col-dongsp    { width: 6.2%; }
 .order-detail-card.od-wide-mode .od-table .col-mausac    { width: 5.5%; }
 .order-detail-card.od-wide-mode .od-table .col-size      { width: 3.3%; }
@@ -6002,8 +6002,8 @@ input::-ms-clear {
 .order-detail-card.od-wide-mode .od-table .col-nentang   { width: 8.2%; }
 .order-detail-card.od-wide-mode .od-table .col-sale      { width: 5.1%; }
 .order-detail-card.od-wide-mode .od-table .col-mkt       { width: 5.5%; }
-.order-detail-card.od-wide-mode .od-table .col-trangthai { width: 7.6%; }
-.order-detail-card.od-wide-mode .od-table .col-ghichu    { width: 7.4%; max-width: none; font-size: 11.5px; line-height: 1.3; }
+.order-detail-card.od-wide-mode .od-table .col-trangthai { width: 9.1%; }
+.order-detail-card.od-wide-mode .od-table .col-ghichu    { width: 7.1%; max-width: none; font-size: 11.5px; line-height: 1.3; }
 
 .order-detail-card.od-wide-mode .od-table tbody td.col-time,
 .order-detail-card.od-wide-mode .od-table tbody td.col-mvd,
@@ -6025,6 +6025,12 @@ input::-ms-clear {
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
+}
+
+.order-detail-card.od-wide-mode .od-table .pill-status {
+  font-size: 8.9px;
+  letter-spacing: 0;
+  padding: 2px 4px;
 }
 
 .od-load-more-wrap {

@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.300";
+const APP_FRONTEND_VERSION = "8.6.301";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -2128,6 +2128,7 @@ let thong_bao_loaded_start = "";
 let thong_bao_loaded_end = "";
 let thong_ke_loaded_start = "";
 let thong_ke_loaded_end = "";
+let thong_ke_last_fetch_ms = 0;
 let thong_ke_fetch_promise = null;
 let thong_ke_fetch_range_key = "";
 let thong_ke_is_full = false;
@@ -2327,7 +2328,7 @@ function doc_cache_fb_last(start_str, end_str) {
 
 let _dashboard_tk_snapshot = null;
 let _full_tk_cache = null;
-const FULL_TK_CACHE_TTL_MS = 300000; // Cache bản full (all=1) 5 phút cho modal Lọc đơn
+const FULL_TK_CACHE_TTL_MS = 60000; // Cache bản full (all=1) 60 giây cho modal Lọc đơn để tránh lệch với TỔNG ĐƠN UPYO
 
 async function tai_du_lieu_google_sheets(
   force = false,
@@ -2356,16 +2357,25 @@ async function tai_du_lieu_google_sheets(
         rows: data_hien_tai,
         start: thong_ke_loaded_start,
         end: thong_ke_loaded_end,
+        timeMs: thong_ke_last_fetch_ms,
       };
     }
     data_hien_tai = _full_tk_cache.rows;
     thong_ke_loaded_start = APP_DATA_MIN_DATE;
     thong_ke_loaded_end = "2099-12-31";
+    thong_ke_last_fetch_ms = _full_tk_cache.timeMs;
     thong_ke_is_full = true;
     rebuild_cust_first_mkt_index();
     return true;
   }
-  if (!force && thong_ke_is_full && Array.isArray(data_hien_tai) && data_hien_tai.length > 0) {
+  if (
+    !force &&
+    !bypassServerCache &&
+    thong_ke_is_full &&
+    Array.isArray(data_hien_tai) &&
+    data_hien_tai.length > 0 &&
+    Date.now() - thong_ke_last_fetch_ms < FULL_TK_CACHE_TTL_MS
+  ) {
     return true;
   }
 
@@ -2427,6 +2437,7 @@ async function tai_du_lieu_google_sheets(
               rows: data_hien_tai,
               start: thong_ke_loaded_start,
               end: thong_ke_loaded_end,
+              timeMs: thong_ke_last_fetch_ms,
             };
           }
           _full_tk_cache = { rows: rowsThongKe, timeMs: Date.now() };
@@ -2435,13 +2446,22 @@ async function tai_du_lieu_google_sheets(
             rows: rowsThongKe,
             start: targetStart,
             end: targetEnd,
+            timeMs: Date.now(),
           };
         }
         data_hien_tai = rowsThongKe;
         thong_ke_loaded_start = targetStart;
         thong_ke_loaded_end = targetEnd;
+        thong_ke_last_fetch_ms = Date.now();
         thong_ke_is_full = Boolean(allMode);
         rebuild_cust_first_mkt_index();
+        try {
+          const odModal = document.getElementById("orderDetailModal");
+          if (odModal && !odModal.classList.contains("hidden") && current_od_mode === "all_table" && !allMode) {
+            current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+            apply_od_filters_and_render(false);
+          }
+        } catch (eOdSync) {}
         // Chỉ lưu cache khởi động khi tải cho Dashboard chính (không để Modal hay all=1 ghi đè)
         if (!customStart && !allMode) {
           luu_cache_thong_ke(rowsThongKe);
@@ -5796,18 +5816,25 @@ function hien_thi_bang_loc_don_tong_hop() {
   apply_od_filters_and_render(true);
 
   modal.classList.remove("hidden");
-  if (!thong_ke_is_full) {
+  const isTkStale = Date.now() - thong_ke_last_fetch_ms >= 45000;
+  if (!thong_ke_is_full || isTkStale) {
     if (dateRangeText) {
-      dateRangeText.textContent = `Đang hiện ${orders.length} đơn gần nhất • ⏳ Đang tải toàn bộ bảng...`;
+      dateRangeText.textContent = !thong_ke_is_full
+        ? `Đang hiện ${orders.length} đơn gần nhất • ⏳ Đang tải toàn bộ bảng...`
+        : `Tổng cộng ${orders.length} đơn • ⏳ Đang đồng bộ đơn mới...`;
     }
-    tai_du_lieu_google_sheets(false, "", "", true).then((ok) => {
+    tai_du_lieu_google_sheets(isTkStale, "", "", true).then((ok) => {
       if (!ok || modal.classList.contains("hidden") || current_od_mode !== "all_table") return;
       current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
       if (dateRangeText) {
         dateRangeText.textContent = `Tổng cộng ${current_od_raw_list.length} đơn hàng trong bảng`;
       }
       apply_od_filters_and_render(false);
-    }).catch(() => {});
+    }).catch(() => {
+      if (dateRangeText && !modal.classList.contains("hidden") && current_od_mode === "all_table") {
+        dateRangeText.textContent = `Tổng cộng ${current_od_raw_list.length} đơn hàng trong bảng`;
+      }
+    });
   }
   setTimeout(() => {
     if (searchInput) searchInput.focus();
@@ -5924,6 +5951,7 @@ function khoi_phuc_du_lieu_dashboard_neu_lech_ngay() {
     data_hien_tai = _dashboard_tk_snapshot.rows;
     thong_ke_loaded_start = _dashboard_tk_snapshot.start;
     thong_ke_loaded_end = _dashboard_tk_snapshot.end;
+    thong_ke_last_fetch_ms = _dashboard_tk_snapshot.timeMs || 0;
     thong_ke_is_full = false;
   }
   const needTk =
@@ -9729,13 +9757,20 @@ window.addEventListener("DOMContentLoaded", async () => {
       data_tong_don_upyo.length === 0 ||
       !tbRangeCovered ||
       Date.now() - thong_bao_last_fetch_ms >= 120000;
+    const isThongKeStale = Date.now() - thong_ke_last_fetch_ms >= 45000;
+    const needThongKe =
+      Boolean(thong_ke_fetch_promise) ||
+      !thong_ke_is_full ||
+      !Array.isArray(data_hien_tai) ||
+      data_hien_tai.length === 0 ||
+      isThongKeStale;
     const needPancake =
       Boolean(pancake_fetch_promise) ||
       !Array.isArray(data_pancake_orders) ||
       data_pancake_orders.length === 0 ||
       Date.now() - pancake_last_fetch_ms >= PANCAKE_CACHE_TTL_MS;
 
-    if (!needThongBao && !needPancake) {
+    if (!needThongBao && !needThongKe && !needPancake) {
       resetQuickFilterBtnLabels();
       return;
     }
@@ -9743,6 +9778,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     const activeBtn = document.getElementById(isLandingErr ? "btnOdLandingMktCheck" : "btnOdDupMktCheck");
     const defaultLabel = isLandingErr ? "Lỗi vào đơn" : "Đơn trùng MKT";
     const hasNoDataYet =
+      !Array.isArray(data_hien_tai) ||
+      data_hien_tai.length === 0 ||
       !Array.isArray(data_tong_don_upyo) ||
       data_tong_don_upyo.length === 0 ||
       !Array.isArray(data_pancake_orders) ||
@@ -9753,6 +9790,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     try {
       const waitBg = Promise.all([
+        needThongKe ? tai_du_lieu_google_sheets(isThongKeStale, "", "", true).catch(() => false) : Promise.resolve(false),
         needThongBao ? ensureTongDonUpyoLoaded() : Promise.resolve(),
         needPancake ? tai_du_lieu_pancake(false).catch(() => {}) : Promise.resolve(),
       ]);
@@ -9760,6 +9798,14 @@ window.addEventListener("DOMContentLoaded", async () => {
       await Promise.race([waitBg, failSafe]);
     } finally {
       if (activeBtn) activeBtn.textContent = defaultLabel;
+    }
+
+    if (needThongKe && current_od_mode === "all_table") {
+      current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+      const dateRangeText = document.getElementById("odDateRangeText");
+      if (dateRangeText) {
+        dateRangeText.textContent = `Tổng cộng ${current_od_raw_list.length} đơn hàng trong bảng`;
+      }
     }
 
     const stillActive = isLandingErr ? od_only_landing_mkt_issue : od_only_dup_mkt;
