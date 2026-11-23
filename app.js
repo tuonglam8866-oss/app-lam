@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.297";
+const APP_FRONTEND_VERSION = "8.6.299";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -7654,6 +7654,31 @@ function get_od_sheet_selection_tsv() {
   return lines.join("\n");
 }
 
+function show_od_copy_feedback() {
+  if (!odSheetSel.active) return;
+  const rSpan = Math.abs(odSheetSel.r2 - odSheetSel.r1) + 1;
+  const cSpan = Math.abs(odSheetSel.c2 - odSheetSel.c1) + 1;
+  const copyBtn = document.getElementById("btnOdCopySelection");
+  if (copyBtn) {
+    copyBtn.textContent = `✓ Đã copy ${rSpan * cSpan} ô`;
+    clearTimeout(copyBtn._resetTimer);
+    copyBtn._resetTimer = setTimeout(() => {
+      if (odSheetSel.active) copyBtn.textContent = "📋 Copy (Ctrl+C)";
+    }, 1500);
+  }
+}
+
+function focus_od_table_grid() {
+  const act = document.activeElement;
+  if (act && (act.tagName === "INPUT" || act.tagName === "TEXTAREA" || act.tagName === "SELECT")) {
+    try { act.blur(); } catch (e) {}
+  }
+  const wrapper = document.getElementById("odTableWrapper");
+  if (wrapper && wrapper.focus) {
+    try { wrapper.focus({ preventScroll: true }); } catch (e2) {}
+  }
+}
+
 async function copy_od_sheet_selection() {
   const tsv = get_od_sheet_selection_tsv();
   if (!tsv) return false;
@@ -7679,16 +7704,7 @@ async function copy_od_sheet_selection() {
     } catch (e2) {}
   }
   if (ok) {
-    const rSpan = Math.abs(odSheetSel.r2 - odSheetSel.r1) + 1;
-    const cSpan = Math.abs(odSheetSel.c2 - odSheetSel.c1) + 1;
-    const copyBtn = document.getElementById("btnOdCopySelection");
-    if (copyBtn) {
-      copyBtn.textContent = `✓ Đã copy ${rSpan * cSpan} ô`;
-      clearTimeout(copyBtn._resetTimer);
-      copyBtn._resetTimer = setTimeout(() => {
-        if (odSheetSel.active) copyBtn.textContent = "📋 Copy (Ctrl+C)";
-      }, 1500);
-    }
+    show_od_copy_feedback();
   }
   return ok;
 }
@@ -7711,6 +7727,7 @@ function init_od_sheet_interactions() {
     // 1. Góc trên trái (#) -> chọn toàn bộ bảng
     if (e.target.closest("#odSelectAllCorner")) {
       e.preventDefault();
+      focus_od_table_grid();
       odSheetSel.active = true;
       odSheetSel.mode = "all";
       odSheetSel.dragging = false;
@@ -7726,6 +7743,7 @@ function init_od_sheet_interactions() {
     const th = e.target.closest("thead th[data-col-idx]");
     if (th) {
       e.preventDefault();
+      focus_od_table_grid();
       const cIdx = parseInt(th.getAttribute("data-col-idx"), 10);
       if (Number.isNaN(cIdx)) return;
       odSheetSel.active = true;
@@ -7749,6 +7767,7 @@ function init_od_sheet_interactions() {
     const idxTd = e.target.closest("tbody td.col-xl-idx");
     if (idxTd) {
       e.preventDefault();
+      focus_od_table_grid();
       const rIdx = parseInt(idxTd.getAttribute("data-r"), 10);
       if (Number.isNaN(rIdx)) return;
       odSheetSel.active = true;
@@ -7772,6 +7791,7 @@ function init_od_sheet_interactions() {
     const td = e.target.closest("tbody td[data-r][data-c]");
     if (td) {
       e.preventDefault();
+      focus_od_table_grid();
       const rIdx = parseInt(td.getAttribute("data-r"), 10);
       const cIdx = parseInt(td.getAttribute("data-c"), 10);
       if (Number.isNaN(rIdx) || Number.isNaN(cIdx)) return;
@@ -7838,21 +7858,42 @@ function init_od_sheet_interactions() {
     copy_od_sheet_selection();
   });
 
+  document.addEventListener("copy", (e) => {
+    const modal = document.getElementById("orderDetailModal");
+    if (!modal || modal.classList.contains("hidden") || !odSheetSel.active) return;
+    const act = document.activeElement;
+    if (act && (act.tagName === "INPUT" || act.tagName === "TEXTAREA")) {
+      const hasInputSel = typeof act.selectionStart === "number" && act.selectionStart !== act.selectionEnd;
+      if (hasInputSel) return;
+    }
+    const tsv = get_od_sheet_selection_tsv();
+    if (!tsv || !e.clipboardData) return;
+    e.preventDefault();
+    e.clipboardData.setData("text/plain", tsv);
+    show_od_copy_feedback();
+  });
+
   document.addEventListener("keydown", (e) => {
     const modal = document.getElementById("orderDetailModal");
     if (!modal || modal.classList.contains("hidden")) return;
-    const tag = document.activeElement ? document.activeElement.tagName : "";
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    const act = document.activeElement;
+    const tag = act ? act.tagName : "";
+    const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    const isCopyKey = (e.ctrlKey || e.metaKey) && (e.code === "KeyC" || String(e.key || "").toLowerCase() === "c");
+    const isSelectAllKey = (e.ctrlKey || e.metaKey) && (e.code === "KeyA" || String(e.key || "").toLowerCase() === "a");
 
     const { rowCount, colCount } = get_od_sheet_dims();
     if (rowCount === 0) return;
 
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && odSheetSel.active) {
+    if (isCopyKey && odSheetSel.active) {
+      if (isInput && typeof act.selectionStart === "number" && act.selectionStart !== act.selectionEnd) return;
       e.preventDefault();
       copy_od_sheet_selection();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+    if (isInput) return;
+
+    if (isSelectAllKey) {
       e.preventDefault();
       odSheetSel.active = true;
       odSheetSel.mode = "all";
