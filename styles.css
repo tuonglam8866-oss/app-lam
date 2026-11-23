@@ -3580,6 +3580,45 @@ input::-ms-clear {
   box-shadow: 0 2px 6px rgba(245, 176, 65, 0.28);
 }
 
+/* Nút Xuất bản CP cạnh nút Chi tiết đơn */
+.card-export-cp-hint.clickable-hint {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(140, 90, 60, 0.11);
+  color: #5C3D28;
+  border: 1px solid rgba(140, 90, 60, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.card-export-cp-hint.clickable-hint:hover {
+  background: #7A4E32;
+  color: #FFFFFF !important;
+  border-color: #7A4E32;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(122, 78, 50, 0.28);
+}
+
+[data-theme="dark"] .card-export-cp-hint.clickable-hint {
+  background: rgba(215, 169, 127, 0.14);
+  color: #E8C9AA;
+  border-color: rgba(215, 169, 127, 0.32);
+}
+
+[data-theme="dark"] .card-export-cp-hint.clickable-hint:hover {
+  background: #C4956A;
+  color: #1A120B !important;
+  border-color: #C4956A;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(196, 149, 106, 0.28);
+}
+
 /* Pill xem Camp trên thẻ MKT / SP / Tổng công ty */
 .card-camp-hint.clickable-hint {
   cursor: pointer;
@@ -6031,6 +6070,348 @@ input::-ms-clear {
   font-size: 8.9px;
   letter-spacing: 0;
   padding: 2px 4px;
+}
+
+/* Modal Xuất bản Chi Phí (v8.6.304) */
+.export-cp-card {
+  width: 92vw;
+  max-width: 520px;
+  background: var(--card-fill, #FFFDF9);
+  border: 1.5px solid var(--border-soft, #CDB7A3);
+  border-radius: 22px;
+  box-shadow: 0 22px 56px rgba(35, 20, 12, 0.34), 0 4px 16px rgba(35, 20, 12, 0.1);
+  overflow: hidden;
+  animation: odModalZoomIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.export-cp-header {
+  padding: 18px 22px 15px;
+  background: linear-gradient(135deg, #FAF1E6 0%, #F1E1CE 100%);
+  border-bottom: 1.5px solid #DFCBB6;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.export-cp-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.export-cp-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.exp-cp-mkt-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #3D2314;
+  color: #FFF8F0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.export-cp-title {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: var(--choco-dark, #3D2314);
+  letter-spacing: 0.25px;
+}
+
+.export-cp-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--choco-muted, #7A5E4C);
+}
+
+.export-cp-body {
+  padding: 18px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.export-cp-panel {
+  background: #FAF3EA;
+  border: 1px solid #E4D2BE;
+  border-radius: 15px;
+  padding: 13px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.export-cp-panel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.export-cp-section-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--choco-muted, #7A5E4C);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.export-cp-days-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(140, 90, 60, 0.14);
+  color: #5C3D28;
+  border: 1px solid rgba(140, 90, 60, 0.24);
+}
+
+.exp-cp-date-btn {
+  width: 100%;
+  justify-content: flex-start !important;
+  height: 42px !important;
+  padding: 0 14px !important;
+  font-size: 13.5px !important;
+  border-radius: 12px !important;
+  background: #FFFDF9 !important;
+  border: 1.5px solid #D4BDA6 !important;
+  box-shadow: 0 2px 6px rgba(61, 35, 20, 0.06);
+}
+
+.exp-cp-date-btn:hover,
+.exp-cp-date-btn.is-open {
+  border-color: #8C5A3C !important;
+  box-shadow: 0 0 0 3px rgba(140, 90, 60, 0.14);
+}
+
+.exp-cp-chevron {
+  margin-left: auto;
+  color: #8C6D58;
+  transition: transform 0.18s ease;
+}
+
+.exp-cp-date-btn.is-open .exp-cp-chevron {
+  transform: rotate(180deg);
+}
+
+.export-cp-status {
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: #FAF2E8;
+  border: 1px solid #E3D1BE;
+  border-left: 3.5px solid #8C5A3C;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.export-cp-status.is-done {
+  background: #F1FAF4;
+  border-color: #C7E8D2;
+  border-left-color: #15803D;
+}
+
+.export-cp-status.is-error {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  border-left-color: #DC2626;
+}
+
+.export-cp-status-text {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #4A2F1D;
+  line-height: 1.35;
+}
+
+.export-cp-status.is-done .export-cp-status-text {
+  color: #166534;
+}
+
+.export-cp-status.is-error .export-cp-status-text {
+  color: #B91C1C;
+}
+
+.export-cp-progress-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(140, 90, 60, 0.16);
+  overflow: hidden;
+}
+
+.export-cp-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8C5A3C, #16A34A);
+  transition: width 0.22s ease;
+}
+
+.export-cp-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.export-cp-kpi-card {
+  background: #FAF4EC;
+  border: 1px solid #E4D3C0;
+  border-radius: 13px;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-cp-kpi-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.45px;
+  color: var(--choco-muted, #7A5E4C);
+  text-transform: uppercase;
+}
+
+.export-cp-kpi-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: #3D2314;
+  white-space: nowrap;
+}
+
+.export-cp-kpi-val.is-spend {
+  color: #B45309;
+}
+
+.export-cp-kpi-val.is-orders {
+  color: #15803D;
+}
+
+.export-cp-kpi-sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #8A6D5B;
+  white-space: nowrap;
+}
+
+.export-cp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.export-cp-btn {
+  height: 44px;
+  border-radius: 13px;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+}
+
+.export-cp-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.export-cp-btn:not(:disabled):hover {
+  transform: translateY(-1.5px);
+  filter: brightness(1.04);
+}
+
+.export-cp-btn-excel {
+  background: linear-gradient(135deg, #1E7447 0%, #145331 100%);
+  color: #FFFFFF;
+  box-shadow: 0 6px 16px rgba(20, 83, 49, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.export-cp-btn-sheet {
+  background: linear-gradient(135deg, #7E5236 0%, #563420 100%);
+  color: #FFFDF9;
+  box-shadow: 0 6px 16px rgba(86, 52, 32, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.export-cp-hint {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px dashed #E2D0BC;
+  font-size: 11.5px;
+  line-height: 1.48;
+  color: var(--choco-muted, #7A5E4C);
+}
+
+[data-theme="dark"] .export-cp-card {
+  background: #231A14;
+  border-color: #4B382C;
+}
+
+[data-theme="dark"] .export-cp-header {
+  background: linear-gradient(135deg, #2D2018 0%, #241912 100%);
+  border-bottom-color: #4B382C;
+}
+
+[data-theme="dark"] .exp-cp-mkt-badge {
+  background: #C4956A;
+  color: #1A120B;
+}
+
+[data-theme="dark"] .export-cp-title,
+[data-theme="dark"] .export-cp-kpi-val {
+  color: #FAF5ED;
+}
+
+[data-theme="dark"] .export-cp-panel,
+[data-theme="dark"] .export-cp-kpi-card {
+  background: #2B1F17;
+  border-color: #4A372B;
+}
+
+[data-theme="dark"] .exp-cp-date-btn {
+  background: #1B130E !important;
+  border-color: #554032 !important;
+}
+
+[data-theme="dark"] .export-cp-days-badge {
+  background: rgba(215, 169, 127, 0.15);
+  color: #E8C9AA;
+  border-color: rgba(215, 169, 127, 0.28);
+}
+
+[data-theme="dark"] .export-cp-status {
+  background: #2C2018;
+  border-color: #4B382C;
+}
+
+[data-theme="dark"] .export-cp-status.is-done {
+  background: rgba(22, 163, 74, 0.14);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+[data-theme="dark"] .export-cp-status.is-done .export-cp-status-text {
+  color: #86EFAC;
+}
+
+[data-theme="dark"] .export-cp-status-text {
+  color: #E8C9AA;
+}
+
+[data-theme="dark"] .export-cp-hint {
+  border-top-color: #443328;
 }
 
 .od-load-more-wrap {

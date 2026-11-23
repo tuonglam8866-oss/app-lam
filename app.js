@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.302";
+const APP_FRONTEND_VERSION = "8.6.304";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -4218,6 +4218,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
       <span class="card-sub-label">${date_label}</span>
       ${build_card_camp_pill_html("__ALL__", "")}
       <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">📋 Chi tiết đơn →</span>
+      <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho Toàn công ty">📤 Xuất bản CP</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-total-orders" style="color: var(--color-highlight)">0</span>
@@ -4245,6 +4246,13 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   const btnViewCompanyOrders = topRow.querySelector(".js-btn-view-company-orders");
   if (btnViewCompanyOrders) {
     btnViewCompanyOrders.addEventListener("click", openCompanyOrders);
+  }
+  const btnExportCompanyCp = topRow.querySelector(".js-btn-export-cp");
+  if (btnExportCompanyCp) {
+    btnExportCompanyCp.addEventListener("click", (e) => {
+      e.stopPropagation();
+      open_export_cp_modal("__ALL__");
+    });
   }
   card.addEventListener("click", () => hien_thi_bang_camp_mkt("__ALL__", ""));
 
@@ -4281,6 +4289,7 @@ function create_mkt_table_card(
       ${build_sp_closing_rate_pill_html(null, name_str)}
       ${build_card_camp_pill_html(name_str, "")}
       <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
+      <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho ${name_str}">📤 Xuất bản CP</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -4325,6 +4334,14 @@ function create_mkt_table_card(
     btnViewOrders.addEventListener("click", (e) => {
       e.stopPropagation();
       hien_thi_bang_don_hang_chi_tiet(name_str, null);
+    });
+  }
+
+  const btnExportCp = topRow.querySelector(".js-btn-export-cp");
+  if (btnExportCp) {
+    btnExportCp.addEventListener("click", (e) => {
+      e.stopPropagation();
+      open_export_cp_modal(name_str);
     });
   }
 
@@ -8862,15 +8879,20 @@ function update_cal_range_highlight() {
 
   const isOdCal = current_cal_target === "od_filter";
   const isMcCal = current_cal_target === "mc_filter";
+  const isExpCpCal = current_cal_target === "exp_cp";
   let rStart = isOdCal
     ? (od_date_start || "")
     : isMcCal
     ? (mc_date_start || current_start_date)
+    : isExpCpCal
+    ? (exp_cp_date_start || current_start_date)
     : current_start_date;
   let rEnd = isOdCal
     ? (od_date_end || od_date_start || "")
     : isMcCal
     ? (mc_date_end || mc_date_start || current_end_date)
+    : isExpCpCal
+    ? (exp_cp_date_end || exp_cp_date_start || current_end_date)
     : current_end_date;
 
   if (cal_pick_step === 1 && cal_temp_start) {
@@ -9040,6 +9062,8 @@ function render_calendar_grid(year, month) {
           document.getElementById("btnMcDateRange")?.classList.remove("is-open");
           current_cal_target = null;
           tai_camp_mkt_theo_ngay(st, en);
+        } else if (current_cal_target === "exp_cp") {
+          ap_dung_khoang_ngay_xuat_cp(st, en);
         } else {
           set_and_refresh(st, en);
         }
@@ -9085,6 +9109,8 @@ function toggle_calendar_popup(targetType, anchorBtn) {
       ? (od_date_end || od_date_start || current_end_date || current_start_date)
       : current_cal_target === "mc_filter"
       ? (mc_date_end || mc_date_start || current_end_date || current_start_date)
+      : current_cal_target === "exp_cp"
+      ? (exp_cp_date_end || exp_cp_date_start || current_end_date || current_start_date)
       : (current_end_date || current_start_date);
   const dt = parse_ymd_date(baseDateStr);
   current_cal_year = dt.getFullYear();
@@ -9095,7 +9121,7 @@ function toggle_calendar_popup(targetType, anchorBtn) {
 
   calPopup.classList.toggle(
     "is-modal-cal",
-    current_cal_target === "od_filter" || current_cal_target === "mc_filter"
+    current_cal_target === "od_filter" || current_cal_target === "mc_filter" || current_cal_target === "exp_cp"
   );
   calPopup.classList.remove("hidden");
   anchorBtn.classList.add("is-open");
@@ -9115,6 +9141,7 @@ function sync_cal_preset_sidebar_ui() {
   const isOdCal = current_cal_target === "od_filter";
   const isAllTableOd = isOdCal && current_od_mode === "all_table";
   const isMcCal = current_cal_target === "mc_filter";
+  const isExpCpCal = current_cal_target === "exp_cp";
   const allBtn = document.getElementById("btnCalAllDates");
   if (allBtn) allBtn.classList.toggle("hidden", !isAllTableOd);
 
@@ -9122,11 +9149,15 @@ function sync_cal_preset_sidebar_ui() {
     ? od_date_start
     : isMcCal
     ? (mc_date_start || current_start_date)
+    : isExpCpCal
+    ? (exp_cp_date_start || current_start_date)
     : current_start_date;
   const en = isOdCal
     ? od_date_end
     : isMcCal
     ? (mc_date_end || current_end_date)
+    : isExpCpCal
+    ? (exp_cp_date_end || current_end_date)
     : current_end_date;
   const activePreset = detect_active_cal_preset(st, en, isAllTableOd);
 
@@ -9149,6 +9180,8 @@ function apply_cal_preset_choice(preset) {
     document.getElementById("btnMcDateRange")?.classList.remove("is-open");
     current_cal_target = null;
     tai_camp_mkt_theo_ngay(st, en);
+  } else if (current_cal_target === "exp_cp" && st && en) {
+    ap_dung_khoang_ngay_xuat_cp(st, en);
   } else if (st && en) {
     set_and_refresh(st, en);
   }
@@ -10207,6 +10240,18 @@ window.addEventListener("DOMContentLoaded", async () => {
         current_cal_target = null;
         return;
       }
+      if (current_cal_target === "exp_cp" && calPop && !calPop.classList.contains("hidden")) {
+        calPop.classList.add("hidden");
+        calPop.classList.remove("is-modal-cal");
+        document.getElementById("btnExpCpDateRange")?.classList.remove("is-open");
+        current_cal_target = null;
+        return;
+      }
+      const expCpModal = document.getElementById("exportCpModal");
+      if (expCpModal && !expCpModal.classList.contains("hidden")) {
+        close_export_cp_modal();
+        return;
+      }
       const ccModal = document.getElementById("campCustomersModal");
       if (ccModal && !ccModal.classList.contains("hidden")) {
         dong_bang_khach_hang_camp();
@@ -10217,6 +10262,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       dong_bang_camp_mkt();
     }
   });
+
+  init_export_cp_modal();
 
   // Kiểm tra trạng thái đăng nhập khi mở app (giữ phiên qua các lần cập nhật trừ khi đổi mật khẩu mới)
   const isAuthed = await check_persisted_auth_session();
@@ -10231,3 +10278,939 @@ window.addEventListener("DOMContentLoaded", async () => {
   await quet_don_dinh_ky();
   setInterval(quet_don_dinh_ky, 3000);
 });
+
+// ==============================================================
+// XUẤT BẢN CHI PHÍ (EXCEL .XLSX & GOOGLE SHEETS) - v8.6.303
+// ==============================================================
+let _exp_cp_current_mkt = "__ALL__";
+let _exp_cp_is_busy = false;
+let _exp_cp_report_cache = null; // { key, timeMs, report }
+let exp_cp_date_start = "";
+let exp_cp_date_end = "";
+
+function update_exp_cp_date_btn_ui() {
+  const startEl = document.getElementById("expCpDateStartText");
+  const sepEl = document.getElementById("expCpDateSep");
+  const endEl = document.getElementById("expCpDateEndText");
+  cap_nhat_nut_khoang_ngay_ui(startEl, sepEl, endEl, exp_cp_date_start, exp_cp_date_end, "Chọn ngày");
+  const badge = document.getElementById("expCpDayCountBadge");
+  if (badge) {
+    const cnt = build_cp_date_list(exp_cp_date_start, exp_cp_date_end).length;
+    badge.textContent = `${cnt} ngày`;
+  }
+}
+
+function ap_dung_khoang_ngay_xuat_cp(st, en) {
+  const calPopup = document.getElementById("calendarPopup");
+  calPopup?.classList.add("hidden");
+  calPopup?.classList.remove("is-modal-cal");
+  document.getElementById("btnExpCpDateRange")?.classList.remove("is-open");
+  current_cal_target = null;
+
+  const s = clamp_min_data_date(st || format_ymd_date(new Date()));
+  const e = clamp_min_data_date(en || s);
+  exp_cp_date_start = s <= e ? s : e;
+  exp_cp_date_end = s <= e ? e : s;
+  update_exp_cp_date_btn_ui();
+}
+
+function xlsx_col_letter(colIdx0) {
+  let n = colIdx0 + 1;
+  let out = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    out = String.fromCharCode(65 + rem) + out;
+    n = Math.floor((n - 1) / 26);
+  }
+  return out;
+}
+
+function xlsx_xml_escape(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function xlsx_crc32(bytes) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function xlsx_build_zip(entries) {
+  const enc = new TextEncoder();
+  const localParts = [];
+  const cdParts = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const nameBytes = enc.encode(entry.name);
+    const dataBytes = entry.data instanceof Uint8Array ? entry.data : enc.encode(String(entry.data || ""));
+    const crc = xlsx_crc32(dataBytes);
+    const size = dataBytes.length;
+
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, 0, true);
+    lv.setUint16(12, 0x5977, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+
+    localParts.push(lh, dataBytes);
+
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, 0, true);
+    cv.setUint16(14, 0x5977, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    cd.set(nameBytes, 46);
+    cdParts.push(cd);
+
+    offset += lh.length + size;
+  }
+
+  let cdSize = 0;
+  for (const p of cdParts) cdSize += p.length;
+
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, entries.length, true);
+  ev.setUint16(10, entries.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...cdParts, eocd], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
+function build_cp_date_list(startYmd, endYmd) {
+  const days = [];
+  const s = clamp_min_data_date(startYmd);
+  const e = clamp_min_data_date(endYmd);
+  if (!s || !e || s > e) return days;
+  const cur = parse_ymd_date(s);
+  const endDt = parse_ymd_date(e);
+  while (cur <= endDt && days.length < 62) {
+    const ymd = format_ymd_date(cur);
+    const label = `${cur.getDate()}/${cur.getMonth() + 1}/${cur.getFullYear()}`;
+    days.push({ ymd, label });
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+
+async function fetch_daily_cp_report_data(mktName, startYmd, endYmd, onProgress) {
+  const days = build_cp_date_list(startYmd, endYmd);
+  if (days.length === 0) {
+    throw new Error("Khoảng ngày không hợp lệ.");
+  }
+
+  const effStart = days[0].ymd;
+  const effEnd = days[days.length - 1].ymd;
+  const cacheKey = `${mktName}|${effStart}|${effEnd}`;
+  if (
+    _exp_cp_report_cache &&
+    _exp_cp_report_cache.key === cacheKey &&
+    Date.now() - _exp_cp_report_cache.timeMs < 60000
+  ) {
+    if (onProgress) onProgress(100, "Đã dùng dữ liệu vừa tải xong.");
+    return _exp_cp_report_cache.report;
+  }
+
+  if (onProgress) onProgress(5, "⏳ Đang đồng bộ đơn hàng từ Google Sheets...");
+  await tai_du_lieu_google_sheets(false, effStart, effEnd, false).catch(() => false);
+
+  const isAllMkt = !mktName || mktName === "__ALL__";
+  const targetActs = [];
+  const seenActs = new Set();
+  for (const m of LIST_MKT_FB) {
+    if (isAllMkt || m.ten === mktName) {
+      if (!seenActs.has(m.id)) {
+        seenActs.add(m.id);
+        targetActs.push(m.id);
+      }
+    }
+  }
+
+  const bySp = new Map();
+  const ensureSp = (spCode) => {
+    const key = String(spCode || "").trim().toUpperCase();
+    if (!key) return null;
+    if (!bySp.has(key)) {
+      bySp.set(key, {
+        sp: key,
+        uniqueCamps: new Set(),
+        totalSpend: 0,
+        totalOrders: 0,
+        totalRevenue: 0,
+        days: new Map(), // ymd -> { camps: Set, spend, orders, revenue }
+      });
+    }
+    return bySp.get(key);
+  };
+  const ensureSpDay = (spObj, ymd) => {
+    if (!spObj.days.has(ymd)) {
+      spObj.days.set(ymd, { camps: new Set(), spend: 0, orders: 0, revenue: 0 });
+    }
+    return spObj.days.get(ymd);
+  };
+
+  // 1. Gom đơn hàng & doanh thu từng ngày
+  for (const d of days) {
+    const st = dem_don_chi_tiet_theo_ngay(d.ymd, d.ymd);
+    const spDonMap = isAllMkt ? (st.sorted_sp || {}) : ((st.stats_mkt_sp_don && st.stats_mkt_sp_don[mktName]) || {});
+    const spDtMap = isAllMkt ? (st.stats_sp_dt || {}) : ((st.stats_mkt_sp_dt && st.stats_mkt_sp_dt[mktName]) || {});
+    const allKeys = new Set([...Object.keys(spDonMap), ...Object.keys(spDtMap)]);
+    for (const spKey of allKeys) {
+      const cnt = Number(spDonMap[spKey] || 0) || 0;
+      const rev = Number(spDtMap[spKey] || 0) || 0;
+      if (cnt <= 0 && rev <= 0) continue;
+      const obj = ensureSp(spKey);
+      if (!obj) continue;
+      const dayRec = ensureSpDay(obj, d.ymd);
+      dayRec.orders += cnt;
+      dayRec.revenue += rev;
+      obj.totalOrders += cnt;
+      obj.totalRevenue += rev;
+    }
+  }
+
+  // 2. Kéo Facebook Insights từng ngày cho đúng TKQC của MKT (song song 4 ngày/lượt)
+  let completedDays = 0;
+  const totalDays = days.length;
+  const fetchOneDayFb = async (d) => {
+    if (targetActs.length === 0) return;
+    const tr = JSON.stringify({ since: d.ymd, until: d.ymd });
+    const url = build_apps_script_url(
+      `fb_acts=${encodeURIComponent(targetActs.join(","))}&time_range=${encodeURIComponent(tr)}`
+    );
+    if (!url) return;
+    let json = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
+      try {
+        const resp = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        json = await resp.json();
+        break;
+      } catch (err) {
+        clearTimeout(timer);
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    if (json && json.accounts && typeof json.accounts === "object") {
+      for (const actId of targetActs) {
+        const acc = json.accounts[actId];
+        const list = acc && Array.isArray(acc.data) ? acc.data : [];
+        for (const item of list) {
+          const spend = parseFloat(item.spend || 0) || 0;
+          if (spend <= 0) continue;
+          const campId = String(item.campaign_id || "").trim();
+          const campName = String(item.campaign_name || "").trim();
+          const campUpper = campName.toUpperCase();
+          const campNoDau = bo_dau_tieng_viet(campName).toUpperCase();
+
+          let resolvedMkt = null;
+          if (actId === "act_1333165132087237") {
+            if (campNoDau.includes("DUNG")) resolvedMkt = "D\u0168NG";
+            else if (campUpper.includes("LS")) resolvedMkt = "SAN";
+          } else {
+            const found = LIST_MKT_FB.find((m) => m.id === actId);
+            if (found) resolvedMkt = found.ten;
+          }
+          if (!resolvedMkt) continue;
+          if (!isAllMkt && resolvedMkt !== mktName) continue;
+
+          const spCode = trich_xuat_ten_mau_thong_minh(campName);
+          const obj = ensureSp(spCode);
+          if (!obj) continue;
+          const dayRec = ensureSpDay(obj, d.ymd);
+          const cKey = campId || campName;
+          if (cKey) {
+            dayRec.camps.add(cKey);
+            obj.uniqueCamps.add(cKey);
+          }
+          dayRec.spend += spend;
+          obj.totalSpend += spend;
+        }
+      }
+    }
+  };
+
+  const CONCURRENCY = 4;
+  let nextIdx = 0;
+  const workers = Array.from({ length: Math.min(CONCURRENCY, totalDays) }, async () => {
+    while (nextIdx < totalDays) {
+      const idx = nextIdx++;
+      const d = days[idx];
+      await fetchOneDayFb(d);
+      completedDays += 1;
+      const pct = Math.min(98, 10 + Math.round((completedDays / totalDays) * 88));
+      if (onProgress) onProgress(pct, `⏳ Đang tải chi phí Facebook Ads (${completedDays}/${totalDays} ngày)...`);
+    }
+  });
+  await Promise.all(workers);
+
+  // 3. Xây danh sách dòng sản phẩm: ưu tiên SP có dữ liệu trước (giảm dần theo chi tiêu/đơn), sau đó các mã còn lại trong KNOWN_CODES
+  const activeRows = Array.from(bySp.values())
+    .filter((x) => x.totalSpend > 0 || x.totalOrders > 0 || x.totalRevenue > 0)
+    .sort((a, b) => (b.totalSpend - a.totalSpend) || (b.totalOrders - a.totalOrders) || a.sp.localeCompare(b.sp));
+
+  const addedSp = new Set(activeRows.map((r) => r.sp));
+  const extraRows = [];
+  const catalog = Array.isArray(KNOWN_CODES) ? KNOWN_CODES : [];
+  for (const code of catalog) {
+    const k = String(code || "").trim().toUpperCase();
+    if (!k || addedSp.has(k) || k === "CHƯA XÁC ĐỊNH") continue;
+    addedSp.add(k);
+    extraRows.push({
+      sp: k,
+      uniqueCamps: new Set(),
+      totalSpend: 0,
+      totalOrders: 0,
+      totalRevenue: 0,
+      days: new Map(),
+    });
+  }
+  const rows = [...activeRows, ...extraRows];
+
+  const grandSpend = rows.reduce((s, r) => s + r.totalSpend, 0);
+  const grandOrders = rows.reduce((s, r) => s + r.totalOrders, 0);
+  const grandRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);
+
+  const report = {
+    mktName: isAllMkt ? "TỔNG CÔNG TY" : mktName,
+    startYmd: effStart,
+    endYmd: effEnd,
+    days,
+    rows,
+    grandSpend,
+    grandOrders,
+    grandRevenue,
+  };
+  _exp_cp_report_cache = { key: cacheKey, timeMs: Date.now(), report };
+  if (onProgress) onProgress(100, "✅ Đã tải xong dữ liệu chi phí!");
+  return report;
+}
+
+function build_cp_xlsx_blob(report) {
+  const days = report.days;
+  const rows = report.rows;
+  const totalCols = 7 + days.length * 4;
+
+  const startDt = parse_ymd_date(report.startYmd);
+  const endDt = parse_ymd_date(report.endYmd);
+  const sameMonth = startDt.getFullYear() === endDt.getFullYear() && startDt.getMonth() === endDt.getMonth();
+  const groupTitle = sameMonth
+    ? `TỔNG CHI TIÊU THÁNG ${startDt.getMonth() + 1}/${startDt.getFullYear()}`
+    : `TỔNG CHI TIÊU (${days[0].label} - ${days[days.length - 1].label})`;
+
+  const rawSheetName = `${report.mktName} - ${String(startDt.getMonth() + 1).padStart(2, "0")}-${String(startDt.getFullYear()).slice(-2)}`;
+  const sheetName = rawSheetName.replace(/[\\/?*[\]:]/g, "-").slice(0, 31) || "ChiPhi";
+
+  const cellStr = (ref, val, sIdx) =>
+    `<c r="${ref}" t="inlineStr" s="${sIdx}"><is><t>${xlsx_xml_escape(val)}</t></is></c>`;
+  const cellNum = (ref, num, sIdx) =>
+    `<c r="${ref}" s="${sIdx}"><v>${Number.isFinite(num) ? Math.round(num * 10000) / 10000 : 0}</v></c>`;
+  const cellBlank = (ref, sIdx) => `<c r="${ref}" s="${sIdx}"/>`;
+  const cellFormula = (ref, formula, cachedVal, sIdx) =>
+    `<c r="${ref}" s="${sIdx}"><f>${xlsx_xml_escape(formula)}</f><v>${Number.isFinite(cachedVal) ? Math.round(cachedVal * 10000) / 10000 : 0}</v></c>`;
+
+  const sheetRowsXml = [];
+  const merges = ["A1:A2", "B1:G1"];
+
+  // Row 1
+  const r1Cells = [
+    cellStr("A1", "MÃ HÀNG", 1),
+    cellStr("B1", groupTitle, 2),
+    cellBlank("C1", 2),
+    cellBlank("D1", 2),
+    cellBlank("E1", 2),
+    cellBlank("F1", 2),
+    cellBlank("G1", 2),
+  ];
+  for (let d = 0; d < days.length; d++) {
+    const c0 = 7 + d * 4;
+    const styleId = d % 2 === 0 ? 3 : 4;
+    const refStart = `${xlsx_col_letter(c0)}1`;
+    const refEnd = `${xlsx_col_letter(c0 + 3)}1`;
+    merges.push(`${refStart}:${refEnd}`);
+    r1Cells.push(cellStr(refStart, days[d].label, styleId));
+    r1Cells.push(cellBlank(`${xlsx_col_letter(c0 + 1)}1`, styleId));
+    r1Cells.push(cellBlank(`${xlsx_col_letter(c0 + 2)}1`, styleId));
+    r1Cells.push(cellBlank(`${xlsx_col_letter(c0 + 3)}1`, styleId));
+  }
+  sheetRowsXml.push(`<row r="1" ht="24" customHeight="1">${r1Cells.join("")}</row>`);
+
+  // Row 2
+  const r2Cells = [
+    cellBlank("A2", 1),
+    cellStr("B2", "Tổng Camp/ Tháng", 2),
+    cellStr("C2", "Tổng Tiền chi tiêu", 2),
+    cellStr("D2", "Đơn/tháng", 2),
+    cellStr("E2", "CP đơn/tháng", 2),
+    cellStr("F2", "Doanh thu", 2),
+    cellStr("G2", "%CP/DT (CIR)", 2),
+  ];
+  for (let d = 0; d < days.length; d++) {
+    const c0 = 7 + d * 4;
+    const styleId = d % 2 === 0 ? 3 : 4;
+    r2Cells.push(cellStr(`${xlsx_col_letter(c0)}2`, "Tổng Camp Lên", styleId));
+    r2Cells.push(cellStr(`${xlsx_col_letter(c0 + 1)}2`, "Tổng Chi tiêu/ngày", styleId));
+    r2Cells.push(cellStr(`${xlsx_col_letter(c0 + 2)}2`, "Đơn/ngày", styleId));
+    r2Cells.push(cellStr(`${xlsx_col_letter(c0 + 3)}2`, "Chi phí/đơn", styleId));
+  }
+  sheetRowsXml.push(`<row r="2" ht="24" customHeight="1">${r2Cells.join("")}</row>`);
+
+  // Product Rows (3 .. 2 + rows.length)
+  for (let idx = 0; idx < rows.length; idx++) {
+    const rowNum = 3 + idx;
+    const item = rows[idx];
+    const spendRefs = [];
+    const orderRefs = [];
+    const dayCells = [];
+
+    for (let d = 0; d < days.length; d++) {
+      const c0 = 7 + d * 4;
+      const colCamp = xlsx_col_letter(c0);
+      const colSpend = xlsx_col_letter(c0 + 1);
+      const colDon = xlsx_col_letter(c0 + 2);
+      const colCpd = xlsx_col_letter(c0 + 3);
+      spendRefs.push(`${colSpend}${rowNum}`);
+      orderRefs.push(`${colDon}${rowNum}`);
+
+      const dRec = item.days.get(days[d].ymd);
+      const campCnt = dRec ? dRec.camps.size : 0;
+      const spVal = dRec ? Math.round(dRec.spend) : 0;
+      const ordVal = dRec ? dRec.orders : 0;
+      const cpdVal = ordVal > 0 ? Math.round(spVal / ordVal) : 0;
+
+      dayCells.push(campCnt > 0 ? cellNum(`${colCamp}${rowNum}`, campCnt, 6) : cellBlank(`${colCamp}${rowNum}`, 6));
+      dayCells.push(spVal > 0 ? cellNum(`${colSpend}${rowNum}`, spVal, 6) : cellBlank(`${colSpend}${rowNum}`, 6));
+      dayCells.push(ordVal > 0 ? cellNum(`${colDon}${rowNum}`, ordVal, 6) : cellBlank(`${colDon}${rowNum}`, 6));
+      dayCells.push(
+        spVal > 0 || ordVal > 0
+          ? cellFormula(`${colCpd}${rowNum}`, `IFERROR(${colSpend}${rowNum}/${colDon}${rowNum},0)`, cpdVal, 6)
+          : cellBlank(`${colCpd}${rowNum}`, 6)
+      );
+    }
+
+    const totalSpendInt = Math.round(item.totalSpend);
+    const totalRevInt = Math.round(item.totalRevenue);
+    const cpaMonth = item.totalOrders > 0 ? Math.round(totalSpendInt / item.totalOrders) : 0;
+    const cirMonth = totalRevInt > 0 ? totalSpendInt / totalRevInt : 0;
+
+    const spendSumFormula = spendRefs.length > 0 ? spendRefs.join("+") : "0";
+    const orderSumFormula = orderRefs.length > 0 ? orderRefs.join("+") : "0";
+
+    const cells = [
+      cellStr(`A${rowNum}`, item.sp, 5),
+      cellNum(`B${rowNum}`, item.uniqueCamps.size, 6),
+      cellFormula(`C${rowNum}`, spendSumFormula, totalSpendInt, 6),
+      cellFormula(`D${rowNum}`, orderSumFormula, item.totalOrders, 6),
+      cellFormula(`E${rowNum}`, `IFERROR(C${rowNum}/D${rowNum},0)`, cpaMonth, 6),
+      cellNum(`F${rowNum}`, totalRevInt, 6),
+      cellFormula(`G${rowNum}`, `IFERROR(C${rowNum}/F${rowNum},0)`, cirMonth, 7),
+      ...dayCells,
+    ];
+    sheetRowsXml.push(`<row r="${rowNum}" ht="20" customHeight="1">${cells.join("")}</row>`);
+  }
+
+  // Total Row
+  const lastDataRow = 2 + rows.length;
+  const totRow = lastDataRow + 1;
+  const grandSpendInt = Math.round(report.grandSpend);
+  const grandRevInt = Math.round(report.grandRevenue);
+  const grandCpa = report.grandOrders > 0 ? Math.round(grandSpendInt / report.grandOrders) : 0;
+  const grandCir = grandRevInt > 0 ? grandSpendInt / grandRevInt : 0;
+  const totalUniqueSum = rows.reduce((s, r) => s + r.uniqueCamps.size, 0);
+
+  const totCells = [
+    cellStr(`A${totRow}`, "Tổng", 8),
+    rows.length > 0 ? cellFormula(`B${totRow}`, `SUM(B3:B${lastDataRow})`, totalUniqueSum, 9) : cellNum(`B${totRow}`, 0, 9),
+    rows.length > 0 ? cellFormula(`C${totRow}`, `SUM(C3:C${lastDataRow})`, grandSpendInt, 9) : cellNum(`C${totRow}`, 0, 9),
+    rows.length > 0 ? cellFormula(`D${totRow}`, `SUM(D3:D${lastDataRow})`, report.grandOrders, 9) : cellNum(`D${totRow}`, 0, 9),
+    cellFormula(`E${totRow}`, `IFERROR(C${totRow}/D${totRow},0)`, grandCpa, 9),
+    rows.length > 0 ? cellFormula(`F${totRow}`, `SUM(F3:F${lastDataRow})`, grandRevInt, 9) : cellNum(`F${totRow}`, 0, 9),
+    cellFormula(`G${totRow}`, `IFERROR(C${totRow}/F${totRow},0)`, grandCir, 10),
+  ];
+  for (let d = 0; d < days.length; d++) {
+    const c0 = 7 + d * 4;
+    const colCamp = xlsx_col_letter(c0);
+    const colSpend = xlsx_col_letter(c0 + 1);
+    const colDon = xlsx_col_letter(c0 + 2);
+    const colCpd = xlsx_col_letter(c0 + 3);
+    let dCamp = 0;
+    let dSpend = 0;
+    let dOrd = 0;
+    for (const r of rows) {
+      const dr = r.days.get(days[d].ymd);
+      if (dr) {
+        dCamp += dr.camps.size;
+        dSpend += Math.round(dr.spend);
+        dOrd += dr.orders;
+      }
+    }
+    const dCpd = dOrd > 0 ? Math.round(dSpend / dOrd) : 0;
+    totCells.push(rows.length > 0 ? cellFormula(`${colCamp}${totRow}`, `SUM(${colCamp}3:${colCamp}${lastDataRow})`, dCamp, 9) : cellNum(`${colCamp}${totRow}`, 0, 9));
+    totCells.push(rows.length > 0 ? cellFormula(`${colSpend}${totRow}`, `SUM(${colSpend}3:${colSpend}${lastDataRow})`, dSpend, 9) : cellNum(`${colSpend}${totRow}`, 0, 9));
+    totCells.push(rows.length > 0 ? cellFormula(`${colDon}${totRow}`, `SUM(${colDon}3:${colDon}${lastDataRow})`, dOrd, 9) : cellNum(`${colDon}${totRow}`, 0, 9));
+    totCells.push(cellFormula(`${colCpd}${totRow}`, `IFERROR(${colSpend}${totRow}/${colDon}${totRow},0)`, dCpd, 9));
+  }
+  sheetRowsXml.push(`<row r="${totRow}" ht="22" customHeight="1">${totCells.join("")}</row>`);
+
+  // Column widths
+  const colsXml = [
+    `<col min="1" max="1" width="16" customWidth="1"/>`,
+    `<col min="2" max="2" width="15" customWidth="1"/>`,
+    `<col min="3" max="3" width="16" customWidth="1"/>`,
+    `<col min="4" max="4" width="12" customWidth="1"/>`,
+    `<col min="5" max="5" width="15" customWidth="1"/>`,
+    `<col min="6" max="6" width="16" customWidth="1"/>`,
+    `<col min="7" max="7" width="13" customWidth="1"/>`,
+  ];
+  if (days.length > 0) {
+    colsXml.push(`<col min="8" max="${totalCols}" width="14" customWidth="1"/>`);
+  }
+
+  const sheetXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    `<sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane xSplit="7" ySplit="2" topLeftCell="H3" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>` +
+    `<sheetFormatPr defaultRowHeight="20"/>` +
+    `<cols>${colsXml.join("")}</cols>` +
+    `<sheetData>${sheetRowsXml.join("")}</sheetData>` +
+    `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` +
+    `</worksheet>`;
+
+  const stylesXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    `<numFmts count="2">` +
+    `<numFmt numFmtId="164" formatCode="#,##0"/>` +
+    `<numFmt numFmtId="165" formatCode="0.0%"/>` +
+    `</numFmts>` +
+    `<fonts count="2">` +
+    `<font><sz val="10"/><color rgb="FF1F1F1F"/><name val="Arial"/></font>` +
+    `<font><b/><sz val="10"/><color rgb="FF111111"/><name val="Arial"/></font>` +
+    `</fonts>` +
+    `<fills count="7">` +
+    `<fill><patternFill patternType="none"/></fill>` +
+    `<fill><patternFill patternType="gray125"/></fill>` +
+    `<fill><patternFill patternType="solid"><fgColor rgb="FFF4B183"/></patternFill></fill>` +
+    `<fill><patternFill patternType="solid"><fgColor rgb="FF00E600"/></patternFill></fill>` +
+    `<fill><patternFill patternType="solid"><fgColor rgb="FFFFD966"/></patternFill></fill>` +
+    `<fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/></patternFill></fill>` +
+    `<fill><patternFill patternType="solid"><fgColor rgb="FFEFE4D6"/></patternFill></fill>` +
+    `</fills>` +
+    `<borders count="2">` +
+    `<border><left/><right/><top/><bottom/><diagonal/></border>` +
+    `<border><left style="thin"><color rgb="FF333333"/></left><right style="thin"><color rgb="FF333333"/></right><top style="thin"><color rgb="FF333333"/></top><bottom style="thin"><color rgb="FF333333"/></bottom><diagonal/></border>` +
+    `</borders>` +
+    `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
+    `<cellXfs count="11">` +
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+    `<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>` +
+    `<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>` +
+    `<xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>` +
+    `<xf numFmtId="0" fontId="1" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>` +
+    `<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>` +
+    `<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>` +
+    `<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>` +
+    `<xf numFmtId="0" fontId="1" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>` +
+    `<xf numFmtId="164" fontId="1" fillId="6" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>` +
+    `<xf numFmtId="165" fontId="1" fillId="6" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>` +
+    `</cellXfs>` +
+    `</styleSheet>`;
+
+  const contentTypesXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+    `<Default Extension="xml" ContentType="application/xml"/>` +
+    `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+    `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+    `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+    `</Types>`;
+
+  const rootRelsXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+    `</Relationships>`;
+
+  const wbXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+    `<sheets><sheet name="${xlsx_xml_escape(sheetName)}" sheetId="1" r:id="rId1"/></sheets>` +
+    `</workbook>`;
+
+  const wbRelsXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
+    `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    `</Relationships>`;
+
+  return xlsx_build_zip([
+    { name: "[Content_Types].xml", data: contentTypesXml },
+    { name: "_rels/.rels", data: rootRelsXml },
+    { name: "xl/workbook.xml", data: wbXml },
+    { name: "xl/_rels/workbook.xml.rels", data: wbRelsXml },
+    { name: "xl/styles.xml", data: stylesXml },
+    { name: "xl/worksheets/sheet1.xml", data: sheetXml },
+  ]);
+}
+
+function build_cp_sheet_html_and_tsv(report) {
+  const days = report.days;
+  const rows = report.rows;
+  const startDt = parse_ymd_date(report.startYmd);
+  const endDt = parse_ymd_date(report.endYmd);
+  const sameMonth = startDt.getFullYear() === endDt.getFullYear() && startDt.getMonth() === endDt.getMonth();
+  const groupTitle = sameMonth
+    ? `TỔNG CHI TIÊU THÁNG ${startDt.getMonth() + 1}/${startDt.getFullYear()}`
+    : `TỔNG CHI TIÊU (${days[0].label} - ${days[days.length - 1].label})`;
+
+  const fmtInt = (n) => Math.round(n || 0);
+  const fmtPct = (ratio) => `${(Math.round((ratio || 0) * 1000) / 10).toFixed(1)}%`;
+  const bd = "border:1px solid #333333;padding:4px 6px;font-family:Arial,sans-serif;font-size:10pt;";
+
+  const htmlRows = [];
+  const tsvRows = [];
+
+  // Row 1
+  let h1 = `<th rowspan="2" style="${bd}background:#F4B183;font-weight:bold;text-align:center;">MÃ HÀNG</th>`;
+  h1 += `<th colspan="6" style="${bd}background:#00E600;font-weight:bold;text-align:center;">${escape_html(groupTitle)}</th>`;
+  const t1 = ["MÃ HÀNG", groupTitle, "", "", "", "", ""];
+  for (let d = 0; d < days.length; d++) {
+    const bg = d % 2 === 0 ? "#FFD966" : "#FFFF00";
+    h1 += `<th colspan="4" style="${bd}background:${bg};font-weight:bold;text-align:center;">${escape_html(days[d].label)}</th>`;
+    t1.push(days[d].label, "", "", "");
+  }
+  htmlRows.push(`<tr>${h1}</tr>`);
+  tsvRows.push(t1.join("\t"));
+
+  // Row 2
+  const sumHeaders = ["Tổng Camp/ Tháng", "Tổng Tiền chi tiêu", "Đơn/tháng", "CP đơn/tháng", "Doanh thu", "%CP/DT (CIR)"];
+  let h2 = sumHeaders.map((t) => `<th style="${bd}background:#00E600;font-weight:bold;text-align:center;">${t}</th>`).join("");
+  const t2 = ["", ...sumHeaders];
+  for (let d = 0; d < days.length; d++) {
+    const bg = d % 2 === 0 ? "#FFD966" : "#FFFF00";
+    const sub = ["Tổng Camp Lên", "Tổng Chi tiêu/ngày", "Đơn/ngày", "Chi phí/đơn"];
+    h2 += sub.map((t) => `<th style="${bd}background:${bg};font-weight:bold;text-align:center;">${t}</th>`).join("");
+    t2.push(...sub);
+  }
+  htmlRows.push(`<tr>${h2}</tr>`);
+  tsvRows.push(t2.join("\t"));
+
+  // Product rows
+  for (const item of rows) {
+    const spInt = fmtInt(item.totalSpend);
+    const revInt = fmtInt(item.totalRevenue);
+    const cpa = item.totalOrders > 0 ? Math.round(spInt / item.totalOrders) : 0;
+    const cir = revInt > 0 ? spInt / revInt : 0;
+
+    let hr = `<td style="${bd}font-weight:bold;text-align:left;">${escape_html(item.sp)}</td>`;
+    hr += `<td style="${bd}text-align:right;">${item.uniqueCamps.size}</td>`;
+    hr += `<td style="${bd}text-align:right;">${spInt}</td>`;
+    hr += `<td style="${bd}text-align:right;">${item.totalOrders}</td>`;
+    hr += `<td style="${bd}text-align:right;">${cpa}</td>`;
+    hr += `<td style="${bd}text-align:right;">${revInt}</td>`;
+    hr += `<td style="${bd}text-align:right;">${fmtPct(cir)}</td>`;
+    const tr = [item.sp, item.uniqueCamps.size, spInt, item.totalOrders, cpa, revInt, fmtPct(cir)];
+
+    for (let d = 0; d < days.length; d++) {
+      const dr = item.days.get(days[d].ymd);
+      const c = dr ? dr.camps.size : 0;
+      const s = dr ? fmtInt(dr.spend) : 0;
+      const o = dr ? dr.orders : 0;
+      const cpd = o > 0 ? Math.round(s / o) : 0;
+      hr += `<td style="${bd}text-align:right;">${c || ""}</td>`;
+      hr += `<td style="${bd}text-align:right;">${s || ""}</td>`;
+      hr += `<td style="${bd}text-align:right;">${o || ""}</td>`;
+      hr += `<td style="${bd}text-align:right;">${s || o ? cpd : ""}</td>`;
+      tr.push(c || "", s || "", o || "", s || o ? cpd : "");
+    }
+    htmlRows.push(`<tr>${hr}</tr>`);
+    tsvRows.push(tr.join("\t"));
+  }
+
+  // Total row
+  const gSpend = fmtInt(report.grandSpend);
+  const gRev = fmtInt(report.grandRevenue);
+  const gCpa = report.grandOrders > 0 ? Math.round(gSpend / report.grandOrders) : 0;
+  const gCir = gRev > 0 ? gSpend / gRev : 0;
+  const gCamps = rows.reduce((s, r) => s + r.uniqueCamps.size, 0);
+  let ht = `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:left;">Tổng</td>`;
+  ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${gCamps}</td>`;
+  ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${gSpend}</td>`;
+  ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${report.grandOrders}</td>`;
+  ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${gCpa}</td>`;
+  ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${gRev}</td>`;
+  ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${fmtPct(gCir)}</td>`;
+  const tt = ["Tổng", gCamps, gSpend, report.grandOrders, gCpa, gRev, fmtPct(gCir)];
+
+  for (let d = 0; d < days.length; d++) {
+    let dc = 0;
+    let ds = 0;
+    let doCnt = 0;
+    for (const r of rows) {
+      const dr = r.days.get(days[d].ymd);
+      if (dr) {
+        dc += dr.camps.size;
+        ds += fmtInt(dr.spend);
+        doCnt += dr.orders;
+      }
+    }
+    const dCpd = doCnt > 0 ? Math.round(ds / doCnt) : 0;
+    ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${dc}</td>`;
+    ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${ds}</td>`;
+    ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${doCnt}</td>`;
+    ht += `<td style="${bd}background:#EFE4D6;font-weight:bold;text-align:right;">${dCpd}</td>`;
+    tt.push(dc, ds, doCnt, dCpd);
+  }
+  htmlRows.push(`<tr>${ht}</tr>`);
+  tsvRows.push(tt.join("\t"));
+
+  return {
+    html: `<table style="border-collapse:collapse;">${htmlRows.join("")}</table>`,
+    tsv: tsvRows.join("\n"),
+  };
+}
+
+function open_export_cp_modal(mktName) {
+  const modal = document.getElementById("exportCpModal");
+  if (!modal) return;
+  hide_all_popups();
+
+  _exp_cp_current_mkt = mktName || "__ALL__";
+  const badge = document.getElementById("expCpMktBadge");
+  if (badge) {
+    badge.textContent = _exp_cp_current_mkt === "__ALL__" ? "TỔNG CÔNG TY" : `MKT: ${_exp_cp_current_mkt}`;
+  }
+
+  const todayStr = format_ymd_date(new Date());
+  const baseEnd = clamp_min_data_date(current_end_date || todayStr);
+  const endDt = parse_ymd_date(baseEnd);
+  const monthStart = clamp_min_data_date(
+    `${endDt.getFullYear()}-${String(endDt.getMonth() + 1).padStart(2, "0")}-01`
+  );
+
+  exp_cp_date_start = monthStart;
+  exp_cp_date_end = baseEnd;
+  update_exp_cp_date_btn_ui();
+
+  document.getElementById("expCpStatusBox")?.classList.add("hidden");
+  document.getElementById("expCpSummaryRow")?.classList.add("hidden");
+  modal.classList.remove("hidden");
+}
+
+function close_export_cp_modal() {
+  if (current_cal_target === "exp_cp") {
+    const calPopup = document.getElementById("calendarPopup");
+    calPopup?.classList.add("hidden");
+    calPopup?.classList.remove("is-modal-cal");
+    document.getElementById("btnExpCpDateRange")?.classList.remove("is-open");
+    current_cal_target = null;
+  }
+  document.getElementById("exportCpModal")?.classList.add("hidden");
+}
+
+function init_export_cp_modal() {
+  const modal = document.getElementById("exportCpModal");
+  if (!modal) return;
+
+  const setStatus = (pct, text, state = "loading") => {
+    const box = document.getElementById("expCpStatusBox");
+    const txt = document.getElementById("expCpStatusText");
+    const fill = document.getElementById("expCpProgressFill");
+    if (box) {
+      box.classList.remove("hidden", "is-done", "is-error");
+      if (state === "done") box.classList.add("is-done");
+      else if (state === "error") box.classList.add("is-error");
+    }
+    if (txt) txt.textContent = text;
+    if (fill) fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  };
+
+  const renderSummary = (report) => {
+    const el = document.getElementById("expCpSummaryRow");
+    if (!el || !report) return;
+    const gSpend = Math.round(report.grandSpend);
+    const gRev = Math.round(report.grandRevenue);
+    const cpa = report.grandOrders > 0 ? Math.round(gSpend / report.grandOrders) : 0;
+    const cir = gRev > 0 ? ((gSpend / gRev) * 100).toFixed(1) : "0.0";
+    el.innerHTML =
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Chi tiêu Ads</span>` +
+      `<span class="export-cp-kpi-val is-spend">${format_tien_vnd(gSpend)}</span>` +
+      `<span class="export-cp-kpi-sub">${report.days.length} ngày • ${report.rows.length} mã</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Tổng đơn</span>` +
+      `<span class="export-cp-kpi-val is-orders">${report.grandOrders} đơn</span>` +
+      `<span class="export-cp-kpi-sub">CP/đơn: ${format_tien_vnd(cpa)}</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Doanh thu</span>` +
+      `<span class="export-cp-kpi-val">${format_tien_vnd(gRev)}</span>` +
+      `<span class="export-cp-kpi-sub">CIR: ${cir}%</span>` +
+      `</div>`;
+    el.classList.remove("hidden");
+  };
+
+  const setBusy = (busy) => {
+    _exp_cp_is_busy = busy;
+    const b1 = document.getElementById("btnDoExportCpXlsx");
+    const b2 = document.getElementById("btnDoExportCpCopySheet");
+    if (b1) b1.disabled = busy;
+    if (b2) b2.disabled = busy;
+  };
+
+  const getRange = () => {
+    if (!exp_cp_date_start || !exp_cp_date_end) return null;
+    const st = clamp_min_data_date(exp_cp_date_start <= exp_cp_date_end ? exp_cp_date_start : exp_cp_date_end);
+    const en = clamp_min_data_date(exp_cp_date_start <= exp_cp_date_end ? exp_cp_date_end : exp_cp_date_start);
+    return { st, en };
+  };
+
+  document.getElementById("btnCloseExportCp")?.addEventListener("click", close_export_cp_modal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close_export_cp_modal();
+  });
+  document.getElementById("exportCpCard")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (current_cal_target === "exp_cp" && !e.target.closest("#calendarPopup") && !e.target.closest("#btnExpCpDateRange")) {
+      const calPopup = document.getElementById("calendarPopup");
+      calPopup?.classList.add("hidden");
+      calPopup?.classList.remove("is-modal-cal");
+      document.getElementById("btnExpCpDateRange")?.classList.remove("is-open");
+      current_cal_target = null;
+    }
+  });
+
+  document.getElementById("btnExpCpDateRange")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggle_calendar_popup("exp_cp", e.currentTarget);
+  });
+
+  document.getElementById("btnDoExportCpXlsx")?.addEventListener("click", async () => {
+    if (_exp_cp_is_busy) return;
+    const range = getRange();
+    if (!range) {
+      setStatus(0, "Vui lòng chọn khoảng thời gian muốn xuất bản.", "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      const report = await fetch_daily_cp_report_data(_exp_cp_current_mkt, range.st, range.en, (p, m) => setStatus(p, m, "loading"));
+      renderSummary(report);
+      const blob = build_cp_xlsx_blob(report);
+      const safeMkt = bo_dau_tieng_viet(report.mktName).replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      const fileName = `ChiPhi_${safeMkt}_${report.startYmd}_den_${report.endYmd}.xlsx`;
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(dlUrl), 15000);
+      setStatus(100, `Đã xuất file Excel: ${fileName}`, "done");
+    } catch (err) {
+      setStatus(0, `Lỗi xuất Excel: ${(err && err.message) || err}`, "error");
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  document.getElementById("btnDoExportCpCopySheet")?.addEventListener("click", async () => {
+    if (_exp_cp_is_busy) return;
+    const range = getRange();
+    if (!range) {
+      setStatus(0, "Vui lòng chọn khoảng thời gian muốn xuất bản.", "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      const report = await fetch_daily_cp_report_data(_exp_cp_current_mkt, range.st, range.en, (p, m) => setStatus(p, m, "loading"));
+      renderSummary(report);
+      const { html, tsv } = build_cp_sheet_html_and_tsv(report);
+      let copiedRich = false;
+      if (navigator.clipboard && typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/html": new Blob([html], { type: "text/html" }),
+              "text/plain": new Blob([tsv], { type: "text/plain" }),
+            }),
+          ]);
+          copiedRich = true;
+        } catch (eClip) {}
+      }
+      if (!copiedRich) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(tsv);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = tsv;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+      }
+      setStatus(
+        100,
+        copiedRich
+          ? "Đã copy bảng (giữ màu + gộp ô)! Vào Google Sheets chọn ô A1 rồi nhấn Ctrl+V."
+          : "Đã copy dữ liệu dạng bảng! Vào Google Sheets chọn ô A1 rồi nhấn Ctrl+V.",
+        "done"
+      );
+    } catch (err) {
+      setStatus(0, `Lỗi copy bảng: ${(err && err.message) || err}`, "error");
+    } finally {
+      setBusy(false);
+    }
+  });
+}
