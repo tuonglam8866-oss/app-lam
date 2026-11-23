@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.296";
+const APP_FRONTEND_VERSION = "8.6.297";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -3284,11 +3284,8 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp, startOverride = "", endOver
     ) {
       ten_mau = trich_xuat_ten_mau_thong_minh(raw_sp_text);
     }
-    if (ten_sp) {
-      if (!ten_mau || ten_mau !== ten_sp) continue;
-    } else {
-      if (!ten_mau) ten_mau = raw_sp_text || "Ch\u01b0a r\u00f5";
-    }
+    if (!ten_mau) continue;
+    if (ten_sp && ten_mau !== ten_sp) continue;
 
     ket_qua.push(map_sheet_row_a_to_p(r, i + 1, mkt_norm));
   }
