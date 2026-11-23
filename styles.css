@@ -5290,8 +5290,8 @@ input::-ms-clear {
 
 /* Chế độ mở rộng cho Bảng Lọc Đơn A -> P */
 .order-detail-card.od-wide-mode {
-  width: 96vw;
-  max-width: 1720px;
+  width: 97vw;
+  max-width: 1780px;
   height: 90vh;
   max-height: 920px;
 }
@@ -5942,6 +5942,89 @@ input::-ms-clear {
 [data-theme="dark"] .pill-status-cancel {
   color: #F87171;
   background: rgba(239, 68, 68, 0.18);
+}
+
+/* Cân đối tỉ lệ cột Bảng Lọc Đơn Tổng Hợp đồng bộ với Chi Tiết Đơn (v8.6.300) */
+.order-detail-card.od-wide-mode .od-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 1180px;
+  font-size: 12px;
+}
+
+.order-detail-card.od-wide-mode .od-table.od-sheet-grid thead th {
+  padding: 8px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.15px;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.order-detail-card.od-wide-mode .od-table.od-sheet-grid tbody td {
+  padding: 6px 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.order-detail-card.od-wide-mode .od-th-inner {
+  gap: 3px;
+}
+
+.order-detail-card.od-wide-mode .od-th-filter-btn {
+  width: 18px;
+  height: 18px;
+}
+
+.order-detail-card.od-wide-mode .od-th-filter-btn svg {
+  width: 11px;
+  height: 11px;
+}
+
+.order-detail-card.od-wide-mode .od-table.od-sheet-grid thead th.col-xl-idx,
+.order-detail-card.od-wide-mode .od-table.od-sheet-grid tbody td.col-xl-idx {
+  width: 2.8%;
+  min-width: 34px;
+  max-width: 48px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.order-detail-card.od-wide-mode .od-table .col-time      { width: 5.9%; }
+.order-detail-card.od-wide-mode .od-table .col-mvd       { width: 7.3%; }
+.order-detail-card.od-wide-mode .od-table .col-hoten     { width: 7.5%; }
+.order-detail-card.od-wide-mode .od-table .col-sdt       { width: 7.0%; }
+.order-detail-card.od-wide-mode .od-table .col-diachi    { width: 14.4%; max-width: none; }
+.order-detail-card.od-wide-mode .od-table .col-dongsp    { width: 6.2%; }
+.order-detail-card.od-wide-mode .od-table .col-mausac    { width: 5.5%; }
+.order-detail-card.od-wide-mode .od-table .col-size      { width: 3.3%; }
+.order-detail-card.od-wide-mode .od-table .col-giaban    { width: 6.3%; font-size: 11.5px; }
+.order-detail-card.od-wide-mode .od-table .col-nentang   { width: 8.2%; }
+.order-detail-card.od-wide-mode .od-table .col-sale      { width: 5.1%; }
+.order-detail-card.od-wide-mode .od-table .col-mkt       { width: 5.5%; }
+.order-detail-card.od-wide-mode .od-table .col-trangthai { width: 7.6%; }
+.order-detail-card.od-wide-mode .od-table .col-ghichu    { width: 7.4%; max-width: none; font-size: 11.5px; line-height: 1.3; }
+
+.order-detail-card.od-wide-mode .od-table tbody td.col-time,
+.order-detail-card.od-wide-mode .od-table tbody td.col-mvd,
+.order-detail-card.od-wide-mode .od-table tbody td.col-sdt,
+.order-detail-card.od-wide-mode .od-table tbody td.col-giaban {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+}
+
+.order-detail-card.od-wide-mode .od-table .pill-platform,
+.order-detail-card.od-wide-mode .od-table .pill-mkt,
+.order-detail-card.od-wide-mode .od-table .pill-status {
+  font-size: 9.8px;
+  letter-spacing: 0.1px;
+  padding: 2px 5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .od-load-more-wrap {
