@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.308";
+const APP_FRONTEND_VERSION = "8.6.309";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -779,7 +779,7 @@ const TU_DIEN_PHAT_AM = {
 // ==============================================================
 // XÁC THỰC BẢO MẬT MẬT KHẨU (PASSWORD SECURITY - LEVEL 1 SHA-256)
 // ==============================================================
-const APP_AUTH_HASH = "22c8b8f3d892f237262d828b900536d5aad8ca6aaf7b5eddf729444802138fd8";
+const APP_AUTH_HASH = "715b8746dd3362d5c66f39b50ec234b6a2f6cb2d79d27927409873aa4d757784";
 const AUTH_STORAGE_KEY = "app_lam_auth_hash";
 
 async function compute_sha256(str) {
