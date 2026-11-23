@@ -163,7 +163,7 @@
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-default btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon update-arrow-icon" id="headerUpdateIcon">⬇</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.303</span>
+            <span class="header-ver-badge" id="headerVersionBadge">v8.6.305</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -844,6 +844,24 @@
               <path d="M4.25 6.25L8 10L11.75 6.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+        </div>
+
+        <div class="export-cp-panel export-cp-test-panel">
+          <div class="export-cp-panel-top">
+            <div class="export-cp-test-title-group">
+              <span class="export-cp-section-label">Mẫu test (gộp vào dòng SP TEST)</span>
+              <span class="export-cp-test-count hidden" id="expCpTestCountBadge">0 mã</span>
+            </div>
+            <button type="button" id="btnExpCpClearTest" class="export-cp-clear-test hidden" title="Bỏ chọn tất cả mẫu test">Bỏ chọn</button>
+          </div>
+          <div class="export-cp-test-search-wrap" id="expCpTestSearchWrap">
+            <svg class="export-cp-test-search-icon" viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+              <circle cx="7" cy="7" r="4.8" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M10.7 10.7L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input type="text" id="expCpTestSearch" class="export-cp-test-search" placeholder="Tìm nhanh mã mẫu test (vd: DORIAN, BOAT)..." autocomplete="off" />
+          </div>
+          <div class="export-cp-test-chips" id="expCpTestChips"></div>
         </div>
 
         <div id="expCpStatusBox" class="export-cp-status hidden">
