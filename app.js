@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.343";
+const APP_FRONTEND_VERSION = "8.6.345";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -14324,13 +14324,6 @@ function init_export_ship_modal() {
       }
     }
 
-    const svcLabel = (prep.rows[0]?.vtpService || "VSL7").split(" - ")[0].trim();
-    const confirmMsg =
-      `Đẩy trực tiếp ${prep.rows.length} đơn sang Viettel Post?\n` +
-      `• Dịch vụ: ${svcLabel}\n` +
-      `• Thu tiền xem hàng (XMG): ${vtpXmg ? format_tien_vnd(xmgMoney) : "Không bật"}`;
-    if (!window.confirm(confirmMsg)) return;
-
     const origText = btn ? btn.textContent : "";
     if (btn) btn.disabled = true;
     try {
@@ -14439,7 +14432,7 @@ function init_export_ship_modal() {
         }
       }
 
-      // Tự động ghi Mã vận đơn + đổi trạng thái -> ĐÃ LÊN ĐƠN lên Google Sheet
+      // Tự động ghi Mã vận đơn + Phí Ship lên Google Sheet (giữ nguyên tag)
       let sheetSyncMsg = "";
       if (createdMvdItems.length > 0) {
         const apiKey = typeof get_apps_script_api_key === "function" ? get_apps_script_api_key() : "";
@@ -14453,14 +14446,14 @@ function init_export_ship_modal() {
               body: JSON.stringify({
                 mode: "update_mvd",
                 key: apiKey,
-                autoMarkSent: true,
+                autoMarkSent: false,
                 items: createdMvdItems,
               }),
               redirect: "follow",
             });
             const gsJson = gsResp.ok ? await gsResp.json().catch(() => null) : null;
             if (gsJson && gsJson.ok) {
-              sheetSyncMsg = ` • Đã tự ghi ${gsJson.updated}/${createdMvdItems.length} MVĐ lên Sheet (→ ĐÃ LÊN ĐƠN)`;
+              sheetSyncMsg = ` • Đã tự ghi ${gsJson.updated}/${createdMvdItems.length} MVĐ + Phí Ship lên Sheet`;
               await tai_va_cap_nhat_theo_ngay(false, false, true).catch(() => {});
               if (current_od_mode === "all_table" && typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function") {
                 current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
