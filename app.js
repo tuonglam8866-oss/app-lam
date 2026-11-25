@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.335";
+const APP_FRONTEND_VERSION = "8.6.336";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -12997,6 +12997,95 @@ async function resolve_vtp_ward_online(warnItem) {
   return bestWard;
 }
 
+async function resolve_vtp_full_addr_online(warnItem) {
+  if (!warnItem || !warnItem.addr) return null;
+  // Nếu đã có sẵn Quận/Huyện -> chỉ cần tìm Phường/Xã chuẩn
+  if (warnItem.vtpDistId) {
+    const wardHit = await resolve_vtp_ward_online(warnItem);
+    return wardHit ? { wardOnly: true, ward: wardHit } : null;
+  }
+
+  // Trường hợp thiếu Quận/Huyện hoặc thiếu Tỉnh/TP -> tra tọa độ qua Photon + ArcGIS rồi quy đổi về 3 cấp VTP
+  const rawAddr = String(warnItem.addr || "").trim();
+  const provHint = String(warnItem.province || "").trim();
+  const cleanQ = rawAddr
+    .replace(/^(số\s*nhà|số|sn|nhà)\s*[\w\/\-]+[\s,.-]*/i, "")
+    .replace(/\b(thôn|xóm|tổ|khu|ấp|ngõ|ngách|hẻm)\s*[\w\/\-]+/gi, " ")
+    .replace(/[,.\-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const queries = [];
+  if (cleanQ && provHint && !norm_vn_geo_fuzzy(cleanQ).includes(norm_vn_geo_fuzzy(provHint))) {
+    queries.push(`${cleanQ} ${provHint}`);
+  }
+  if (cleanQ) queries.push(cleanQ);
+  queries.push(rawAddr);
+
+  let coords = null;
+  let osmText = "";
+  for (const q of queries) {
+    if (!q) continue;
+    try {
+      const resp = await fetch("https://photon.komoot.io/api/?limit=3&q=" + encodeURIComponent(q));
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const feats = Array.isArray(data && data.features) ? data.features : [];
+      const vnHit = feats.find((f) => {
+        const c = f && f.geometry && f.geometry.coordinates;
+        return Array.isArray(c) && c[0] >= 102 && c[0] <= 110 && c[1] >= 8 && c[1] <= 24;
+      });
+      if (vnHit) {
+        coords = { lon: vnHit.geometry.coordinates[0], lat: vnHit.geometry.coordinates[1] };
+        const p = vnHit.properties || {};
+        osmText = [p.name, p.locality, p.district, p.city, p.county, p.state].filter(Boolean).join(", ");
+        break;
+      }
+    } catch (e) {}
+  }
+
+  let arcText = "";
+  if (coords) {
+    try {
+      const revUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${coords.lon},${coords.lat}`;
+      const rResp = await fetch(revUrl);
+      if (rResp.ok) {
+        const rData = await rResp.json();
+        const a = (rData && rData.address) || {};
+        arcText = [a.Neighborhood, a.District, a.City, a.Subregion, a.Region, a.Match_addr].filter(Boolean).join(", ");
+      }
+    } catch (e) {}
+  }
+
+  const candidateTexts = [arcText, osmText, `${arcText}, ${osmText}`].filter((t) => t && t.trim().length > 3);
+  for (const txt of candidateTexts) {
+    let pInfo = detect_vn_province_info(txt);
+    if (!pInfo.vtpId && provHint) pInfo = detect_vn_province_info(provHint);
+    if (!pInfo.vtpId) continue;
+    let dInfo = detect_vtp_district_info(txt, pInfo.vtpId, pInfo);
+    const m2025 = detect_vtp_2025_merged_address(txt, pInfo, dInfo);
+    if (m2025) {
+      pInfo = m2025.oldProv;
+      dInfo = m2025.oldDist;
+    }
+    if (!dInfo.id) continue;
+    let wInfo = detect_vtp_ward_info(txt, dInfo.id, dInfo, pInfo);
+    if (!wInfo.id && m2025 && m2025.candidateWardIds.length > 0) {
+      const wList = get_vtp_wards_for_dist(dInfo.id);
+      const firstCand = wList.find((w) => m2025.candidateWardIds.includes(String(w.id)));
+      if (firstCand) wInfo = { name: firstCand.full, id: firstCand.id };
+    }
+    if (!wInfo.id) wInfo = pick_default_vtp_ward(dInfo.id);
+    return {
+      wardOnly: false,
+      provInfo: pInfo,
+      distInfo: dInfo,
+      wardInfo: { name: wInfo.name, id: wInfo.id, isDefault: false, isManual: true },
+    };
+  }
+  return null;
+}
+
 function detect_vn_province_info(addrRaw) {
   const raw = String(addrRaw || "").trim();
   if (!raw) return { name: "", vtpId: "", vtpCode: "", matchIdx: -1, matchKey: "" };
@@ -13135,6 +13224,7 @@ function pick_default_vtp_ward(vtpDistId) {
 }
 
 let _exp_ship_ward_overrides = {};
+let _exp_ship_addr_overrides = {};
 
 const VTP_SERVICE_NORMALIZE_MAP = {
   VSL7: "VSL7 - Cam kết sản lượng 07",
@@ -13280,20 +13370,23 @@ function prepare_ship_export_rows(orders, opts) {
     const name = String(o.ho_ten || "").trim();
     const { phone, valid: phoneValid } = normalize_vn_phone_for_ship(o.sdt);
     const addr = String(o.dia_chi || "").trim();
-    let provInfo = detect_vn_province_info(addr);
-    let distInfo = detect_vtp_district_info(addr, provInfo.vtpId, provInfo);
-    const merged2025 = detect_vtp_2025_merged_address(addr, provInfo, distInfo);
+    const orderKey = `${phone}|${addr}`;
+    const fullAddrOverride = _exp_ship_addr_overrides[orderKey];
+    let provInfo = fullAddrOverride ? fullAddrOverride.provInfo : detect_vn_province_info(addr);
+    let distInfo = fullAddrOverride ? fullAddrOverride.distInfo : detect_vtp_district_info(addr, provInfo.vtpId, provInfo);
+    const merged2025 = fullAddrOverride ? null : detect_vtp_2025_merged_address(addr, provInfo, distInfo);
     if (merged2025) {
       provInfo = merged2025.oldProv;
       distInfo = merged2025.oldDist;
     }
     const province = provInfo.name;
     const district = distInfo.name;
-    const orderKey = `${phone}|${addr}`;
     const manualWard = _exp_ship_ward_overrides[orderKey];
     let wardInfo;
     if (manualWard && manualWard.id && String(manualWard.distId || "") === String(distInfo.id || "")) {
       wardInfo = { name: manualWard.name, id: manualWard.id, isDefault: false, isManual: true };
+    } else if (fullAddrOverride && fullAddrOverride.wardInfo && fullAddrOverride.wardInfo.id) {
+      wardInfo = fullAddrOverride.wardInfo;
     } else if (merged2025) {
       const wList = get_vtp_wards_for_dist(distInfo.id);
       const normAddr = " " + bo_dau_tieng_viet(addr).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + " ";
@@ -13368,6 +13461,7 @@ function prepare_ship_export_rows(orders, opts) {
         wardName: ward,
         preferredWardIds: merged2025 ? merged2025.candidateWardIds : null,
         canPickWard: Boolean(distInfo.id && (wardInfo.isDefault || !ward)),
+        canResolveOnline: Boolean(addr && addr.length >= 6 && (!province || !district || !ward || wardInfo.isDefault)),
       });
     } else {
       validCount += 1;
@@ -13969,9 +14063,9 @@ function init_export_ship_modal() {
     const btn = document.getElementById("btnExpShipResolveOnline");
     const prep = _exp_ship_last_prepared;
     if (!prep || !Array.isArray(prep.warnings)) return;
-    const targets = prep.warnings.filter((w) => w.canPickWard && w.vtpDistId && w.addr);
+    const targets = prep.warnings.filter((w) => (w.canResolveOnline || w.canPickWard) && w.addr && w.addr !== "—");
     if (targets.length === 0) {
-      setStatus("Không có đơn nào cần tra Phường/Xã online.", "done");
+      setStatus("Không có đơn nào cần tra địa chỉ online.", "done");
       return;
     }
     const origText = btn ? btn.textContent : "";
@@ -13982,32 +14076,44 @@ function init_export_ship_modal() {
       for (let i = 0; i < targets.length; i++) {
         const w = targets[i];
         if (btn) btn.textContent = `⏳ Đang tra ${i + 1}/${targets.length}...`;
-        const hit = await resolve_vtp_ward_online(w);
-        if (hit && hit.id) {
-          _exp_ship_ward_overrides[w.orderKey] = {
-            name: hit.full,
-            id: hit.id,
-            distId: w.vtpDistId,
-          };
-          resolvedCount += 1;
-          if (resolvedSamples.length < 3) resolvedSamples.push(hit.full);
+        const resOnline = await resolve_vtp_full_addr_online(w);
+        if (resOnline) {
+          if (resOnline.wardOnly && resOnline.ward && resOnline.ward.id) {
+            _exp_ship_ward_overrides[w.orderKey] = {
+              name: resOnline.ward.full,
+              id: resOnline.ward.id,
+              distId: w.vtpDistId,
+            };
+            resolvedCount += 1;
+            if (resolvedSamples.length < 3) resolvedSamples.push(resOnline.ward.full);
+          } else if (!resOnline.wardOnly && resOnline.provInfo && resOnline.distInfo) {
+            _exp_ship_addr_overrides[w.orderKey] = {
+              provInfo: resOnline.provInfo,
+              distInfo: resOnline.distInfo,
+              wardInfo: resOnline.wardInfo,
+            };
+            resolvedCount += 1;
+            if (resolvedSamples.length < 3) {
+              resolvedSamples.push(`${resOnline.wardInfo?.name || ""} - ${resOnline.distInfo.name} - ${resOnline.provInfo.name}`);
+            }
+          }
         }
       }
       refresh_export_ship_preview();
       if (resolvedCount > 0) {
         setStatus(
-          `Đã tự tìm chuẩn Phường/Xã cho ${resolvedCount}/${targets.length} đơn (${resolvedSamples.join(", ")}).`,
+          `Đã tự tìm chuẩn địa chỉ cho ${resolvedCount}/${targets.length} đơn (${resolvedSamples.join("; ")}).`,
           "done"
         );
       } else {
-        setStatus("Không tìm thêm được Phường/Xã rõ hơn từ bản đồ online — bạn chọn tay ở danh sách nhé.", "error");
+        setStatus("Không tìm thêm được địa chỉ rõ hơn từ bản đồ online — bạn kiểm tra/sửa lại địa chỉ gốc nhé.", "error");
       }
     } catch (err) {
       setStatus(`Lỗi tra cứu online: ${(err && err.message) || err}`, "error");
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = origText || "🔍 Tự tìm P/X chuẩn (Online)";
+        btn.textContent = origText || "🔍 Tự tìm ĐC chuẩn (Online)";
       }
     }
   });
