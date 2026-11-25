@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.334";
+const APP_FRONTEND_VERSION = "8.6.335";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -14039,8 +14039,12 @@ function init_export_ship_modal() {
     }
     try {
       await tai_va_cap_nhat_theo_ngay(false, false, true);
-      if (current_od_mode === "all_table" && Array.isArray(data_hien_tai)) {
-        current_od_raw_list = data_hien_tai.slice();
+      if (current_od_mode === "all_table" && typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function") {
+        current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+        const dateRangeText = document.getElementById("odDateRangeText");
+        if (dateRangeText) {
+          dateRangeText.textContent = `Tổng cộng ${current_od_raw_list.length} đơn hàng trong bảng`;
+        }
       }
       const odModal = document.getElementById("orderDetailModal");
       if (odModal && !odModal.classList.contains("hidden") && typeof apply_od_filters_and_render === "function") {
