@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.332";
+const APP_FRONTEND_VERSION = "8.6.333";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -13772,6 +13772,10 @@ function refresh_export_ship_preview() {
   if (senderPhoneWrap) senderPhoneWrap.classList.toggle("hidden", _exp_ship_carrier !== "vtp");
   const senderAddrWrap = document.getElementById("expShipSenderAddrWrap");
   if (senderAddrWrap) senderAddrWrap.classList.toggle("hidden", _exp_ship_carrier !== "vtp");
+  const shipGrid = document.querySelector("#exportShipModal .export-ship-grid-compact");
+  if (shipGrid) shipGrid.classList.toggle("is-jt", _exp_ship_carrier === "jt");
+  const shipGridRow2 = document.getElementById("expShipGridRow2");
+  if (shipGridRow2) shipGridRow2.classList.toggle("is-jt", _exp_ship_carrier === "jt");
 
   const b1 = document.getElementById("btnDoExportShipXlsx");
   const b2 = document.getElementById("btnDoExportShipCopy");
