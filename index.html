@@ -904,15 +904,22 @@
   <div id="exportShipModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Lên đơn vận chuyển Viettel Post">
     <div class="export-cp-card export-ship-compact-card export-ship-v2-card" id="exportShipCard">
       <div class="export-cp-header export-ship-compact-header export-ship-v2-header">
-        <div class="export-cp-title-col">
-          <div class="export-cp-title-wrap">
-            <span class="exp-cp-mkt-badge" id="expShipSourceBadge">0 ĐƠN TAG LÊN APPLAM</span>
-            <h2 class="export-cp-title">LÊN ĐƠN VIETTEL POST</h2>
+        <div class="export-ship-v2-head-top">
+          <div class="export-cp-title-col">
+            <div class="export-cp-title-wrap">
+              <span class="exp-cp-mkt-badge" id="expShipSourceBadge">0 ĐƠN TAG LÊN APPLAM</span>
+              <h2 class="export-cp-title">LÊN ĐƠN VIETTEL POST</h2>
+            </div>
+            <div class="export-cp-subtitle">Chuẩn hóa SĐT • Đổi địa chỉ mới 2025 → 3 cấp cũ VTP • Tự ghi MVĐ &amp; Phí Ship</div>
           </div>
-          <div class="export-cp-subtitle">Chuẩn hóa SĐT • Đổi địa chỉ mới 2025 → 3 cấp cũ VTP • Tự ghi MVĐ &amp; Phí Ship</div>
+          <div class="export-ship-header-btns export-ship-v2-toolbar">
+            <button type="button" id="btnExpShipReloadData" class="rounded-btn od-no-mvd-btn export-ship-reload-btn" title="Tải lại dữ liệu đơn hàng mới nhất">↻ Tải lại</button>
+            <button type="button" class="od-close-btn" id="btnCloseExportShip" aria-label="Đóng" title="Đóng">✕</button>
+          </div>
         </div>
-        <div class="export-ship-header-btns export-ship-v2-toolbar">
-          <button type="button" id="btnExpShipDateRange" class="rounded-btn btn-date-picker btn-date-range-unified exp-cp-date-btn export-ship-header-date-btn" aria-haspopup="dialog" title="Chọn khoảng thời gian lên đơn">
+        <div class="export-ship-v2-head-date-row">
+          <span class="export-ship-v2-date-label">Thời gian:</span>
+          <button type="button" id="btnExpShipDateRange" class="rounded-btn btn-date-picker btn-date-range-unified export-ship-header-date-btn" aria-haspopup="dialog" title="Chọn khoảng thời gian lên đơn">
             <span class="cal-icon-badge" aria-hidden="true">
               <svg class="cal-svg-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="1.75" y="3" width="12.5" height="11.25" rx="2.75" stroke="currentColor" stroke-width="1.5"/>
@@ -926,12 +933,10 @@
             <span id="expShipDateStartText">Tất cả ngày</span>
             <span id="expShipDateSep" class="date-range-sep hidden">→</span>
             <span id="expShipDateEndText" class="hidden"></span>
-            <svg class="exp-cp-chevron" viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+            <svg class="exp-cp-chevron" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
               <path d="M4.25 6.25L8 10L11.75 6.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <button type="button" id="btnExpShipReloadData" class="rounded-btn od-no-mvd-btn export-ship-reload-btn" title="Tải lại dữ liệu đơn hàng mới nhất">↻ Tải lại</button>
-          <button type="button" class="od-close-btn" id="btnCloseExportShip" aria-label="Đóng" title="Đóng">✕</button>
         </div>
       </div>
 
@@ -947,13 +952,13 @@
           </div>
         </div>
 
-        <!-- Phần 1: Tổng quan 3 thẻ KPI to rõ ràng -->
+        <!-- Phần 1: Tổng quan 3 thẻ KPI -->
         <div id="expShipSummaryRow" class="export-cp-summary export-ship-v2-kpi-row"></div>
 
         <!-- Phần 2: Cấu hình đẩy đơn Viettel Post -->
         <div class="export-cp-panel export-ship-v2-panel">
           <div class="export-ship-v2-panel-head">
-            <span class="export-ship-v2-sec-title">⚙️ THÔNG SỐ VẬN CHUYỂN</span>
+            <span class="export-cp-section-label">Thông số vận chuyển</span>
             <div class="export-ship-v2-carrier-pill">
               <span>📮 Viettel Post</span>
               <span class="export-ship-v2-ready-chip" id="expShipReadyBadge">0 đơn xuất</span>
@@ -965,9 +970,16 @@
               <span>Trọng lượng / 1 đôi (g)</span>
               <input type="number" id="expShipWeight" min="50" max="50000" step="100" value="1000" />
             </label>
-            <label class="export-ship-field export-ship-v2-field" id="expShipVtpServiceWrap">
+            <div class="export-ship-field export-ship-v2-field" id="expShipVtpServiceWrap">
               <span>Dịch vụ Viettel Post (*)</span>
-              <select id="expShipVtpService">
+              <div class="exp-ship-dd" id="expShipVtpSvcDd">
+                <button type="button" class="exp-ship-dd-trigger" id="expShipVtpSvcTrigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="exp-ship-dd-text" id="expShipVtpSvcText">VSL7 - Cam kết sản lượng 07</span>
+                  <span class="cal-dd-caret" aria-hidden="true">▾</span>
+                </button>
+                <div class="exp-ship-dd-menu hidden" id="expShipVtpSvcMenu" role="listbox"></div>
+              </div>
+              <select id="expShipVtpService" class="hidden" aria-hidden="true" tabindex="-1">
                 <option value="VSL7 - Cam kết sản lượng 07">VSL7 - Cam kết sản lượng 07</option>
                 <option value="SCN - Chuyển phát nhanh">SCN - Chuyển phát nhanh</option>
                 <option value="STK - Chuyển phát tiết kiệm">STK - Chuyển phát tiết kiệm</option>
@@ -987,7 +999,7 @@
                 <option value="VSL6 - Cam kết sản lượng 06">VSL6 - Cam kết sản lượng 06</option>
                 <option value="VSL8 - Cam kết sản lượng 08">VSL8 - Cam kết sản lượng 08</option>
               </select>
-            </label>
+            </div>
             <label class="export-ship-field export-ship-v2-field" id="expShipSenderPhoneWrap">
               <span>SĐT kho gửi (*)</span>
               <input type="text" id="expShipSenderPhone" value="0915519166" placeholder="0915519166" />

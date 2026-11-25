@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.350";
+const APP_FRONTEND_VERSION = "8.6.352";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -14092,6 +14092,7 @@ function open_export_ship_modal() {
   if (svcEl) {
     const useSavedSvc = Number(prefs.vtpServiceVer || 0) >= 2 && prefs.vtpService;
     svcEl.value = useSavedSvc ? normalize_vtp_service_value(prefs.vtpService) : VTP_SERVICE_NORMALIZE_MAP.VSL7;
+    if (typeof sync_vtp_service_dd_ui === "function") sync_vtp_service_dd_ui();
   }
   const senderPhoneEl = document.getElementById("expShipSenderPhone");
   if (senderPhoneEl) {
@@ -14147,7 +14148,32 @@ function close_export_ship_modal() {
     document.getElementById("btnExpShipDateRange")?.classList.remove("is-open");
     current_cal_target = null;
   }
+  document.getElementById("expShipVtpSvcMenu")?.classList.add("hidden");
+  document.getElementById("expShipVtpSvcTrigger")?.classList.remove("open");
+  document.getElementById("expShipVtpSvcTrigger")?.setAttribute("aria-expanded", "false");
   document.getElementById("exportShipModal")?.classList.add("hidden");
+}
+
+function sync_vtp_service_dd_ui() {
+  const sel = document.getElementById("expShipVtpService");
+  const txtEl = document.getElementById("expShipVtpSvcText");
+  const menuEl = document.getElementById("expShipVtpSvcMenu");
+  if (!sel || !txtEl || !menuEl) return;
+  const curVal = sel.value || (sel.options[0] ? sel.options[0].value : "");
+  txtEl.textContent = curVal || "Chọn dịch vụ Viettel Post";
+  menuEl.innerHTML = Array.from(sel.options)
+    .map((opt) => {
+      const val = String(opt.value || "");
+      const parts = val.split(" - ");
+      const code = parts[0] || val;
+      const desc = parts.slice(1).join(" - ");
+      const isAct = val === curVal;
+      return `<button type="button" class="exp-ship-dd-opt${isAct ? " active" : ""}" role="option" aria-selected="${isAct ? "true" : "false"}" data-value="${escape_html(val)}">` +
+        `<span class="exp-ship-dd-opt-code">${escape_html(code)}</span>` +
+        `<span class="exp-ship-dd-opt-desc">${escape_html(desc)}</span>` +
+        `</button>`;
+    })
+    .join("");
 }
 
 function init_export_ship_modal() {
@@ -14176,6 +14202,11 @@ function init_export_ship_modal() {
   });
   document.getElementById("exportShipCard")?.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (!e.target.closest("#expShipVtpSvcDd")) {
+      document.getElementById("expShipVtpSvcMenu")?.classList.add("hidden");
+      document.getElementById("expShipVtpSvcTrigger")?.classList.remove("open");
+      document.getElementById("expShipVtpSvcTrigger")?.setAttribute("aria-expanded", "false");
+    }
     if (current_cal_target === "exp_ship" && !e.target.closest("#calendarPopup") && !e.target.closest("#btnExpShipDateRange")) {
       const calPopup = document.getElementById("calendarPopup");
       calPopup?.classList.add("hidden");
@@ -14184,6 +14215,36 @@ function init_export_ship_modal() {
       current_cal_target = null;
     }
   });
+
+  // Custom Dropdown Dịch vụ Viettel Post (Tone Kem Cozy đồng bộ App)
+  const svcTrigger = document.getElementById("expShipVtpSvcTrigger");
+  const svcMenu = document.getElementById("expShipVtpSvcMenu");
+  const svcSelect = document.getElementById("expShipVtpService");
+  if (svcTrigger && svcMenu && svcSelect) {
+    sync_vtp_service_dd_ui();
+    svcTrigger.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const willOpen = svcMenu.classList.contains("hidden");
+      if (willOpen) sync_vtp_service_dd_ui();
+      svcMenu.classList.toggle("hidden", !willOpen);
+      svcTrigger.classList.toggle("open", willOpen);
+      svcTrigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
+    svcMenu.addEventListener("click", (e) => {
+      const optBtn = e.target.closest(".exp-ship-dd-opt[data-value]");
+      if (!optBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      svcSelect.value = optBtn.getAttribute("data-value") || "";
+      sync_vtp_service_dd_ui();
+      svcMenu.classList.add("hidden");
+      svcTrigger.classList.remove("open");
+      svcTrigger.setAttribute("aria-expanded", "false");
+      save_exp_ship_prefs();
+      refresh_export_ship_preview();
+    });
+  }
 
   document.getElementById("btnExpShipDateRange")?.addEventListener("click", (e) => {
     e.stopPropagation();
