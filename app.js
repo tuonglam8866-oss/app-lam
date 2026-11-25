@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.352";
+const APP_FRONTEND_VERSION = "8.6.354";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -13611,16 +13611,16 @@ function prepare_ship_export_rows(orders, opts) {
 
     const issues = [];
     if (!name) issues.push("Thiếu họ tên");
-    if (!phoneValid) issues.push(phone ? `SĐT lỗi (${phone})` : "Thiếu SĐT");
+    if (!phoneValid) issues.push(phone ? `Số điện thoại lỗi (${phone})` : "Thiếu số điện thoại");
     if (!addr || addr.length < 10) issues.push("Địa chỉ quá ngắn");
-    else if (!province) issues.push("Chưa rõ Tỉnh/TP");
+    else if (!province) issues.push("Chưa rõ Tỉnh/Thành phố");
     else if (!district) issues.push("Chưa rõ Quận/Huyện");
     else if (!ward) issues.push("Chưa rõ Phường/Xã");
     else if (merged2025 && wardInfo.isDefault) {
-      issues.push(`ĐC mới 2025 → đổi sang ${province} / ${district} (chọn P/X cũ)`);
-    } else if (wardInfo.isDefault) issues.push("Tự chọn P/X mặc định (có thể đổi)");
-    if (!sp) issues.push("Thiếu tên SP");
-    if (cod <= 0) issues.push("COD = 0");
+      issues.push("Cần AI sửa địa chỉ lên đơn chuẩn");
+    } else if (wardInfo.isDefault) issues.push("Cần AI sửa địa chỉ lên đơn chuẩn");
+    if (!sp) issues.push("Thiếu tên sản phẩm");
+    if (cod <= 0) issues.push("Tiền thu hộ bằng 0");
 
     const hasHardError = !name || !phoneValid || !addr || !sp;
     if (issues.length > 0) {
@@ -13998,44 +13998,21 @@ function refresh_export_ship_preview() {
     if (prep.warnings.length > 0) {
       warnBox.classList.remove("hidden");
       if (warnTitle) {
-        warnTitle.textContent = `⚠️ ${prep.warnings.length} đơn cần kiểm tra lại địa chỉ / thông tin`;
+        warnTitle.textContent = `⚠️ ${prep.warnings.length} đơn cần kiểm tra lại địa chỉ và thông tin`;
       }
       warnList.innerHTML = prep.warnings
         .slice(0, 30)
         .map((w) => {
-          let wardPickerHtml = "";
-          if (w.canPickWard && w.vtpDistId) {
-            const rawList = get_vtp_wards_for_dist(w.vtpDistId);
-            if (rawList.length > 0) {
-              const prefSet = new Set((w.preferredWardIds || []).map(String));
-              const orderedList = prefSet.size > 0
-                ? [...rawList.filter((it) => prefSet.has(String(it.id))), ...rawList.filter((it) => !prefSet.has(String(it.id)))]
-                : rawList;
-              const optsHtml = orderedList
-                .map((item) => {
-                  const label = prefSet.has(String(item.id)) ? `★ ${item.full}` : item.full;
-                  return `<option value="${escape_html(item.id)}"${
-                    String(item.id) === String(w.wardId) ? " selected" : ""
-                  }>${escape_html(label)}</option>`;
-                })
-                .join("");
-              wardPickerHtml =
-                `<select class="export-ship-ward-select" data-order-key="${escape_html(w.orderKey)}" data-dist-id="${escape_html(w.vtpDistId)}" title="Chọn lại Phường/Xã cho đơn này">${optsHtml}</select>`;
-            }
-          }
           return (
-            `<div class="export-ship-warn-item">` +
-            `<span><strong>${escape_html(w.name)}</strong> (${escape_html(w.phone)})</span>` +
-            `<span class="export-ship-warn-right">` +
-            wardPickerHtml +
-            `<span class="export-ship-warn-reason">${escape_html(w.reason)}</span>` +
-            `</span>` +
+            `<div class="export-ship-warn-item export-ship-v2-warn-item">` +
+            `<span class="export-ship-v2-warn-who"><strong>${escape_html(w.name)}</strong><span class="export-ship-v2-warn-phone">${escape_html(w.phone)}</span></span>` +
+            `<span class="export-ship-warn-reason export-ship-v2-warn-reason">${escape_html(w.reason)}</span>` +
             `</div>`
           );
         })
         .join("") +
         (prep.warnings.length > 30
-          ? `<div class="export-ship-warn-item"><span>...và ${prep.warnings.length - 30} đơn khác</span></div>`
+          ? `<div class="export-ship-warn-item export-ship-v2-warn-item"><span>...và ${prep.warnings.length - 30} đơn khác</span></div>`
           : "");
     } else {
       warnBox.classList.add("hidden");
@@ -14368,7 +14345,7 @@ function init_export_ship_modal() {
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = origText || "🔍 Tự tìm ĐC chuẩn (Online)";
+        btn.textContent = origText || "✨ AI sửa địa chỉ chuẩn";
       }
     }
   });
@@ -14553,7 +14530,7 @@ function init_export_ship_modal() {
         const r = prep.rows[i];
         if (btn) btn.textContent = `⏳ Đang đẩy ${i + 1}/${prep.rows.length}...`;
         if (!r.vtpProvId || !r.vtpDistId || !r.vtpWardId) {
-          failList.push(`${r.name}: Thiếu Tỉnh/Huyện/Xã (bấm Tự tìm ĐC chuẩn trước)`);
+          failList.push(`${r.name}: Thiếu Tỉnh/Huyện/Xã (bấm AI sửa địa chỉ chuẩn trước)`);
           continue;
         }
         const svcCode = String(r.vtpService || "VSL7").split(" - ")[0].trim().toUpperCase();

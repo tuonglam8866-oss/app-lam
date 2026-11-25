@@ -7842,8 +7842,131 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 }
 
 .export-ship-v2-warn {
-  padding: 10px 12px !important;
-  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  border-radius: 14px !important;
+  background: #FAF3EA !important;
+  border: 1px solid #DFC29E !important;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.export-ship-v2-warn-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.export-ship-v2-warn-head #expShipWarnTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: #8A4B16;
+}
+
+.export-ship-v2-ai-btn {
+  width: 100% !important;
+  height: 38px !important;
+  padding: 0 16px !important;
+  border-radius: 11px !important;
+  border: 1px solid #4A2E1E !important;
+  background: linear-gradient(135deg, #7E5236 0%, #563420 100%) !important;
+  color: #FFFDF9 !important;
+  font-family: inherit;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: 0 4px 12px rgba(86, 52, 32, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: transform 0.14s ease, filter 0.14s ease, opacity 0.14s ease;
+}
+
+.export-ship-v2-ai-btn:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+.export-ship-v2-ai-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.export-ship-v2-warn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.export-ship-v2-warn-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 8px 11px !important;
+  border-radius: 10px !important;
+  background: #FFFDF9 !important;
+  border: 1px solid #E8D5BF !important;
+  font-size: 12px !important;
+}
+
+.export-ship-v2-warn-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #3D2314;
+  flex-shrink: 0;
+}
+
+.export-ship-v2-warn-phone {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #F3E8DA;
+  border: 1px solid #E2CEB8;
+  color: #6B4C35;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.export-ship-v2-warn-reason {
+  color: #A93226 !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  text-align: right;
+  line-height: 1.35;
+}
+
+[data-theme="dark"] .export-ship-v2-warn {
+  background: #2A1F18 !important;
+  border-color: #6B4D35 !important;
+}
+
+[data-theme="dark"] .export-ship-v2-warn-head #expShipWarnTitle {
+  color: #F5B041;
+}
+
+[data-theme="dark"] .export-ship-v2-warn-item {
+  background: #1D1510 !important;
+  border-color: #4E3B2E !important;
+}
+
+[data-theme="dark"] .export-ship-v2-warn-who {
+  color: #F3E9DC;
+}
+
+[data-theme="dark"] .export-ship-v2-warn-phone {
+  background: #33241B;
+  border-color: #553E2F;
+  color: #D7C0AE;
+}
+
+[data-theme="dark"] .export-ship-v2-warn-reason {
+  color: #F87171 !important;
 }
 
 .export-ship-v2-cta {
