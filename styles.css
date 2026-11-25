@@ -7303,7 +7303,7 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 
 .export-ship-top-strip {
   display: grid;
-  grid-template-columns: 215px 1fr;
+  grid-template-columns: 1fr 265px;
   gap: 10px;
   align-items: stretch;
 }
@@ -7359,6 +7359,9 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 
 .export-ship-top-strip .export-ship-date-btn {
   height: 44px !important;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .export-ship-field-span2 {
