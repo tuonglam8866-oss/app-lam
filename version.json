@@ -1,22 +1,22 @@
 ﻿{
-    "version":  "8.6.309",
+    "version":  "8.6.310",
     "exe_url":  "APPLAM.exe",
-    "exe_sha256":  "0834f2c6f830a912b83c643dade8651ea285b34abfd28b2558b0e1c5b1676474",
-    "index.html_sha256":  "b0d15982b83c261413f34902390d40195cc855732daf2845614f089c5a069f73",
+    "exe_sha256":  "f8c2ae03af4d118a4fcc7841545df6feecb39ae1ea5cc1712bbfaaf9a805a23c",
+    "index.html_sha256":  "d7e501ccedb4456172b4c5e456e9941e48cfc2e30ea75df6ad817d1aa0a5371a",
     "styles.css_sha256":  "e03b545006ade598340862a6f8f6712369c21b159804546b0e08dff7cb6c4dac",
-    "app.js_sha256":  "417e52be50f79c59409d3d75bbddd63acd96fd1ea48c540091cb48a903385c38",
+    "app.js_sha256":  "fbf80ab572317a68f864e11847e46229e11060a773c6f083b9dc03465749fc44",
     "files":  {
                   "APPLAM.exe":  {
-                                     "sha256":  "0834f2c6f830a912b83c643dade8651ea285b34abfd28b2558b0e1c5b1676474",
+                                     "sha256":  "f8c2ae03af4d118a4fcc7841545df6feecb39ae1ea5cc1712bbfaaf9a805a23c",
                                      "size":  781312
                                  },
                   "app.js":  {
-                                 "sha256":  "417e52be50f79c59409d3d75bbddd63acd96fd1ea48c540091cb48a903385c38",
-                                 "size":  449448
+                                 "sha256":  "fbf80ab572317a68f864e11847e46229e11060a773c6f083b9dc03465749fc44",
+                                 "size":  449438
                              },
                   "index.html":  {
-                                     "sha256":  "b0d15982b83c261413f34902390d40195cc855732daf2845614f089c5a069f73",
-                                     "size":  53952
+                                     "sha256":  "d7e501ccedb4456172b4c5e456e9941e48cfc2e30ea75df6ad817d1aa0a5371a",
+                                     "size":  53950
                                  },
                   "styles.css":  {
                                      "sha256":  "e03b545006ade598340862a6f8f6712369c21b159804546b0e08dff7cb6c4dac",

@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.309";
+const APP_FRONTEND_VERSION = "8.6.310";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -3346,7 +3346,7 @@ function parse_datetime_vn(raw) {
 }
 
 // Tính số giây làm việc giữa thời điểm đơn về (dtStart) và thời điểm gọi (dtEnd)
-// Loại trừ khung giờ nghỉ: 22:00 - 08:30, 12:00 - 14:00, 18:00 - 19:30
+// Loại trừ khung giờ nghỉ: 22:00 - 09:00, 12:00 - 14:00, 18:00 - 19:30
 function calc_working_call_seconds(dtStart, dtEnd) {
   if (!dtStart || !dtEnd) return null;
   const tStart = dtStart.getTime();
@@ -3359,10 +3359,10 @@ function calc_working_call_seconds(dtStart, dtEnd) {
   const dayCursor = new Date(dtStart.getFullYear(), dtStart.getMonth(), dtStart.getDate(), 0, 0, 0, 0);
   const lastDay = new Date(dtEnd.getFullYear(), dtEnd.getMonth(), dtEnd.getDate(), 0, 0, 0, 0);
 
-  // Các khung giờ làm việc trong ngày (đã loại trừ 22h-8h30, 12h-14h, 18h-19h30):
-  // Ca sáng: 08:30 - 12:00 | Ca chiều: 14:00 - 18:00 | Ca tối: 19:30 - 22:00
+  // Các khung giờ làm việc trong ngày (đã loại trừ 22h-9h, 12h-14h, 18h-19h30):
+  // Ca sáng: 09:00 - 12:00 | Ca chiều: 14:00 - 18:00 | Ca tối: 19:30 - 22:00
   const shifts = [
-    [8, 30, 12, 0],
+    [9, 0, 12, 0],
     [14, 0, 18, 0],
     [19, 30, 22, 0],
   ];
@@ -3468,13 +3468,13 @@ function tinh_ty_le_chot_theo_ngay(start_str, end_str) {
             if (callSec !== null && callSec >= 0) {
               const callMins = dtCall.getHours() * 60 + dtCall.getMinutes();
               const isCaHanhChinh =
-                (callMins >= 8 * 60 + 30 && callMins < 12 * 60) ||
+                (callMins >= 9 * 60 && callMins < 12 * 60) ||
                 (callMins >= 14 * 60 && callMins < 17 * 60 + 30);
               const isCaToi =
                 (callMins >= 17 * 60 + 30 && callMins < 18 * 60) ||
                 (callMins >= 19 * 60 + 30 && callMins < 22 * 60);
 
-              // Bỏ qua các đơn được gọi trong khung giờ nghỉ (22h-8h30, 12h-14h, 18h-19h30)
+              // Bỏ qua các đơn được gọi trong khung giờ nghỉ (22h-9h, 12h-14h, 18h-19h30)
               if (isCaHanhChinh) {
                 tong_tg_goi_sec += callSec;
                 so_don_da_goi += 1;
@@ -4075,7 +4075,7 @@ function render_avg_call_time_popup_table() {
     make_shift_row(
       "☀️",
       "Ca hành chính",
-      "08:30 - 17:30",
+      "09:00 - 17:30",
       cr.so_don_da_goi_hc || 0,
       cr.avg_call_hc_sec || 0,
       (cr.so_don_da_goi_hc || 0) === 0 ? "ac-idle" : ""
