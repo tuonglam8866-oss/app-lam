@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.345";
+const APP_FRONTEND_VERSION = "8.6.346";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -13338,6 +13338,127 @@ function infer_ship_order_qty(o) {
   return 1;
 }
 
+// Danh mục chuẩn Tên sản phẩm + Thuộc tính (Màu / Size) theo file SKU UPYO (v8.6.346)
+const UPYO_SKU_CATALOG = [
+  { keys: ["SAND", "UD12"], name: "DÉP SAND UD12", sp: "-", colors: ["-01(Đen)", "-02(Trắng be)"] },
+  { keys: ["NOVA", "UD63", "UD3"], name: "DÉP NOVA - UD3", sp: "-", colors: ["-01(Kem)", "-02(Đen Lì)", "-03(Xám Ghi)", "-04(Rêu)", "-05(Đen Da Lộn)"] },
+  { keys: ["POSEIDON", "UD20"], name: "DÉP POSEIDON - UD20", sp: "-", colors: ["-01(Logo đỏ)", "-02(Logo đen)", "-03(Logo vàng)"] },
+  { keys: ["HOMER", "UG34"], name: "GIÀY HOMER - UG34", sp: "-", colors: ["-01(Navy)", "-02(Đen)", "-03(Choco)", "-04(Beige)"] },
+  { keys: ["LAURO", "UG33"], name: "GIÀY LAURO - UG33", sp: "-", colors: ["-01(Navy)", "-02(Đen)", "-03(Choco)", "-04(Beige)", "-05(Đen trơn)"] },
+  { keys: ["MONTIA", "UG32"], name: "GIÀY MONTIA - UG32", sp: "-", colors: ["-01(Navy)", "-02(Đen)", "-03(Choco)", "-04(Beige)"] },
+  { keys: ["DORIAN", "UG31"], name: "GIÀY DORIAN - UG31", sp: "-", colors: ["-01(Navy)", "-02(Đen)", "-03(Choco)", "-04(Beige)"] },
+  { keys: ["FRANK", "UG30"], name: "GIÀY FRANK - UG30", sp: "-", colors: ["-01(Lightbrown)", "-02(Đen)", "-03(Choco)", "-04(Beige)"] },
+  { keys: ["IRIS", "UG07"], name: "GIÀY IRIS - UG07", sp: "-", colors: ["-01(Trắng)", "-02(Đen)"] },
+  { keys: ["PIANY", "UG29"], name: "GIÀY PIANY - UG29", sp: "-", colors: ["-01(Lightbrown)", "-02(Đen)", "-03(Choco)", "-04(Beige)"] },
+  { keys: ["LOTGIAY", "LOT GIAY MASSAGE", "MASSAGE 1CM"], name: "Lót giày massage 1cm", sp: "", noAttr: true, colors: [] },
+  { keys: ["MERCURY", "UD01"], name: "DÉP MERCURY - UD01", sp: "-", colors: ["-01(Đen)"] },
+  { keys: ["MARS", "UD03"], name: "DÉP MARS - UD03", sp: "-", colors: ["-01(Beige)", "-02(Đen)"] },
+  { keys: ["CARLTON", "UG26"], name: "GIÀY CARLTON - UG26", sp: "-", colors: ["-02(Đen)", "-03(Choco)", "-04(Beige)"] },
+  { keys: ["VESPER", "UG27"], name: "GIÀY VESPER - UG27", sp: "-", colors: ["-01(Grey)", "-02(Đen)", "-03(Choco)", "-04(Beige)"] },
+  { keys: ["ENVI", "UD06"], name: "GIÀY ENVI - UD06", sp: "-", colors: ["-01(Trắng)", "-02(Đen)"] },
+  { keys: ["ROGER", "UG28"], name: "GIÀY ROGER - UG28", sp: "-", colors: ["-1(Lightbrown)", "-2(Đen)", "-3(Choco)", "-4(Beige)"] },
+  { keys: ["SKYWALK", "UD36"], name: "DÉP SKYWALK UD36", sp: "-", colors: ["-01(Đen)", "-02(Be)", "-03(Trà sữa)", "-04(Trắng)", "-05(Be sữa)"] },
+  { keys: ["COVE", "UG24"], name: "GIÀY COVE - UG24", sp: "-", colors: ["-01(Đen)", "-02(Light brown)", "-03(Đen da lộn)"] },
+  { keys: ["SUN", "UD53"], name: "DÉP SUN - UD53", sp: "-", colors: ["-01(Đen)", "-02(Kem)", "-03(Nâu)", "-04(Rêu)"] },
+  { keys: ["REGAL", "UD44"], name: "DÉP REGAL - UD44", sp: "-", colors: ["-01(Đen)", "-02(Xám ghi)", "-03(Be)", "-04(Rêu)"] },
+  { keys: ["LINO", "UD40"], name: "DÉP LINO - UD40", sp: "-", colors: ["-01(Đen)", "-02(Trắng)", "-03(Nâu)"] },
+  { keys: ["LEX", "UD52"], name: "Dép LEX - UD52", sp: "-", colors: ["-01(Đen)"] },
+  { keys: ["ELIOS", "UG23"], name: "GIÀY ELIOS - UG23", sp: "-", colors: ["-01(Lightgrey)", "-02(Đen)", "-03(Choco)", "-04(Beige)", "-05(Navy)"] },
+  { keys: ["TIDES", "UD17"], name: "Dép TIDES - UD17", sp: "-", colors: ["-01 (Ghi Kem)", "-02 (Ghi Đỏ Mận)", "-03 (Kem Ghi)", "-04 (Kem Đỏ Mận)", "-05 (Đen)"] },
+  { keys: ["COMO", "UG22"], name: "Giày COMO UG22", sp: "-", colors: ["-01(Lightgrey)", "-02( Đen)", "-03( Nâu choco)", "-04( Beige)", "-05( Dark Navy)"] },
+  { keys: ["VERGE", "UG21"], name: "GIÀY VERGE - UG21", sp: "-", colors: ["-01 ( Camel)", "-02( Đen)", "-03( Nâu choco)", "-04( Beige)", "-05( Dark Navy)"] },
+  { keys: ["LORENZO", "UG25"], name: "Giày LORENZO - UG25", sp: "-", colors: ["-Beige", "-Đen", "-Navy", "-Choco", "-CoolGrey"] },
+  { keys: ["FLOAT", "UD26"], name: "Dép FLOAT - UD26", sp: "", colors: ["-01 (Be sữa)", "-02 (Ghi)", "-03 (Nâu)", "-04 (Trắng)", "-05 (Đen)"] },
+  { keys: ["NOBLE", "UG19"], name: "GIÀY NOBLE - UG19", sp: "-", colors: ["-01 Đen", "-02 Beige", "-03 Camel", "-04 Choco", "-05 Dark navy"] },
+  { keys: ["ROYAL", "UG18"], name: "GIÀY ROYAL - UG18", sp: "", colors: ["-01 Đen", "-02 Beige", "-03 Camel", "-04 Choco"] },
+  { keys: ["TAT", "TAT CHAN"], name: "Tất chân vải sợi tre", sp: "", colors: ["Đen", "Trắng"] },
+  { keys: ["LOT", "LOT GIAY TANG CHIEU CAO", "3CM"], name: "Lót giày tăng chiều cao 3cm", sp: "", noAttr: true, colors: [] },
+  { keys: ["GLOSS", "UG17"], name: "Giày GLOSS - UG17", sp: "", colors: ["-01 ( Màu nâu)", "-02 (Màu đen)"] },
+  { keys: ["GENC", "UG09"], name: "Giày GenC - UG09", sp: "", colors: ["-01 (Trắng)", "-02 (Đen)"] },
+  { keys: ["AURO", "UD45"], name: "Dép Auro - UD45", sp: "", colors: ["-01 (Be)", "-02 (Đen)", "-03(Xám ghi)", "-04 (Rêu)"] },
+  { keys: ["PENNY", "UG16"], name: "Giày PENNY - UG16", sp: "", colors: ["- 01( Nâu Camel)", "-02( Đen)", "-03 (Nâu Choco (Chocolate))", "-04 (Mầu Beige)", "-05 (Dark Navy", "-06(Cool Grey", "07 ( Tan)"] },
+  { keys: ["MUSE", "UG15"], name: "Giày sục MUSE - UG15", sp: "", colors: ["-01(Nâu Camel)", "-02( Đen)", "-03 (Nâu Choco (Chocolate))", "-04 (Mầu Beige)", "-05 (Dark Navy)", "-06 Cool Grey"] },
+  { keys: ["NEON", "UD61"], name: "Dép Neon - UD61", sp: "", colors: ["-01(Cam)", "-02(Xanh)"] },
+  { keys: ["DEMETER", "UG04"], name: "Giày Demeter - UG04", sp: "", colors: ["-01(Đen trắng)"] },
+  { keys: ["JUNO", "UG08"], name: "Giày JUNO - UG08", sp: "", colors: ["-01(trắng sữa)", "-02(Đen)", "-03(xanh Denim)", "-04(Đỏ)"] },
+  { keys: ["SOLE", "UG13"], name: "Giày SOLE - UG13", sp: "", colors: ["-01 (Nâu Camel)", "-02 (Màu đen)", "-03 (Nâu Choco (Chocolate))", "-04(Mầu Beige)", "-05 (Màu Dark Navy)", "-06( Cool Grey)"] },
+  { keys: ["AMUN", "UG06"], name: "Giày Amun - UG06", sp: "", colors: ["- 01 (Trắng, ghi)", "- 02 (Đen)", "-03 (Trắng nâu)"] },
+  { keys: ["SUEDE", "UG12"], name: "Giày SUEDE - UG12", sp: "", colors: ["-01 Nâu Camel", "-02 Đen", "-03 Nâu Choco (Chocolate)", "-04 Beige"] },
+  { keys: ["GEM", "UG14"], name: "Giày GEM - UG14", sp: "", colors: ["-01 Nâu Camel", "-02 Đen", "-03 Nâu Choco (Chocolate)", "-04 Beige", "-05 Navy"] },
+  { keys: ["ELITE", "UG11"], name: "Giày ELITE - UG11", sp: "", colors: ["-01 Nâu Camel", "-02 Đen", "-03 Nâu Choco (Chocolate)", "-04 Beige", "-05( Dark Navy)", "-06(Cool Grey)"] },
+];
+
+function normalize_sku_color_token(s) {
+  return bo_dau_tieng_viet(String(s || ""))
+    .toUpperCase()
+    .replace(/CHOCOLATE/g, "")
+    .replace(/\bMAU\b/g, "")
+    .replace(/^[-\s]*0?\d+\s*/g, "")
+    .replace(/[^A-Z0-9]+/g, "")
+    .trim();
+}
+
+function match_upyo_sku_entry(spClean) {
+  const spNorm = bo_dau_tieng_viet(String(spClean || ""))
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim();
+  if (!spNorm) return null;
+  const spCompact = spNorm.replace(/\s+/g, "");
+  const spTokens = spNorm.split(" ").filter(Boolean);
+  for (let i = 0; i < UPYO_SKU_CATALOG.length; i++) {
+    const item = UPYO_SKU_CATALOG[i];
+    for (let k = 0; k < item.keys.length; k++) {
+      const key = item.keys[k];
+      if (spCompact === key.replace(/\s+/g, "") || spTokens.includes(key) || (key.length >= 4 && spNorm.includes(key))) {
+        return item;
+      }
+    }
+  }
+  return null;
+}
+
+function match_upyo_sku_color(entry, colorClean) {
+  if (!entry || !entry.colors || !entry.colors.length || !colorClean) return colorClean;
+  const cTok = normalize_sku_color_token(colorClean);
+  if (!cTok) return colorClean;
+
+  // Khớp chính xác trước (sau khi bỏ số thứ tự & chữ Màu)
+  for (let i = 0; i < entry.colors.length; i++) {
+    const lbl = entry.colors[i];
+    if (normalize_sku_color_token(lbl) === cTok) return lbl;
+  }
+
+  // Khớp alias phổ biến giữa Sheet & file SKU (VD: DARKNAVY <-> NAVY, NAUCHOCO <-> CHOCO, NAUCAMEL <-> CAMEL, BEIGE <-> BE, COOLGREY <-> GREY)
+  const aliases = [cTok];
+  if (cTok === "DARKNAVY") aliases.push("NAVY");
+  if (cTok === "NAVY") aliases.push("DARKNAVY");
+  if (cTok === "NAUCHOCO" || cTok === "CHOCO" || cTok === "CHOCOLATE") aliases.push("CHOCO", "NAUCHOCO", "NAU");
+  if (cTok === "NAUCAMEL" || cTok === "CAMEL") aliases.push("CAMEL", "NAUCAMEL");
+  if (cTok === "BEIGE" || cTok === "BE") aliases.push("BEIGE", "BE");
+  if (cTok === "COOLGREY" || cTok === "LIGHTGREY" || cTok === "GREY" || cTok === "XAMGHI" || cTok === "GHI") {
+    aliases.push("COOLGREY", "LIGHTGREY", "GREY", "XAMGHI", "GHI");
+  }
+  if (cTok === "DEN" || cTok === "DENTRON" || cTok === "DENLI") aliases.push("DEN", "DENLI", "DENTRON");
+  if (cTok === "LIGHTBROWN" || cTok === "NAUSANG") aliases.push("LIGHTBROWN");
+  if (cTok === "TRANGSUA" || cTok === "TRANG") aliases.push("TRANG", "TRANGSUA");
+  if (cTok === "BESUA") aliases.push("BESUA", "BE");
+
+  for (let a = 0; a < aliases.length; a++) {
+    for (let i = 0; i < entry.colors.length; i++) {
+      const lbl = entry.colors[i];
+      if (normalize_sku_color_token(lbl) === aliases[a]) return lbl;
+    }
+  }
+  // Khớp chứa chuỗi con (VD: "CHOCO" trong "NAUCHOCO")
+  for (let i = 0; i < entry.colors.length; i++) {
+    const lbl = entry.colors[i];
+    const lTok = normalize_sku_color_token(lbl);
+    if (lTok && (lTok.includes(cTok) || cTok.includes(lTok))) return lbl;
+  }
+  return colorClean;
+}
+
 function format_ship_item_name(qty, sp, color, size) {
   const spClean = String(sp || "").trim();
   const colorClean = String(color || "")
@@ -13348,14 +13469,28 @@ function format_ship_item_name(qty, sp, color, size) {
     .trim()
     .replace(/^size\s*[:\-]?\s*/i, "")
     .trim();
-  const q = Math.max(1, Math.round(Number(qty) || 1));
 
   if (!spClean) return "Giày";
+  const skuEntry = match_upyo_sku_entry(spClean);
+  if (skuEntry) {
+    if (skuEntry.noAttr) return skuEntry.name;
+    const matchedColor = match_upyo_sku_color(skuEntry, colorClean);
+    const fmtSize = sizeClean
+      ? skuEntry.sp && !sizeClean.startsWith(skuEntry.sp) && /^\d/.test(sizeClean)
+        ? `${skuEntry.sp}${sizeClean}`
+        : sizeClean
+      : "";
+    const parts = [];
+    if (matchedColor) parts.push(`Màu: ${matchedColor}`);
+    if (fmtSize) parts.push(`Size: ${fmtSize}`);
+    return parts.length > 0 ? `${skuEntry.name} / ${parts.join(", ")}` : skuEntry.name;
+  }
+
   const spUpperNoDau = bo_dau_tieng_viet(spClean).toUpperCase();
-  const productPart = spUpperNoDau.includes("GIAY") ? spClean : `GIÀY ${spClean}`;
-  let out = `${q} x ${productPart}`;
-  if (colorClean) out += `/ Màu: ${colorClean}`;
-  if (sizeClean) out += `${colorClean ? "," : "/"} Size: ${sizeClean}`;
+  const productPart = spUpperNoDau.includes("GIAY") || spUpperNoDau.includes("DEP") ? spClean : `GIÀY ${spClean}`;
+  let out = productPart;
+  if (colorClean) out += ` / Màu: ${colorClean}`;
+  if (sizeClean) out += `${colorClean ? "," : " /"} Size: ${sizeClean}`;
   return out;
 }
 
