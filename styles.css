@@ -7426,3 +7426,31 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   color: #FCD34D;
   border-color: rgba(245, 158, 11, 0.45);
 }
+
+.export-ship-actions-3 {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px !important;
+}
+
+.export-ship-actions-3.is-vtp {
+  grid-template-columns: 1fr !important;
+}
+
+.action-btn-group .od-export-ship-btn {
+  height: 36px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+  border-radius: 11px !important;
+}
+
+.export-ship-btn-vtp-api {
+  background: linear-gradient(135deg, #E11D48 0%, #BE123C 100%);
+  color: #FFFDF9;
+  box-shadow: 0 6px 16px rgba(190, 18, 60, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.export-ship-btn-vtp-api:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}

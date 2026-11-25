@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.336";
+const APP_FRONTEND_VERSION = "8.6.343";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -753,7 +753,10 @@ function la_don_hop_le_de_dem(trang_thai_raw) {
     s.includes("GIAO TH\u00c0NH C\u00d4NG") ||
     noDau.includes("GIAO THANH CONG") ||
     s.includes("XU\u1ea4T EXCEL") ||
-    noDau.includes("XUAT EXCEL")
+    noDau.includes("XUAT EXCEL") ||
+    s.includes("L\u00caN APPLAM") ||
+    noDau.includes("LEN APPLAM") ||
+    noDau.includes("LEN APP LAM")
   );
 }
 
@@ -4396,7 +4399,7 @@ function get_status_pill_cls(statusRaw) {
   const s = bo_dau_tieng_viet(String(statusRaw || "").trim()).toUpperCase();
   if (!s) return "pill-status-default";
   if (s.includes("DA LEN DON") || s.includes("THANH CONG")) return "pill-status-ok";
-  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG") || s.includes("XUAT EXCEL")) return "pill-status-direct";
+  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG") || s.includes("XUAT EXCEL") || s.includes("LEN APPLAM") || s.includes("LEN APP LAM")) return "pill-status-direct";
   if (s.includes("GIAO THANG")) return "pill-status-direct";
   if (s.includes("DOI HANG")) return "pill-status-exchange";
   if (s.includes("TEST")) return "pill-status-test";
@@ -11727,7 +11730,11 @@ function ap_dung_khoang_ngay_xuat_ship(st, en) {
 }
 
 function get_exp_ship_base_orders_by_date() {
-  const source = Array.isArray(current_od_filtered_list) ? current_od_filtered_list : [];
+  const odModal = document.getElementById("orderDetailModal");
+  const isOdOpen = Boolean(odModal && !odModal.classList.contains("hidden"));
+  let source = isOdOpen && Array.isArray(current_od_filtered_list) && current_od_filtered_list.length > 0
+    ? current_od_filtered_list
+    : (typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function" ? lay_tat_ca_don_hang_tu_bang_a_den_p(false) : []);
   if (!exp_ship_date_start || !exp_ship_date_end) return source;
   const patternsArr = tao_cac_dang_ngay_khop(exp_ship_date_start, exp_ship_date_end);
   return source.filter((o) => khop_ngay_chinh_xac(String(o.thoi_gian || "").trim(), patternsArr));
@@ -12950,6 +12957,22 @@ async function resolve_vtp_ward_online(warnItem) {
       }
     } catch (e) {}
   }
+  // Dự phòng: nếu Photon không ra (do địa chỉ có tên quán/shop/ngã tư), gọi ArcGIS findAddressCandidates
+  if (!coords) {
+    try {
+      const arcUrl =
+        "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&countryCode=VNM&maxLocations=1&SingleLine=" +
+        encodeURIComponent(rawAddr);
+      const ar = await fetch(arcUrl);
+      if (ar.ok) {
+        const ad = await ar.json();
+        const loc = ad && ad.candidates && ad.candidates[0] && ad.candidates[0].location;
+        if (loc && loc.x >= 102 && loc.x <= 110 && loc.y >= 8 && loc.y <= 24) {
+          coords = { lon: loc.x, lat: loc.y };
+        }
+      }
+    } catch (e) {}
+  }
   if (!coords) return null;
 
   // Bước 1: Reverse geocode trực tiếp qua ArcGIS (bắt chính xác ngay các phường không bị đổi tên như Phú Thượng / Ciputra)
@@ -13045,7 +13068,24 @@ async function resolve_vtp_full_addr_online(warnItem) {
   }
 
   let arcText = "";
-  if (coords) {
+  if (!coords) {
+    try {
+      const arcUrl =
+        "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&countryCode=VNM&maxLocations=1&outFields=Match_addr,City,Subregion,Region&SingleLine=" +
+        encodeURIComponent(rawAddr);
+      const ar = await fetch(arcUrl);
+      if (ar.ok) {
+        const ad = await ar.json();
+        const cand = ad && ad.candidates && ad.candidates[0];
+        if (cand && cand.location && cand.location.x >= 102 && cand.location.x <= 110) {
+          coords = { lon: cand.location.x, lat: cand.location.y };
+          const at = cand.attributes || {};
+          arcText = [at.Match_addr, at.City, at.Subregion, at.Region].filter(Boolean).join(", ");
+        }
+      }
+    } catch (e) {}
+  }
+  if (coords && !arcText) {
     try {
       const revUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${coords.lon},${coords.lat}`;
       const rResp = await fetch(revUrl);
@@ -13337,6 +13377,7 @@ function save_exp_ship_prefs() {
       onlyNoMvd: Boolean(document.getElementById("expShipOnlyNoMvd")?.checked),
       skipErrors: Boolean(document.getElementById("expShipSkipErrors")?.checked),
       vtpXmg: Boolean(document.getElementById("expShipVtpXmg")?.checked ?? true),
+      vtpXmgMoney: Math.max(0, Math.round(Number(document.getElementById("expShipVtpXmgMoney")?.value || 30000) || 0)),
       tags: Array.from(exp_ship_tag_codes),
     };
     localStorage.setItem(STORAGE_KEY_EXP_SHIP_PREFS, JSON.stringify(prefs));
@@ -13478,6 +13519,7 @@ function prepare_ship_export_rows(orders, opts) {
     allCandidates.push({
       stt: seq,
       orderCode,
+      orderDateYmd: String(o.ngay_only || o.thoi_gian || "").trim(),
       senderInfo,
       name,
       phone,
@@ -13774,7 +13816,7 @@ function refresh_export_ship_preview() {
       .toUpperCase()
       .replace(/\s+/g, " ")
       .trim();
-    return tagNorm === "XUAT EXCEL";
+    return tagNorm === "LEN APPLAM" || tagNorm === "LEN APP LAM";
   });
 
   const prep = prepare_ship_export_rows(filteredOrders, {
@@ -13790,7 +13832,7 @@ function refresh_export_ship_preview() {
   _exp_ship_last_prepared = prep;
 
   const srcBadge = document.getElementById("expShipSourceBadge");
-  if (srcBadge) srcBadge.textContent = `${prep.totalSource} ĐƠN TAG XUẤT EXCEL`;
+  if (srcBadge) srcBadge.textContent = `${prep.totalSource} ĐƠN TAG LÊN APPLAM`;
   const readyBadge = document.getElementById("expShipReadyBadge");
   if (readyBadge) readyBadge.textContent = `${prep.rows.length} đơn xuất`;
 
@@ -13878,12 +13920,26 @@ function refresh_export_ship_preview() {
   if (shipGridRow2) shipGridRow2.classList.toggle("is-jt", _exp_ship_carrier === "jt");
   const xmgWrap = document.getElementById("expShipVtpXmgWrap");
   if (xmgWrap) xmgWrap.classList.toggle("hidden", _exp_ship_carrier !== "vtp");
+  const isVtp = _exp_ship_carrier === "vtp";
+  const actionsBar = document.getElementById("expShipActionsBar");
+  if (actionsBar) actionsBar.classList.toggle("is-vtp", isVtp);
+  const pushVtpBtn = document.getElementById("btnDoPushVtpApi");
+  if (pushVtpBtn) {
+    pushVtpBtn.classList.toggle("hidden", !isVtp);
+    pushVtpBtn.disabled = prep.rows.length === 0;
+  }
 
   const b1 = document.getElementById("btnDoExportShipXlsx");
   const b2 = document.getElementById("btnDoExportShipCopy");
   const disabled = prep.rows.length === 0;
-  if (b1) b1.disabled = disabled;
-  if (b2) b2.disabled = disabled;
+  if (b1) {
+    b1.classList.toggle("hidden", isVtp);
+    b1.disabled = disabled;
+  }
+  if (b2) {
+    b2.classList.toggle("hidden", isVtp);
+    b2.disabled = disabled;
+  }
 }
 
 function open_export_ship_modal() {
@@ -13891,9 +13947,9 @@ function open_export_ship_modal() {
   if (!modal) return;
 
   const prefs = read_exp_ship_prefs();
-  _exp_ship_carrier = prefs.carrier === "jt" ? "jt" : "vtp";
+  _exp_ship_carrier = "vtp";
   document.querySelectorAll("#expShipCarrierGroup .export-ship-carrier-btn").forEach((b) => {
-    b.classList.toggle("active", b.getAttribute("data-carrier") === _exp_ship_carrier);
+    b.classList.toggle("active", b.getAttribute("data-carrier") === "vtp");
   });
   const wEl = document.getElementById("expShipWeight");
   if (wEl) wEl.value = String(prefs.unitWeight || 1000);
@@ -13930,6 +13986,8 @@ function open_export_ship_modal() {
   if (skipEl && typeof prefs.skipErrors === "boolean") skipEl.checked = prefs.skipErrors;
   const xmgEl = document.getElementById("expShipVtpXmg");
   if (xmgEl) xmgEl.checked = typeof prefs.vtpXmg === "boolean" ? prefs.vtpXmg : true;
+  const xmgMoneyEl = document.getElementById("expShipVtpXmgMoney");
+  if (xmgMoneyEl) xmgMoneyEl.value = String(typeof prefs.vtpXmgMoney === "number" ? prefs.vtpXmgMoney : 30000);
 
   exp_ship_date_start = od_date_start || "";
   exp_ship_date_end = od_date_end || "";
@@ -14026,7 +14084,7 @@ function init_export_ship_modal() {
 
   document.querySelectorAll("#expShipCarrierGroup .export-ship-carrier-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      _exp_ship_carrier = btn.getAttribute("data-carrier") === "jt" ? "jt" : "vtp";
+      _exp_ship_carrier = "vtp";
       document.querySelectorAll("#expShipCarrierGroup .export-ship-carrier-btn").forEach((b) => {
         b.classList.toggle("active", b === btn);
       });
@@ -14044,6 +14102,7 @@ function init_export_ship_modal() {
     "expShipOnlyNoMvd",
     "expShipSkipErrors",
     "expShipVtpXmg",
+    "expShipVtpXmgMoney",
   ].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -14204,6 +14263,235 @@ function init_export_ship_modal() {
     } catch (e) {}
     return false;
   }
+
+  document.getElementById("btnEditVtpToken")?.addEventListener("click", async () => {
+    try {
+      const r0 = await fetch("/api/vtp-token");
+      const info = r0.ok ? await r0.json() : {};
+      const curMsg = info && info.hasToken ? `Token hiện tại: ${info.masked}\n` : "Chưa có Token Viettel Post.\n";
+      const val = window.prompt(curMsg + "Dán Token lấy từ mục Quản lý token trên viettelpost.vn:", "");
+      if (val === null) return;
+      const clean = String(val).trim();
+      const resp = await fetch("/api/vtp-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: clean }),
+      });
+      if (resp.ok) {
+        setStatus(clean ? "Đã lưu Token Viettel Post vào máy thành công." : "Đã xóa Token Viettel Post.", "done");
+      } else {
+        setStatus("Không lưu được Token (hãy chạy từ APPLAM.exe).", "error");
+      }
+    } catch (e) {
+      setStatus("Chức năng lưu Token chỉ chạy trong APPLAM.exe.", "error");
+    }
+  });
+
+  document.getElementById("btnDoPushVtpApi")?.addEventListener("click", async () => {
+    const btn = document.getElementById("btnDoPushVtpApi");
+    refresh_export_ship_preview();
+    const prep = _exp_ship_last_prepared;
+    if (!prep || prep.rows.length === 0) {
+      setStatus("Không có đơn nào để đẩy sang Viettel Post.", "error");
+      return;
+    }
+
+    const vtpXmg = Boolean(document.getElementById("expShipVtpXmg")?.checked ?? true);
+    const xmgMoney = Math.max(0, Math.round(Number(document.getElementById("expShipVtpXmgMoney")?.value || 30000) || 0));
+    const senderPhone = String(document.getElementById("expShipSenderPhone")?.value || "").replace(/\D/g, "");
+
+    // Kiểm tra Token VTP đã lưu trên máy chưa
+    let hasToken = false;
+    try {
+      const tr = await fetch("/api/vtp-token");
+      if (tr.ok) {
+        const td = await tr.json();
+        hasToken = Boolean(td && td.hasToken);
+      }
+    } catch (e) {}
+
+    if (!hasToken) {
+      const pasted = window.prompt("Chưa có Token Viettel Post. Dán Token từ Quản lý token trên viettelpost.vn:", "");
+      if (!pasted || !pasted.trim()) return;
+      const sr = await fetch("/api/vtp-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: pasted.trim() }),
+      });
+      if (!sr.ok) {
+        setStatus("Không lưu được Token Viettel Post.", "error");
+        return;
+      }
+    }
+
+    const svcLabel = (prep.rows[0]?.vtpService || "VSL7").split(" - ")[0].trim();
+    const confirmMsg =
+      `Đẩy trực tiếp ${prep.rows.length} đơn sang Viettel Post?\n` +
+      `• Dịch vụ: ${svcLabel}\n` +
+      `• Thu tiền xem hàng (XMG): ${vtpXmg ? format_tien_vnd(xmgMoney) : "Không bật"}`;
+    if (!window.confirm(confirmMsg)) return;
+
+    const origText = btn ? btn.textContent : "";
+    if (btn) btn.disabled = true;
+    try {
+      if (btn) btn.textContent = "⏳ Đang lấy kho gửi...";
+      const invResp = await fetch("/api/vtp-proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: "/v2/user/listInventory", method: "GET" }),
+      });
+      const invData = await invResp.json();
+      const invList = Array.isArray(invData && invData.data) ? invData.data : [];
+      if (invList.length === 0) {
+        setStatus(`Không lấy được kho gửi VTP: ${(invData && invData.message) || "Kiểm tra lại Token VTP"}`, "error");
+        return;
+      }
+      // Ưu tiên đúng kho UPYO + SĐT người gửi + 179 Giẽ Thượng
+      const inv =
+        invList.find((x) => String(x.phone || "").replace(/\D/g, "") === senderPhone && /UPYO/i.test(String(x.name || "")) && /179/.test(String(x.address || ""))) ||
+        invList.find((x) => String(x.phone || "").replace(/\D/g, "") === senderPhone && /179/.test(String(x.address || ""))) ||
+        invList.find((x) => String(x.phone || "").replace(/\D/g, "") === senderPhone) ||
+        invList[0];
+
+      const pad2 = (n) => String(n).padStart(2, "0");
+      const now = new Date();
+      const delivDate = `${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()} ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+
+      const okList = [];
+      const createdMvdItems = [];
+      const failList = [];
+      for (let i = 0; i < prep.rows.length; i++) {
+        const r = prep.rows[i];
+        if (btn) btn.textContent = `⏳ Đang đẩy ${i + 1}/${prep.rows.length}...`;
+        if (!r.vtpProvId || !r.vtpDistId || !r.vtpWardId) {
+          failList.push(`${r.name}: Thiếu Tỉnh/Huyện/Xã (bấm Tự tìm ĐC chuẩn trước)`);
+          continue;
+        }
+        const svcCode = String(r.vtpService || "VSL7").split(" - ")[0].trim().toUpperCase();
+        const useXmg = Boolean(vtpXmg && r.cod > 0);
+        const payload = {
+          ORDER_NUMBER: r.orderCode,
+          GROUPADDRESS_ID: Number(inv.groupaddressId),
+          CUS_ID: Number(inv.cusId),
+          DELIVERY_DATE: delivDate,
+          SENDER_FULLNAME: String(inv.name || "UPYO").trim(),
+          SENDER_ADDRESS: String(inv.address || ""),
+          SENDER_PHONE: String(inv.phone || senderPhone),
+          SENDER_WARD: Number(inv.wardsId),
+          SENDER_DISTRICT: Number(inv.districtId),
+          SENDER_PROVINCE: Number(inv.provinceId),
+          RECEIVER_FULLNAME: r.name,
+          RECEIVER_ADDRESS: r.addr,
+          RECEIVER_PHONE: r.phone,
+          RECEIVER_WARD: Number(r.vtpWardId),
+          RECEIVER_DISTRICT: Number(r.vtpDistId),
+          RECEIVER_PROVINCE: Number(r.vtpProvId),
+          PRODUCT_NAME: r.itemName,
+          PRODUCT_DESCRIPTION: r.itemName,
+          PRODUCT_QUANTITY: Number(r.qty) || 1,
+          PRODUCT_PRICE: Number(r.value) || 0,
+          PRODUCT_WEIGHT: Number(r.weightGram) || 1000,
+          PRODUCT_LENGTH: 1,
+          PRODUCT_WIDTH: 1,
+          PRODUCT_HEIGHT: 1,
+          PRODUCT_TYPE: "HH",
+          ORDER_PAYMENT: r.cod > 0 ? 3 : 1,
+          ORDER_SERVICE: svcCode,
+          ORDER_SERVICE_ADD: useXmg ? "XMG" : "",
+          XMG_EXTRA_MONEY: useXmg ? xmgMoney : 0,
+          EXTRA_MONEY: useXmg ? xmgMoney : 0,
+          ORDER_VOUCHER: "",
+          ORDER_NOTE: r.note || "",
+          MONEY_COLLECTION: Number(r.cod) || 0,
+          CHECK_UNIQUE: false,
+          LIST_ITEM: [
+            {
+              PRODUCT_NAME: r.itemName,
+              PRODUCT_PRICE: Number(r.value) || 0,
+              PRODUCT_WEIGHT: Number(r.weightGram) || 1000,
+              PRODUCT_QUANTITY: Number(r.qty) || 1,
+            },
+          ],
+        };
+        const cr = await fetch("/api/vtp-proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: "/v2/order/createOrder", method: "POST", payload }),
+        });
+        const cd = await cr.json();
+        if (cd && !cd.error && cd.data && cd.data.ORDER_NUMBER) {
+          const mvdStr = String(cd.data.ORDER_NUMBER).trim();
+          const shipFeeVal = Math.round(Number(cd.data.MONEY_TOTAL) || 0);
+          okList.push(`${r.name}: ${mvdStr} (cước ${format_tien_vnd(shipFeeVal)})`);
+          let ymdDate = "";
+          const dm = String(r.orderDateYmd || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (dm) ymdDate = `${dm[3]}-${dm[2].padStart(2, "0")}-${dm[1].padStart(2, "0")}`;
+          else if (/^\d{4}-\d{2}-\d{2}/.test(String(r.orderDateYmd || ""))) ymdDate = String(r.orderDateYmd).slice(0, 10);
+          createdMvdItems.push({
+            mvd: mvdStr,
+            sdt: r.phone,
+            name: r.name,
+            orderDate: ymdDate,
+            shipFee: shipFeeVal,
+          });
+        } else {
+          failList.push(`${r.name}: ${(cd && cd.message) || "Lỗi không xác định"}`);
+        }
+      }
+
+      // Tự động ghi Mã vận đơn + đổi trạng thái -> ĐÃ LÊN ĐƠN lên Google Sheet
+      let sheetSyncMsg = "";
+      if (createdMvdItems.length > 0) {
+        const apiKey = typeof get_apps_script_api_key === "function" ? get_apps_script_api_key() : "";
+        if (apiKey) {
+          try {
+            if (btn) btn.textContent = "⏳ Đang ghi MVĐ lên Sheet...";
+            const gsUrl = build_apps_script_url("mode=update_mvd");
+            const gsResp = await fetch(gsUrl, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                mode: "update_mvd",
+                key: apiKey,
+                autoMarkSent: true,
+                items: createdMvdItems,
+              }),
+              redirect: "follow",
+            });
+            const gsJson = gsResp.ok ? await gsResp.json().catch(() => null) : null;
+            if (gsJson && gsJson.ok) {
+              sheetSyncMsg = ` • Đã tự ghi ${gsJson.updated}/${createdMvdItems.length} MVĐ lên Sheet (→ ĐÃ LÊN ĐƠN)`;
+              await tai_va_cap_nhat_theo_ngay(false, false, true).catch(() => {});
+              if (current_od_mode === "all_table" && typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function") {
+                current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+                if (typeof apply_od_filters_and_render === "function") apply_od_filters_and_render(false);
+              }
+              refresh_export_ship_preview();
+            } else {
+              sheetSyncMsg = ` • Chưa ghi được MVĐ lên Sheet (${(gsJson && gsJson.error) || "HTTP " + gsResp.status})`;
+            }
+          } catch (gsErr) {
+            sheetSyncMsg = ` • Lỗi ghi MVĐ lên Sheet: ${(gsErr && gsErr.message) || gsErr}`;
+          }
+        }
+      }
+
+      if (okList.length > 0 && failList.length === 0) {
+        setStatus(`✅ Đẩy thành công ${okList.length}/${prep.rows.length} đơn VTP${sheetSyncMsg}: ${okList.join(" • ")}`, "done");
+      } else if (okList.length > 0) {
+        setStatus(`⚠️ Thành công ${okList.length}, lỗi ${failList.length}${sheetSyncMsg}: ${failList.join(" | ")}`, "error");
+      } else {
+        setStatus(`❌ Không đẩy được đơn nào: ${failList.join(" | ")}`, "error");
+      }
+    } catch (err) {
+      setStatus(`Lỗi đẩy đơn VTP: ${(err && err.message) || err}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = origText || "🚀 Đẩy thẳng VTP";
+      }
+    }
+  });
 
   document.getElementById("btnDoExportShipXlsx")?.addEventListener("click", async () => {
     refresh_export_ship_preview();
@@ -14723,7 +15011,7 @@ function open_import_mvd_modal() {
   document.getElementById("btnClearImpMvdPaste")?.classList.add("hidden");
   document.getElementById("btnPickImpMvdFile")?.classList.remove("has-file");
   const nameEl = document.getElementById("impMvdFileNameText");
-  if (nameEl) nameEl.textContent = "Bấm chọn file .xlsx / .csv tải từ Viettel Post hoặc J&T";
+  if (nameEl) nameEl.textContent = "Bấm chọn file .xlsx / .csv tải từ Viettel Post";
   const srcBadge = document.getElementById("impMvdSourceBadge");
   if (srcBadge) srcBadge.textContent = "CHƯA CHỌN FILE";
   document.getElementById("impMvdStatusBox")?.classList.add("hidden");

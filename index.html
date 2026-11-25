@@ -149,6 +149,7 @@
 
         <!-- Action Buttons -->
         <div class="action-btn-group">
+          <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Lên đơn hàng loạt (Viettel Post / J&amp;T)">📦 Lên đơn</button>
           <button type="button" id="btnFilterAllOrders" class="rounded-btn btn-filter-orders" title="Tra cứu &amp; Lọc toàn bộ đơn hàng trong bảng (Cột A → P)">
             <svg class="filter-lens-svg" viewBox="0 0 20 20" width="13.5" height="13.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="8.5" cy="8.5" r="5.3"></circle>
@@ -629,8 +630,7 @@
         <div class="od-header-actions">
           <button type="button" id="btnOdReloadData" class="rounded-btn od-no-mvd-btn" title="Tải lại dữ liệu đơn hàng mới nhất">↻ Tải lại</button>
           <button type="button" id="btnResetOdColFilters" class="rounded-btn od-reset-pill-btn hidden" title="Xóa tất cả điều kiện lọc">↺ Xóa lọc</button>
-          <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Xuất file Excel lên đơn hàng loạt (Viettel Post / J&T)">📦 Xuất đơn Excel</button>
-          <button type="button" id="btnOdImportMvd" class="rounded-btn od-import-mvd-btn" title="Nhập file Excel từ Viettel Post / J&T để tự động điền Mã vận đơn lên Google Sheet">📥 Nhập MVĐ</button>
+          <button type="button" id="btnOdImportMvd" class="rounded-btn od-import-mvd-btn" title="Nhập file Excel từ Viettel Post để tự động điền Mã vận đơn lên Google Sheet">📥 Nhập MVĐ</button>
           <button type="button" id="btnOdNoTracking" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc nhanh các đơn chưa có mã vận đơn">Đơn ko MVĐ</button>
           <button type="button" id="btnOdDupMktCheck" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc khách hàng trùng SĐT hoặc địa chỉ nhưng khác MKT">Đơn trùng MKT</button>
           <button type="button" id="btnOdLandingMktCheck" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc toàn bộ đơn lỗi vào đơn: chưa vào bảng Tổng hợp, thiếu MKT hoặc điền sai MKT">Lỗi vào đơn</button>
@@ -906,8 +906,8 @@
       <div class="export-cp-header export-ship-compact-header">
         <div class="export-cp-title-col">
           <div class="export-cp-title-wrap">
-            <span class="exp-cp-mkt-badge" id="expShipSourceBadge">0 ĐƠN TAG XUẤT EXCEL</span>
-            <h2 class="export-cp-title">XUẤT EXCEL TẠO ĐƠN</h2>
+            <span class="exp-cp-mkt-badge" id="expShipSourceBadge">0 ĐƠN TAG LÊN APPLAM</span>
+            <h2 class="export-cp-title">LÊN ĐƠN VẬN CHUYỂN</h2>
           </div>
           <div class="export-cp-subtitle">Chuẩn hóa SĐT, tự đổi địa chỉ mới 2025 → 3 cấp cũ VTP</div>
         </div>
@@ -949,14 +949,10 @@
               <span class="export-cp-section-label">Đơn vị vận chuyển</span>
               <span class="export-cp-days-badge" id="expShipReadyBadge">0 đơn xuất</span>
             </div>
-            <div class="export-ship-carriers export-ship-carriers-compact" id="expShipCarrierGroup" role="group" aria-label="Đơn vị vận chuyển">
+            <div class="export-ship-carriers export-ship-carriers-compact" id="expShipCarrierGroup" role="group" aria-label="Đơn vị vận chuyển" style="grid-template-columns: 1fr;">
               <button type="button" class="export-ship-carrier-btn active" data-carrier="vtp">
                 <span class="esc-title">📮 Viettel Post</span>
-                <span class="esc-sub">Gộp địa chỉ chuẩn VTP</span>
-              </button>
-              <button type="button" class="export-ship-carrier-btn" data-carrier="jt">
-                <span class="esc-title">🚚 J&amp;T Express</span>
-                <span class="esc-sub">Tách cột Tỉnh/Huyện/Xã</span>
+                <span class="esc-sub">Đẩy đơn trực tiếp chuẩn VTP</span>
               </button>
             </div>
           </div>
@@ -1025,9 +1021,11 @@
               <input type="checkbox" id="expShipSkipErrors" />
               <span>Bỏ qua đơn bị <strong>thiếu SĐT / thiếu tên / địa chỉ lỗi</strong></span>
             </label>
-            <label class="export-ship-check" id="expShipVtpXmgWrap" title="Tự điền mã XMG vào cột Dịch vụ cộng thêm trên file Excel Viettel Post">
+            <label class="export-ship-check" id="expShipVtpXmgWrap" title="Bật dịch vụ Thu tiền xem hàng (XMG) kèm số tiền thu khi khách xem không nhận">
               <input type="checkbox" id="expShipVtpXmg" checked />
-              <span>Thu tiền xem hàng (<strong>XMG</strong>)</span>
+              <span>Thu tiền xem hàng (<strong>XMG</strong>):</span>
+              <input type="number" id="expShipVtpXmgMoney" min="0" max="100000" step="1000" value="30000" style="width:74px;height:24px;padding:0 6px;border-radius:6px;border:1px solid #D9C4AE;font-size:11.5px;font-weight:700;color:#3D2314;background:#FFFDF9;" onclick="event.stopPropagation()" />
+              <span>đ</span>
             </label>
           </div>
         </div>
@@ -1049,8 +1047,11 @@
           <div class="export-cp-status-text" id="expShipStatusText"></div>
         </div>
 
-        <div class="export-cp-actions">
-          <button type="button" class="export-cp-btn export-cp-btn-excel" id="btnDoExportShipXlsx">
+        <div class="export-cp-actions export-ship-actions-3 is-vtp" id="expShipActionsBar">
+          <button type="button" class="export-cp-btn export-ship-btn-vtp-api" id="btnDoPushVtpApi" title="Đẩy đơn trực tiếp lên Viettel Post qua Token (chuẩn Thu tiền xem hàng 30.000đ)">
+            <span>🚀 Đẩy đơn thẳng Viettel Post</span>
+          </button>
+          <button type="button" class="export-cp-btn export-cp-btn-excel hidden" id="btnDoExportShipXlsx">
             <svg viewBox="0 0 20 20" width="17" height="17" fill="none" aria-hidden="true">
               <rect x="3" y="2.5" width="14" height="15" rx="2.5" stroke="currentColor" stroke-width="1.6"/>
               <path d="M3 7.2H17M8.5 7.2V17.5M3 12.2H17" stroke="currentColor" stroke-width="1.4"/>
@@ -1068,7 +1069,7 @@
         </div>
 
         <p class="export-cp-hint export-ship-compact-hint">
-          SĐT không mất số 0 đầu • Mã <strong>XMG</strong> tự bật <em>Thu tiền xem hàng</em> (để mặc định <strong>30.000đ</strong> hãy cài 1 lần trong <em>Cài đặt tạo đơn</em> trên viettelpost.vn).
+          Bấm <strong>🚀 Đẩy thẳng VTP</strong> để lên đơn trực tiếp chuẩn <strong>Thu tiền xem hàng 30.000đ</strong> • <button type="button" id="btnEditVtpToken" style="background:none;border:none;color:#B45309;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;font-size:11px;">🔑 Đổi Token VTP</button>
         </p>
       </div>
     </div>
