@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.310";
+const APP_FRONTEND_VERSION = "8.6.320";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -8880,12 +8880,15 @@ function update_cal_range_highlight() {
   const isOdCal = current_cal_target === "od_filter";
   const isMcCal = current_cal_target === "mc_filter";
   const isExpCpCal = current_cal_target === "exp_cp";
+  const isExpShipCal = current_cal_target === "exp_ship";
   let rStart = isOdCal
     ? (od_date_start || "")
     : isMcCal
     ? (mc_date_start || current_start_date)
     : isExpCpCal
     ? (exp_cp_date_start || current_start_date)
+    : isExpShipCal
+    ? (exp_ship_date_start || "")
     : current_start_date;
   let rEnd = isOdCal
     ? (od_date_end || od_date_start || "")
@@ -8893,6 +8896,8 @@ function update_cal_range_highlight() {
     ? (mc_date_end || mc_date_start || current_end_date)
     : isExpCpCal
     ? (exp_cp_date_end || exp_cp_date_start || current_end_date)
+    : isExpShipCal
+    ? (exp_ship_date_end || exp_ship_date_start || "")
     : current_end_date;
 
   if (cal_pick_step === 1 && cal_temp_start) {
@@ -9064,6 +9069,8 @@ function render_calendar_grid(year, month) {
           tai_camp_mkt_theo_ngay(st, en);
         } else if (current_cal_target === "exp_cp") {
           ap_dung_khoang_ngay_xuat_cp(st, en);
+        } else if (current_cal_target === "exp_ship") {
+          ap_dung_khoang_ngay_xuat_ship(st, en);
         } else {
           set_and_refresh(st, en);
         }
@@ -9111,6 +9118,8 @@ function toggle_calendar_popup(targetType, anchorBtn) {
       ? (mc_date_end || mc_date_start || current_end_date || current_start_date)
       : current_cal_target === "exp_cp"
       ? (exp_cp_date_end || exp_cp_date_start || current_end_date || current_start_date)
+      : current_cal_target === "exp_ship"
+      ? (exp_ship_date_end || exp_ship_date_start || current_end_date || current_start_date)
       : (current_end_date || current_start_date);
   const dt = parse_ymd_date(baseDateStr);
   current_cal_year = dt.getFullYear();
@@ -9121,7 +9130,10 @@ function toggle_calendar_popup(targetType, anchorBtn) {
 
   calPopup.classList.toggle(
     "is-modal-cal",
-    current_cal_target === "od_filter" || current_cal_target === "mc_filter" || current_cal_target === "exp_cp"
+    current_cal_target === "od_filter" ||
+      current_cal_target === "mc_filter" ||
+      current_cal_target === "exp_cp" ||
+      current_cal_target === "exp_ship"
   );
   calPopup.classList.remove("hidden");
   anchorBtn.classList.add("is-open");
@@ -9142,8 +9154,9 @@ function sync_cal_preset_sidebar_ui() {
   const isAllTableOd = isOdCal && current_od_mode === "all_table";
   const isMcCal = current_cal_target === "mc_filter";
   const isExpCpCal = current_cal_target === "exp_cp";
+  const isExpShipCal = current_cal_target === "exp_ship";
   const allBtn = document.getElementById("btnCalAllDates");
-  if (allBtn) allBtn.classList.toggle("hidden", !isAllTableOd);
+  if (allBtn) allBtn.classList.toggle("hidden", !(isAllTableOd || isExpShipCal));
 
   const st = isOdCal
     ? od_date_start
@@ -9151,6 +9164,8 @@ function sync_cal_preset_sidebar_ui() {
     ? (mc_date_start || current_start_date)
     : isExpCpCal
     ? (exp_cp_date_start || current_start_date)
+    : isExpShipCal
+    ? exp_ship_date_start
     : current_start_date;
   const en = isOdCal
     ? od_date_end
@@ -9158,8 +9173,10 @@ function sync_cal_preset_sidebar_ui() {
     ? (mc_date_end || current_end_date)
     : isExpCpCal
     ? (exp_cp_date_end || current_end_date)
+    : isExpShipCal
+    ? exp_ship_date_end
     : current_end_date;
-  const activePreset = detect_active_cal_preset(st, en, isAllTableOd);
+  const activePreset = detect_active_cal_preset(st, en, isAllTableOd || isExpShipCal);
 
   document.querySelectorAll("#calPresetsSidebar .cal-preset-item").forEach((btn) => {
     btn.classList.toggle("active-preset", btn.getAttribute("data-preset") === activePreset);
@@ -9182,6 +9199,8 @@ function apply_cal_preset_choice(preset) {
     tai_camp_mkt_theo_ngay(st, en);
   } else if (current_cal_target === "exp_cp" && st && en) {
     ap_dung_khoang_ngay_xuat_cp(st, en);
+  } else if (current_cal_target === "exp_ship") {
+    ap_dung_khoang_ngay_xuat_ship(st, en);
   } else if (st && en) {
     set_and_refresh(st, en);
   }
@@ -10247,6 +10266,23 @@ window.addEventListener("DOMContentLoaded", async () => {
         current_cal_target = null;
         return;
       }
+      if (current_cal_target === "exp_ship" && calPop && !calPop.classList.contains("hidden")) {
+        calPop.classList.add("hidden");
+        calPop.classList.remove("is-modal-cal");
+        document.getElementById("btnExpShipDateRange")?.classList.remove("is-open");
+        current_cal_target = null;
+        return;
+      }
+      const impMvdModal = document.getElementById("importMvdModal");
+      if (impMvdModal && !impMvdModal.classList.contains("hidden")) {
+        close_import_mvd_modal();
+        return;
+      }
+      const expShipModal = document.getElementById("exportShipModal");
+      if (expShipModal && !expShipModal.classList.contains("hidden")) {
+        close_export_ship_modal();
+        return;
+      }
       const expCpModal = document.getElementById("exportCpModal");
       if (expCpModal && !expCpModal.classList.contains("hidden")) {
         close_export_cp_modal();
@@ -10264,6 +10300,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   init_export_cp_modal();
+  init_export_ship_modal();
+  init_import_mvd_modal();
 
   // Kiểm tra trạng thái đăng nhập khi mở app (giữ phiên qua các lần cập nhật trừ khi đổi mật khẩu mới)
   const isAuthed = await check_persisted_auth_session();
@@ -11639,6 +11677,1529 @@ function init_export_cp_modal() {
       setStatus(0, `Lỗi copy bảng: ${(err && err.message) || err}`, "error");
     } finally {
       setBusy(false);
+    }
+  });
+}
+
+// ==============================================================
+// XUẤT FILE EXCEL TẠO ĐƠN HÀNG LOẠT (VIETTEL POST / J&T) - v8.6.311
+// ==============================================================
+const STORAGE_KEY_EXP_SHIP_PREFS = "applam_exp_ship_prefs_v1";
+let _exp_ship_carrier = "vtp"; // "vtp" | "jt"
+let _exp_ship_last_prepared = null;
+let exp_ship_date_start = "";
+let exp_ship_date_end = "";
+let exp_ship_tag_codes = new Set();
+
+function get_exp_ship_order_tag(o) {
+  const t = String((o && o.trang_thai) || "").trim().toUpperCase();
+  return t || "(CHƯA CÓ TAG)";
+}
+
+function update_exp_ship_date_btn_ui() {
+  const startEl = document.getElementById("expShipDateStartText");
+  const sepEl = document.getElementById("expShipDateSep");
+  const endEl = document.getElementById("expShipDateEndText");
+  cap_nhat_nut_khoang_ngay_ui(startEl, sepEl, endEl, exp_ship_date_start, exp_ship_date_end, "Tất cả ngày");
+}
+
+function ap_dung_khoang_ngay_xuat_ship(st, en) {
+  const calPopup = document.getElementById("calendarPopup");
+  calPopup?.classList.add("hidden");
+  calPopup?.classList.remove("is-modal-cal");
+  document.getElementById("btnExpShipDateRange")?.classList.remove("is-open");
+  current_cal_target = null;
+
+  if (!st || !en) {
+    exp_ship_date_start = "";
+    exp_ship_date_end = "";
+  } else {
+    const s = clamp_min_data_date(st);
+    const e = clamp_min_data_date(en);
+    exp_ship_date_start = s <= e ? s : e;
+    exp_ship_date_end = s <= e ? e : s;
+  }
+  update_exp_ship_date_btn_ui();
+  render_exp_ship_tag_chips();
+  refresh_export_ship_preview();
+}
+
+function get_exp_ship_base_orders_by_date() {
+  const source = Array.isArray(current_od_filtered_list) ? current_od_filtered_list : [];
+  if (!exp_ship_date_start || !exp_ship_date_end) return source;
+  const patternsArr = tao_cac_dang_ngay_khop(exp_ship_date_start, exp_ship_date_end);
+  return source.filter((o) => khop_ngay_chinh_xac(String(o.thoi_gian || "").trim(), patternsArr));
+}
+
+function render_exp_ship_tag_chips() {
+  const wrap = document.getElementById("expShipTagChips");
+  const countBadge = document.getElementById("expShipTagCountBadge");
+  const clearBtn = document.getElementById("btnExpShipClearTag");
+  const q = bo_dau_tieng_viet(String(document.getElementById("expShipTagSearch")?.value || "").trim()).toUpperCase();
+  const onlyNoMvd = Boolean(document.getElementById("expShipOnlyNoMvd")?.checked);
+
+  if (countBadge) {
+    countBadge.textContent = `${exp_ship_tag_codes.size} tag`;
+    countBadge.classList.toggle("hidden", exp_ship_tag_codes.size === 0);
+  }
+  if (clearBtn) {
+    clearBtn.classList.toggle("hidden", exp_ship_tag_codes.size === 0);
+  }
+  if (!wrap) return;
+
+  const dateFiltered = get_exp_ship_base_orders_by_date();
+  const counts = new Map();
+  for (const o of dateFiltered) {
+    if (onlyNoMvd) {
+      const mvd = String(o.ma_van_don || "").trim();
+      if (mvd && mvd !== "-" && mvd !== "—") continue;
+    }
+    const tag = get_exp_ship_order_tag(o);
+    counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+
+  const pool = Array.from(new Set([...Array.from(exp_ship_tag_codes), ...Array.from(counts.keys())])).filter(Boolean);
+  const filtered = q ? pool.filter((t) => bo_dau_tieng_viet(t).toUpperCase().includes(q)) : pool;
+
+  filtered.sort((a, b) => {
+    const sa = exp_ship_tag_codes.has(a) ? 0 : 1;
+    const sb = exp_ship_tag_codes.has(b) ? 0 : 1;
+    if (sa !== sb) return sa - sb;
+    const ca = counts.get(a) || 0;
+    const cb = counts.get(b) || 0;
+    if (cb !== ca) return cb - ca;
+    return a.localeCompare(b, "vi");
+  });
+
+  if (filtered.length === 0) {
+    wrap.innerHTML = `<span style="font-size:11.5px;color:var(--choco-muted,#7A5E4C);">${
+      q ? "Không tìm thấy tag phù hợp" : "Không có tag nào trong khoảng ngày này"
+    }</span>`;
+    return;
+  }
+
+  wrap.innerHTML = filtered
+    .map((tag) => {
+      const sel = exp_ship_tag_codes.has(tag);
+      const cnt = counts.get(tag) || 0;
+      const tip = `${tag} • ${cnt} đơn`;
+      return `<button type="button" class="exp-cp-chip${sel ? " is-selected" : ""}" data-tag="${escape_html(tag)}" title="${escape_html(tip)}">${sel ? "✓ " : ""}${escape_html(tag)} (${cnt})</button>`;
+    })
+    .join("");
+}
+
+const VN_PROVINCES_CATALOG = [
+  { name: "Hà Nội", keys: ["ha noi", "hanoi", "tp ha noi", "hn"] },
+  { name: "Hồ Chí Minh", keys: ["ho chi minh", "hochiminh", "tp hcm", "tphcm", "hcm", "sai gon", "saigon", "sg"] },
+  { name: "Hải Phòng", keys: ["hai phong", "haiphong", "tp hai phong"] },
+  { name: "Đà Nẵng", keys: ["da nang", "danang", "tp da nang"] },
+  { name: "Cần Thơ", keys: ["can tho", "cantho", "tp can tho"] },
+  { name: "An Giang", keys: ["an giang"] },
+  { name: "Bà Rịa - Vũng Tàu", keys: ["ba ria", "vung tau", "brvt", "br-vt"] },
+  { name: "Bắc Giang", keys: ["bac giang"] },
+  { name: "Bắc Kạn", keys: ["bac kan", "bac can"] },
+  { name: "Bạc Liêu", keys: ["bac lieu"] },
+  { name: "Bắc Ninh", keys: ["bac ninh"] },
+  { name: "Bến Tre", keys: ["ben tre"] },
+  { name: "Bình Định", keys: ["binh dinh", "quy nhon"] },
+  { name: "Bình Dương", keys: ["binh duong", "thu dau mot", "di an", "thuan an"] },
+  { name: "Bình Phước", keys: ["binh phuoc", "dong xoai"] },
+  { name: "Bình Thuận", keys: ["binh thuan", "phan thiet"] },
+  { name: "Cà Mau", keys: ["ca mau"] },
+  { name: "Cao Bằng", keys: ["cao bang"] },
+  { name: "Đắk Lắk", keys: ["dak lak", "dac lac", "daklak", "buon ma thuot"] },
+  { name: "Đắk Nông", keys: ["dak nong", "dac nong", "daknong", "gia nghia"] },
+  { name: "Điện Biên", keys: ["dien bien"] },
+  { name: "Đồng Nai", keys: ["dong nai", "bien hoa", "long thanh", "nhon trach"] },
+  { name: "Đồng Tháp", keys: ["dong thap", "cao lanh", "sa dec"] },
+  { name: "Gia Lai", keys: ["gia lai", "pleiku"] },
+  { name: "Hà Giang", keys: ["ha giang"] },
+  { name: "Hà Nam", keys: ["ha nam", "phu ly"] },
+  { name: "Hà Tĩnh", keys: ["ha tinh"] },
+  { name: "Hải Dương", keys: ["hai duong"] },
+  { name: "Hậu Giang", keys: ["hau giang", "vi thanh"] },
+  { name: "Hòa Bình", keys: ["hoa binh"] },
+  { name: "Hưng Yên", keys: ["hung yen", "van giang", "my hao"] },
+  { name: "Khánh Hòa", keys: ["khanh hoa", "nha trang", "cam ranh"] },
+  { name: "Kiên Giang", keys: ["kien giang", "rach gia", "phu quoc"] },
+  { name: "Kon Tum", keys: ["kon tum", "kontum"] },
+  { name: "Lai Châu", keys: ["lai chau"] },
+  { name: "Lâm Đồng", keys: ["lam dong", "da lat", "bao loc"] },
+  { name: "Lạng Sơn", keys: ["lang son"] },
+  { name: "Lào Cai", keys: ["lao cai", "sapa", "sa pa"] },
+  { name: "Long An", keys: ["long an", "tan an", "duc hoa", "ben luc"] },
+  { name: "Nam Định", keys: ["nam dinh"] },
+  { name: "Nghệ An", keys: ["nghe an", "tp vinh"] },
+  { name: "Ninh Bình", keys: ["ninh binh", "tam diep"] },
+  { name: "Ninh Thuận", keys: ["ninh thuan", "phan rang"] },
+  { name: "Phú Thọ", keys: ["phu tho", "viet tri"] },
+  { name: "Phú Yên", keys: ["phu yen", "tuy hoa"] },
+  { name: "Quảng Bình", keys: ["quang binh", "dong hoi"] },
+  { name: "Quảng Nam", keys: ["quang nam", "tam ky", "hoi an"] },
+  { name: "Quảng Ngãi", keys: ["quang ngai"] },
+  { name: "Quảng Ninh", keys: ["quang ninh", "ha long", "cam pha", "uong bi", "mong cai"] },
+  { name: "Quảng Trị", keys: ["quang tri", "dong ha"] },
+  { name: "Sóc Trăng", keys: ["soc trang"] },
+  { name: "Sơn La", keys: ["son la", "moc chau"] },
+  { name: "Tây Ninh", keys: ["tay ninh", "trang bang"] },
+  { name: "Thái Bình", keys: ["thai binh"] },
+  { name: "Thái Nguyên", keys: ["thai nguyen", "song cong", "pho yen"] },
+  { name: "Thanh Hóa", keys: ["thanh hoa", "sam son", "bim son"] },
+  { name: "Thừa Thiên Huế", keys: ["thua thien hue", "tp hue", "hue"] },
+  { name: "Tiền Giang", keys: ["tien giang", "my tho"] },
+  { name: "Trà Vinh", keys: ["tra vinh"] },
+  { name: "Tuyên Quang", keys: ["tuyen quang"] },
+  { name: "Vĩnh Long", keys: ["vinh long"] },
+  { name: "Vĩnh Phúc", keys: ["vinh phuc", "vinh yen", "phuc yen"] },
+  { name: "Yên Bái", keys: ["yen bai"] },
+];
+
+function detect_vn_province(addrRaw) {
+  const raw = String(addrRaw || "").trim();
+  if (!raw) return "";
+  const norm = " " + bo_dau_tieng_viet(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + " ";
+  // Ưu tiên khớp ở phần cuối địa chỉ trước (tránh nhầm tên đường "Nguyễn Thái Bình", "Lê Văn Hưu"...)
+  let best = "";
+  let bestPos = -1;
+  for (const prov of VN_PROVINCES_CATALOG) {
+    for (const k of prov.keys) {
+      if (k.length <= 2) {
+        // Viết tắt 2 ký tự (hn, sg) chỉ khớp nếu đứng ở cuối hoặc sau dấu phẩy
+        const reEnd = new RegExp(`(?:^|[,\\-\\s])${k}$`);
+        const normTail = bo_dau_tieng_viet(raw).toLowerCase().trim();
+        if (reEnd.test(normTail)) {
+          const pos = norm.length;
+          if (pos > bestPos) {
+            bestPos = pos;
+            best = prov.name;
+          }
+        }
+        continue;
+      }
+      const token = ` ${k} `;
+      const idx = norm.lastIndexOf(token);
+      if (idx !== -1 && idx >= bestPos) {
+        bestPos = idx;
+        best = prov.name;
+      }
+    }
+  }
+  return best;
+}
+
+function normalize_vn_phone_for_ship(rawPhone) {
+  let d = String(rawPhone || "").replace(/\D/g, "");
+  if (d.startsWith("84") && d.length === 11) {
+    d = "0" + d.slice(2);
+  } else if (d.length === 9 && /^[35789]/.test(d)) {
+    d = "0" + d;
+  }
+  const valid = /^0[35789]\d{8}$/.test(d);
+  return { phone: d, valid };
+}
+
+function read_exp_ship_prefs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_EXP_SHIP_PREFS);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function infer_ship_order_qty(o) {
+  const n = Math.round(Number((o && o.so_luong_num) || 0));
+  if (n > 0) return n;
+  const rawSl = String((o && o.so_luong) || "").trim();
+  const mSl = rawSl.match(/\d+/);
+  if (mSl && parseInt(mSl[0], 10) > 0) return parseInt(mSl[0], 10);
+  const sizeStr = String((o && o.size) || "").trim();
+  if (sizeStr) {
+    const sizeTokens = sizeStr
+      .split(/[,/+;&|]+/)
+      .map((s) => s.trim())
+      .filter((s) => /\d{2}/.test(s));
+    if (sizeTokens.length > 1) return sizeTokens.length;
+  }
+  return 1;
+}
+
+function format_ship_item_name(qty, sp, color, size) {
+  const spClean = String(sp || "").trim();
+  const colorClean = String(color || "")
+    .trim()
+    .replace(/^m[aà]u\s*[:\-]?\s*/i, "")
+    .trim();
+  const sizeClean = String(size || "")
+    .trim()
+    .replace(/^size\s*[:\-]?\s*/i, "")
+    .trim();
+  const q = Math.max(1, Math.round(Number(qty) || 1));
+
+  if (!spClean) return "Giày";
+  const spUpperNoDau = bo_dau_tieng_viet(spClean).toUpperCase();
+  const productPart = spUpperNoDau.includes("GIAY") ? spClean : `GIÀY ${spClean}`;
+  let out = `${q} x ${productPart}`;
+  if (colorClean) out += `/ Màu: ${colorClean}`;
+  if (sizeClean) out += `${colorClean ? "," : "/"} Size: ${sizeClean}`;
+  return out;
+}
+
+const DEFAULT_VTP_SENDER_PHONE = "0915519166";
+const DEFAULT_VTP_SENDER_ADDR =
+  "Số nhà 179 Giẽ Thượng, xã Chuyên Mỹ, Hà Nội (địa chỉ mới), XÃ PHÚ YÊN, HUYỆN PHÚ XUYÊN, HÀ NỘI";
+const DEFAULT_SHIP_NOTE = "Cho xem hàng và thử, ko nhận thu 30k";
+
+function save_exp_ship_prefs() {
+  try {
+    const prefs = {
+      carrier: _exp_ship_carrier,
+      unitWeight: Number(document.getElementById("expShipWeight")?.value || 1000) || 1000,
+      vtpService: document.getElementById("expShipVtpService")?.value || "VCN",
+      senderPhone: document.getElementById("expShipSenderPhone")?.value || "",
+      senderAddr: document.getElementById("expShipSenderAddr")?.value || "",
+      defaultNote: document.getElementById("expShipDefaultNote")?.value || "",
+      onlyNoMvd: Boolean(document.getElementById("expShipOnlyNoMvd")?.checked),
+      skipErrors: Boolean(document.getElementById("expShipSkipErrors")?.checked),
+      tags: Array.from(exp_ship_tag_codes),
+    };
+    localStorage.setItem(STORAGE_KEY_EXP_SHIP_PREFS, JSON.stringify(prefs));
+  } catch (e) {}
+}
+
+function prepare_ship_export_rows(orders, opts) {
+  const onlyNoMvd = Boolean(opts.onlyNoMvd);
+  const skipErrors = Boolean(opts.skipErrors);
+  const unitWeightGram = Math.max(50, Math.round(Number(opts.weightGram) || 1000));
+  const senderPhone = String(opts.senderPhone || "").trim();
+  const senderAddr = String(opts.senderAddr || "").trim();
+  const senderInfo = [senderAddr, senderPhone].filter(Boolean).join(" - ");
+  const defaultNote = String(opts.defaultNote || "").trim();
+  const vtpService = String(opts.vtpService || "VCN").trim() || "VCN";
+
+  const source = Array.isArray(orders) ? orders : [];
+  const allCandidates = [];
+  const warnings = [];
+  let validCount = 0;
+  let totalCod = 0;
+  let totalQty = 0;
+
+  let seq = 0;
+  for (const o of source) {
+    const mvd = String(o.ma_van_don || "").trim();
+    if (onlyNoMvd && mvd && mvd !== "-" && mvd !== "—") continue;
+
+    const name = String(o.ho_ten || "").trim();
+    const { phone, valid: phoneValid } = normalize_vn_phone_for_ship(o.sdt);
+    const addr = String(o.dia_chi || "").trim();
+    const province = detect_vn_province(addr);
+    const sp = String(o.dong_sp || "").trim();
+    const color = String(o.mau_sac || "").trim();
+    const size = String(o.size || "").trim();
+    const qty = infer_ship_order_qty(o);
+    const rowWeightGram = qty * unitWeightGram;
+    const rowWeightKg = Math.round((rowWeightGram / 1000) * 100) / 100;
+    const cod = Math.max(0, Math.round(Number(o.gia_ban) || 0));
+    const itemName = format_ship_item_name(qty, sp, color, size);
+    const fullNote = defaultNote;
+
+    const issues = [];
+    if (!name) issues.push("Thiếu họ tên");
+    if (!phoneValid) issues.push(phone ? `SĐT lỗi (${phone})` : "Thiếu SĐT");
+    if (!addr || addr.length < 10) issues.push("Địa chỉ quá ngắn");
+    else if (!province) issues.push("Chưa rõ Tỉnh/TP");
+    if (!sp) issues.push("Thiếu tên SP");
+    if (cod <= 0) issues.push("COD = 0");
+
+    const hasHardError = !name || !phoneValid || !addr || !sp;
+    if (issues.length > 0) {
+      warnings.push({
+        name: name || "(Chưa có tên)",
+        phone: phone || "—",
+        addr: addr || "—",
+        reason: issues.join(", "),
+      });
+    } else {
+      validCount += 1;
+    }
+
+    if (skipErrors && hasHardError) continue;
+
+    seq += 1;
+    totalCod += cod;
+    totalQty += qty;
+    const dateTag = String(o.thoi_gian || "").replace(/\D/g, "").slice(0, 8) || format_ymd_date(new Date()).replace(/-/g, "");
+    const orderCode = `UPYO${dateTag}_${String(seq).padStart(3, "0")}`;
+
+    allCandidates.push({
+      stt: seq,
+      orderCode,
+      senderInfo,
+      name,
+      phone,
+      addr,
+      province,
+      district: "",
+      ward: "",
+      itemName,
+      qty,
+      weightGram: rowWeightGram,
+      weightKg: rowWeightKg,
+      cod,
+      value: cod,
+      cargoType: "Bưu kiện",
+      vtpService,
+      note: fullNote,
+      sale: String(o.sale || "").trim(),
+      mkt: String(o.mkt || "").trim(),
+      issues,
+    });
+  }
+
+  return {
+    rows: allCandidates,
+    warnings,
+    validCount,
+    totalCod,
+    totalQty,
+    totalSource: source.length,
+  };
+}
+
+function get_ship_export_headers_and_rows(carrier, preparedRows) {
+  if (carrier === "jt") {
+    const headers = [
+      "STT",
+      "Mã đơn hàng riêng",
+      "Tên người nhận (*)",
+      "SĐT người nhận (*)",
+      "Địa chỉ người nhận (*)",
+      "Tỉnh/Thành phố",
+      "Quận/Huyện",
+      "Phường/Xã",
+      "Tên hàng hóa (*)",
+      "Số lượng",
+      "Trọng lượng (kg) (*)",
+      "Tiền thu hộ COD (VND)",
+      "Giá trị hàng hóa (VND)",
+      "Phương thức thanh toán",
+      "Ghi chú",
+    ];
+    const colWidths = [6, 18, 22, 15, 42, 18, 16, 16, 36, 10, 14, 16, 16, 16, 32];
+    const numCols = new Set([0, 9, 10, 11, 12]);
+    const rows = preparedRows.map((r) => [
+      r.stt,
+      r.orderCode,
+      r.name,
+      r.phone,
+      r.addr,
+      r.province,
+      r.district,
+      r.ward,
+      r.itemName,
+      r.qty,
+      r.weightKg,
+      r.cod,
+      r.value,
+      "PP_PM",
+      r.note,
+    ]);
+    return { headers, colWidths, numCols, rows, sheetName: "JT_Express" };
+  }
+
+  // Mặc định: Viettel Post (đúng thứ tự các cột trên màn hình Nhập excel mới của VTP)
+  const headers = [
+    "Mã khuyến mại",
+    "Mã đơn hàng",
+    "Thông tin người gửi *",
+    "Tên người nhận *",
+    "Số điện thoại *",
+    "Địa chỉ nhận *",
+    "Tên hàng hóa *",
+    "Số lượng *",
+    "Trọng lượng (g) *",
+    "Giá trị",
+    "Tiền thu hộ",
+    "Loại hàng hóa *",
+    "Tính chất hàng hóa đặc biệt",
+    "Dịch vụ *",
+    "Dịch vụ cộng thêm",
+    "Thu tiền xem hàng",
+    "Dài (cm)",
+    "Rộng (cm)",
+    "Cao (cm)",
+    "Người trả cước",
+    "Thời gian hẹn lấy",
+    "Thời gian giao",
+    "Yêu cầu khác",
+  ];
+  const colWidths = [14, 18, 38, 22, 15, 42, 36, 10, 15, 14, 14, 14, 18, 12, 14, 14, 9, 9, 9, 15, 16, 14, 30];
+  const numCols = new Set([7, 8, 9, 10]);
+  const rows = preparedRows.map((r) => [
+    "",
+    r.orderCode,
+    r.senderInfo,
+    r.name,
+    r.phone,
+    r.addr,
+    r.itemName,
+    r.qty,
+    r.weightGram,
+    r.value,
+    r.cod,
+    r.cargoType,
+    "",
+    r.vtpService,
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Người gửi trả",
+    "",
+    "",
+    r.note,
+  ]);
+  return { headers, colWidths, numCols, rows, sheetName: "ViettelPost" };
+}
+
+function build_ship_xlsx_blob(carrier, preparedRows) {
+  const { headers, colWidths, numCols, rows, sheetName } = get_ship_export_headers_and_rows(carrier, preparedRows);
+  const totalCols = headers.length;
+
+  const cellStr = (ref, val, sIdx) =>
+    `<c r="${ref}" t="inlineStr" s="${sIdx}"><is><t>${xlsx_xml_escape(val)}</t></is></c>`;
+  const cellNum = (ref, val, sIdx) => `<c r="${ref}" s="${sIdx}"><v>${Number(val || 0)}</v></c>`;
+
+  const sheetRowsXml = [];
+  // Row 1: Header
+  const hCells = headers.map((h, ci) => cellStr(`${xlsx_col_letter(ci)}1`, h, 1));
+  sheetRowsXml.push(`<row r="1" ht="26" customHeight="1">${hCells.join("")}</row>`);
+
+  // Data rows
+  rows.forEach((arr, rIdx) => {
+    const excelRow = rIdx + 2;
+    const cells = arr.map((val, ci) => {
+      const ref = `${xlsx_col_letter(ci)}${excelRow}`;
+      if (numCols.has(ci)) {
+        const isMoney = carrier === "jt" ? (ci === 11 || ci === 12) : (ci === 9 || ci === 10);
+        return cellNum(ref, val, isMoney ? 3 : 2);
+      }
+      return cellStr(ref, val, 4);
+    });
+    sheetRowsXml.push(`<row r="${excelRow}" ht="20" customHeight="1">${cells.join("")}</row>`);
+  });
+
+  const colsXml = colWidths
+    .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
+    .join("");
+  const lastRef = `${xlsx_col_letter(totalCols - 1)}${rows.length + 1}`;
+
+  const sheetXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    `<dimension ref="A1:${lastRef}"/>` +
+    `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` +
+    `<sheetFormatPr defaultRowHeight="20"/>` +
+    `<cols>${colsXml}</cols>` +
+    `<sheetData>${sheetRowsXml.join("")}</sheetData>` +
+    `</worksheet>`;
+
+  const stylesXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    `<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts>` +
+    `<fonts count="2">` +
+    `<font><sz val="10"/><name val="Arial"/></font>` +
+    `<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>` +
+    `</fonts>` +
+    `<fills count="3">` +
+    `<fill><patternFill patternType="none"/></fill>` +
+    `<fill><patternFill patternType="gray125"/></fill>` +
+    `<fill><patternFill patternType="solid"><fgColor rgb="FF15803D"/><bgColor indexed="64"/></patternFill></fill>` +
+    `</fills>` +
+    `<borders count="2">` +
+    `<border><left/><right/><top/><bottom/><diagonal/></border>` +
+    `<border><left style="thin"><color rgb="FFD4C4B4"/></left><right style="thin"><color rgb="FFD4C4B4"/></right><top style="thin"><color rgb="FFD4C4B4"/></top><bottom style="thin"><color rgb="FFD4C4B4"/></bottom><diagonal/></border>` +
+    `</borders>` +
+    `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
+    `<cellXfs count="5">` +
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+    `<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>` +
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>` +
+    `<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>` +
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>` +
+    `</cellXfs>` +
+    `</styleSheet>`;
+
+  const contentTypesXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+    `<Default Extension="xml" ContentType="application/xml"/>` +
+    `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+    `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+    `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+    `</Types>`;
+
+  const rootRelsXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+    `</Relationships>`;
+
+  const workbookXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+    `<sheets><sheet name="${xlsx_xml_escape(sheetName)}" sheetId="1" r:id="rId1"/></sheets>` +
+    `</workbook>`;
+
+  const workbookRelsXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
+    `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    `</Relationships>`;
+
+  return xlsx_build_zip([
+    { name: "[Content_Types].xml", data: contentTypesXml },
+    { name: "_rels/.rels", data: rootRelsXml },
+    { name: "xl/workbook.xml", data: workbookXml },
+    { name: "xl/_rels/workbook.xml.rels", data: workbookRelsXml },
+    { name: "xl/styles.xml", data: stylesXml },
+    { name: "xl/worksheets/sheet1.xml", data: sheetXml },
+  ]);
+}
+
+function build_ship_tsv(carrier, preparedRows) {
+  const { headers, rows } = get_ship_export_headers_and_rows(carrier, preparedRows);
+  const cleanCell = (v) => String(v === null || v === undefined ? "" : v).replace(/[\t\r\n]+/g, " ");
+  const lines = [headers.map(cleanCell).join("\t")];
+  for (const arr of rows) {
+    lines.push(arr.map(cleanCell).join("\t"));
+  }
+  return lines.join("\n");
+}
+
+function refresh_export_ship_preview() {
+  const weightGram = Number(document.getElementById("expShipWeight")?.value || 1000) || 1000;
+  const vtpService = document.getElementById("expShipVtpService")?.value || "VCN";
+  const senderPhone = document.getElementById("expShipSenderPhone")?.value || "";
+  const senderAddr = document.getElementById("expShipSenderAddr")?.value || "";
+  const defaultNote = document.getElementById("expShipDefaultNote")?.value || "";
+  const onlyNoMvd = Boolean(document.getElementById("expShipOnlyNoMvd")?.checked);
+  const skipErrors = Boolean(document.getElementById("expShipSkipErrors")?.checked);
+
+  let filteredOrders = get_exp_ship_base_orders_by_date();
+  if (exp_ship_tag_codes.size > 0) {
+    filteredOrders = filteredOrders.filter((o) =>
+      exp_ship_tag_codes.has(get_exp_ship_order_tag(o))
+    );
+  }
+
+  const prep = prepare_ship_export_rows(filteredOrders, {
+    onlyNoMvd,
+    skipErrors,
+    weightGram,
+    senderPhone,
+    senderAddr,
+    vtpService,
+    defaultNote,
+  });
+  _exp_ship_last_prepared = prep;
+
+  const srcBadge = document.getElementById("expShipSourceBadge");
+  if (srcBadge) srcBadge.textContent = `${prep.totalSource} ĐƠN ĐANG LỌC`;
+  const readyBadge = document.getElementById("expShipReadyBadge");
+  if (readyBadge) readyBadge.textContent = `${prep.rows.length} đơn xuất`;
+
+  const sumEl = document.getElementById("expShipSummaryRow");
+  if (sumEl) {
+    sumEl.innerHTML =
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Đơn sẽ xuất</span>` +
+      `<span class="export-cp-kpi-val is-orders">${prep.rows.length} đơn</span>` +
+      `<span class="export-cp-kpi-sub">Đạt chuẩn: ${prep.validCount} • ${prep.totalQty} đôi</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Cần kiểm tra</span>` +
+      `<span class="export-cp-kpi-val ${prep.warnings.length > 0 ? "is-spend" : ""}">${prep.warnings.length} đơn</span>` +
+      `<span class="export-cp-kpi-sub">${prep.warnings.length > 0 ? "Xem danh sách dưới" : "Đủ thông tin"}</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Tổng thu hộ COD</span>` +
+      `<span class="export-cp-kpi-val">${format_tien_vnd(prep.totalCod)}</span>` +
+      `<span class="export-cp-kpi-sub">${_exp_ship_carrier === "jt" ? "J&T Express" : "Viettel Post"}</span>` +
+      `</div>`;
+  }
+
+  const warnBox = document.getElementById("expShipWarnBox");
+  const warnTitle = document.getElementById("expShipWarnTitle");
+  const warnList = document.getElementById("expShipWarnList");
+  if (warnBox && warnList) {
+    if (prep.warnings.length > 0) {
+      warnBox.classList.remove("hidden");
+      if (warnTitle) {
+        warnTitle.textContent = `⚠️ ${prep.warnings.length} đơn cần kiểm tra lại địa chỉ / thông tin`;
+      }
+      warnList.innerHTML = prep.warnings
+        .slice(0, 30)
+        .map(
+          (w) =>
+            `<div class="export-ship-warn-item">` +
+            `<span><strong>${escape_html(w.name)}</strong> (${escape_html(w.phone)})</span>` +
+            `<span class="export-ship-warn-reason">${escape_html(w.reason)}</span>` +
+            `</div>`
+        )
+        .join("") +
+        (prep.warnings.length > 30
+          ? `<div class="export-ship-warn-item"><span>...và ${prep.warnings.length - 30} đơn khác</span></div>`
+          : "");
+    } else {
+      warnBox.classList.add("hidden");
+      warnList.innerHTML = "";
+    }
+  }
+
+  const vtpWrap = document.getElementById("expShipVtpServiceWrap");
+  if (vtpWrap) vtpWrap.classList.toggle("hidden", _exp_ship_carrier !== "vtp");
+  const senderPhoneWrap = document.getElementById("expShipSenderPhoneWrap");
+  if (senderPhoneWrap) senderPhoneWrap.classList.toggle("hidden", _exp_ship_carrier !== "vtp");
+  const senderAddrWrap = document.getElementById("expShipSenderAddrWrap");
+  if (senderAddrWrap) senderAddrWrap.classList.toggle("hidden", _exp_ship_carrier !== "vtp");
+
+  const b1 = document.getElementById("btnDoExportShipXlsx");
+  const b2 = document.getElementById("btnDoExportShipCopy");
+  const disabled = prep.rows.length === 0;
+  if (b1) b1.disabled = disabled;
+  if (b2) b2.disabled = disabled;
+}
+
+function open_export_ship_modal() {
+  const modal = document.getElementById("exportShipModal");
+  if (!modal) return;
+
+  const prefs = read_exp_ship_prefs();
+  _exp_ship_carrier = prefs.carrier === "jt" ? "jt" : "vtp";
+  document.querySelectorAll("#expShipCarrierGroup .export-ship-carrier-btn").forEach((b) => {
+    b.classList.toggle("active", b.getAttribute("data-carrier") === _exp_ship_carrier);
+  });
+  const wEl = document.getElementById("expShipWeight");
+  if (wEl) wEl.value = String(prefs.unitWeight || 1000);
+  const svcEl = document.getElementById("expShipVtpService");
+  if (svcEl && prefs.vtpService) svcEl.value = prefs.vtpService;
+  const senderPhoneEl = document.getElementById("expShipSenderPhone");
+  if (senderPhoneEl) {
+    senderPhoneEl.value =
+      typeof prefs.senderPhone === "string" && prefs.senderPhone.trim()
+        ? prefs.senderPhone
+        : DEFAULT_VTP_SENDER_PHONE;
+  }
+  const senderAddrEl = document.getElementById("expShipSenderAddr");
+  if (senderAddrEl) {
+    senderAddrEl.value =
+      typeof prefs.senderAddr === "string" && prefs.senderAddr.trim()
+        ? prefs.senderAddr
+        : DEFAULT_VTP_SENDER_ADDR;
+  }
+  const noteEl = document.getElementById("expShipDefaultNote");
+  if (noteEl) {
+    const savedNote = typeof prefs.defaultNote === "string" ? prefs.defaultNote.trim() : "";
+    noteEl.value =
+      savedNote && savedNote !== "Cho xem hàng, không thử"
+        ? prefs.defaultNote
+        : DEFAULT_SHIP_NOTE;
+  }
+  const noMvdEl = document.getElementById("expShipOnlyNoMvd");
+  if (noMvdEl && typeof prefs.onlyNoMvd === "boolean") noMvdEl.checked = prefs.onlyNoMvd;
+  const skipEl = document.getElementById("expShipSkipErrors");
+  if (skipEl && typeof prefs.skipErrors === "boolean") skipEl.checked = prefs.skipErrors;
+
+  exp_ship_date_start = od_date_start || "";
+  exp_ship_date_end = od_date_end || "";
+  exp_ship_tag_codes = new Set(
+    Array.isArray(prefs.tags) ? prefs.tags.map((t) => String(t || "").trim().toUpperCase()).filter(Boolean) : []
+  );
+  const tagSearchEl = document.getElementById("expShipTagSearch");
+  if (tagSearchEl) tagSearchEl.value = "";
+  update_exp_ship_date_btn_ui();
+  render_exp_ship_tag_chips();
+
+  document.getElementById("expShipStatusBox")?.classList.add("hidden");
+  refresh_export_ship_preview();
+  modal.classList.remove("hidden");
+}
+
+function close_export_ship_modal() {
+  if (current_cal_target === "exp_ship") {
+    const calPopup = document.getElementById("calendarPopup");
+    calPopup?.classList.add("hidden");
+    calPopup?.classList.remove("is-modal-cal");
+    document.getElementById("btnExpShipDateRange")?.classList.remove("is-open");
+    current_cal_target = null;
+  }
+  document.getElementById("exportShipModal")?.classList.add("hidden");
+}
+
+function init_export_ship_modal() {
+  const modal = document.getElementById("exportShipModal");
+  if (!modal) return;
+
+  const setStatus = (text, state = "done") => {
+    const box = document.getElementById("expShipStatusBox");
+    const txt = document.getElementById("expShipStatusText");
+    if (box) {
+      box.classList.remove("hidden", "is-done", "is-error");
+      if (state === "done") box.classList.add("is-done");
+      else if (state === "error") box.classList.add("is-error");
+    }
+    if (txt) txt.textContent = text;
+  };
+
+  document.getElementById("btnOdExportShip")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    open_export_ship_modal();
+  });
+
+  document.getElementById("btnCloseExportShip")?.addEventListener("click", close_export_ship_modal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close_export_ship_modal();
+  });
+  document.getElementById("exportShipCard")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (current_cal_target === "exp_ship" && !e.target.closest("#calendarPopup") && !e.target.closest("#btnExpShipDateRange")) {
+      const calPopup = document.getElementById("calendarPopup");
+      calPopup?.classList.add("hidden");
+      calPopup?.classList.remove("is-modal-cal");
+      document.getElementById("btnExpShipDateRange")?.classList.remove("is-open");
+      current_cal_target = null;
+    }
+  });
+
+  document.getElementById("btnExpShipDateRange")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggle_calendar_popup("exp_ship", e.currentTarget);
+  });
+
+  document.getElementById("expShipTagSearch")?.addEventListener("input", () => {
+    render_exp_ship_tag_chips();
+  });
+
+  document.getElementById("btnExpShipClearTag")?.addEventListener("click", () => {
+    exp_ship_tag_codes.clear();
+    save_exp_ship_prefs();
+    render_exp_ship_tag_chips();
+    refresh_export_ship_preview();
+  });
+
+  document.getElementById("expShipTagChips")?.addEventListener("click", (e) => {
+    const chip = e.target.closest(".exp-cp-chip[data-tag]");
+    if (!chip) return;
+    const tag = chip.getAttribute("data-tag");
+    if (!tag) return;
+    if (exp_ship_tag_codes.has(tag)) exp_ship_tag_codes.delete(tag);
+    else exp_ship_tag_codes.add(tag);
+    save_exp_ship_prefs();
+    render_exp_ship_tag_chips();
+    refresh_export_ship_preview();
+  });
+
+  document.getElementById("expShipOnlyNoMvd")?.addEventListener("change", () => {
+    render_exp_ship_tag_chips();
+  });
+
+  document.querySelectorAll("#expShipCarrierGroup .export-ship-carrier-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      _exp_ship_carrier = btn.getAttribute("data-carrier") === "jt" ? "jt" : "vtp";
+      document.querySelectorAll("#expShipCarrierGroup .export-ship-carrier-btn").forEach((b) => {
+        b.classList.toggle("active", b === btn);
+      });
+      save_exp_ship_prefs();
+      refresh_export_ship_preview();
+    });
+  });
+
+  [
+    "expShipWeight",
+    "expShipVtpService",
+    "expShipSenderPhone",
+    "expShipSenderAddr",
+    "expShipDefaultNote",
+    "expShipOnlyNoMvd",
+    "expShipSkipErrors",
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", () => {
+      save_exp_ship_prefs();
+      refresh_export_ship_preview();
+    });
+    if (el.tagName === "INPUT" && el.type !== "checkbox") {
+      el.addEventListener("input", () => {
+        save_exp_ship_prefs();
+        refresh_export_ship_preview();
+      });
+    }
+  });
+
+  document.getElementById("btnDoExportShipXlsx")?.addEventListener("click", () => {
+    refresh_export_ship_preview();
+    const prep = _exp_ship_last_prepared;
+    if (!prep || prep.rows.length === 0) {
+      setStatus("Không có đơn nào phù hợp để xuất Excel.", "error");
+      return;
+    }
+    try {
+      const blob = build_ship_xlsx_blob(_exp_ship_carrier, prep.rows);
+      const tag = _exp_ship_carrier === "jt" ? "JT" : "ViettelPost";
+      const dStr = format_ymd_date(new Date());
+      const fileName = `LenDon_${tag}_${dStr}_${prep.rows.length}don.xlsx`;
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(dlUrl), 10000);
+      setStatus(`Đã tải xong ${fileName} (${prep.rows.length} đơn).`, "done");
+    } catch (err) {
+      setStatus(`Lỗi xuất file Excel: ${(err && err.message) || err}`, "error");
+    }
+  });
+
+  document.getElementById("btnDoExportShipCopy")?.addEventListener("click", async () => {
+    refresh_export_ship_preview();
+    const prep = _exp_ship_last_prepared;
+    if (!prep || prep.rows.length === 0) {
+      setStatus("Không có đơn nào phù hợp để copy.", "error");
+      return;
+    }
+    try {
+      const tsv = build_ship_tsv(_exp_ship_carrier, prep.rows);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(tsv);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = tsv;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setStatus(`Đã copy ${prep.rows.length} đơn! Vào file Excel mẫu rồi nhấn Ctrl+V.`, "done");
+    } catch (err) {
+      setStatus(`Lỗi copy dữ liệu: ${(err && err.message) || err}`, "error");
+    }
+  });
+}
+
+// ==============================================================
+// NHẬP MÃ VẬN ĐƠN TỪ EXCEL (VIETTEL POST / J&T) -> GOOGLE SHEET (v8.6.320)
+// ==============================================================
+let _imp_mvd_parsed_items = [];
+let _imp_mvd_match_result = null;
+let _imp_mvd_is_busy = false;
+
+function col_letter_to_idx0(letters) {
+  let col = 0;
+  const s = String(letters || "").toUpperCase();
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 65 && c <= 90) {
+      col = col * 26 + (c - 64);
+    }
+  }
+  return Math.max(0, col - 1);
+}
+
+function parse_delimited_grid_text(text) {
+  const raw = String(text || "").replace(/^\uFEFF/, "").trim();
+  if (!raw) return [];
+
+  // Hỗ trợ file .xls xuất dạng HTML <table>
+  if (/<\s*(table|tr|html)\b/i.test(raw)) {
+    try {
+      const doc = new DOMParser().parseFromString(raw, "text/html");
+      const trs = Array.from(doc.querySelectorAll("tr"));
+      if (trs.length > 0) {
+        return trs.map((tr) =>
+          Array.from(tr.querySelectorAll("th, td")).map((td) => String(td.textContent || "").trim())
+        );
+      }
+    } catch (e) {}
+  }
+
+  const firstLine = raw.split(/\r?\n/)[0] || "";
+  const tabs = (firstLine.match(/\t/g) || []).length;
+  const semis = (firstLine.match(/;/g) || []).length;
+  const commas = (firstLine.match(/,/g) || []).length;
+  const delim = tabs > 0 ? "\t" : semis > commas ? ";" : ",";
+
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    const next = raw[i + 1];
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        cur += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        cur += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === delim) {
+      row.push(cur.trim());
+      cur = "";
+    } else if (ch === "\r" && next === "\n") {
+      row.push(cur.trim());
+      rows.push(row);
+      row = [];
+      cur = "";
+      i++;
+    } else if (ch === "\n" || ch === "\r") {
+      row.push(cur.trim());
+      rows.push(row);
+      row = [];
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  row.push(cur.trim());
+  if (row.some((c) => c !== "")) rows.push(row);
+  return rows;
+}
+
+async function read_xlsx_zip_entries(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const view = new DataView(arrayBuffer);
+
+  // Tìm End of Central Directory (0x06054b50) từ cuối buffer
+  let eocdOffset = -1;
+  const minOffset = Math.max(0, bytes.length - 65557);
+  for (let i = bytes.length - 22; i >= minOffset; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      eocdOffset = i;
+      break;
+    }
+  }
+  if (eocdOffset === -1) {
+    throw new Error("File .xlsx không đúng định dạng ZIP chuẩn.");
+  }
+
+  const cdCount = view.getUint16(eocdOffset + 10, true);
+  const cdOffset = view.getUint32(eocdOffset + 16, true);
+  const decoder = new TextDecoder("utf-8");
+  const entryMap = new Map();
+
+  let ptr = cdOffset;
+  for (let i = 0; i < cdCount && ptr + 46 <= bytes.length; i++) {
+    if (view.getUint32(ptr, true) !== 0x02014b50) break;
+    const method = view.getUint16(ptr + 10, true);
+    const compSize = view.getUint32(ptr + 20, true);
+    const nameLen = view.getUint16(ptr + 28, true);
+    const extraLen = view.getUint16(ptr + 30, true);
+    const commentLen = view.getUint16(ptr + 32, true);
+    const localOffset = view.getUint32(ptr + 42, true);
+    const entryName = decoder.decode(bytes.subarray(ptr + 46, ptr + 46 + nameLen));
+    entryMap.set(entryName, { method, compSize, localOffset });
+    ptr += 46 + nameLen + extraLen + commentLen;
+  }
+
+  const readEntryText = async (targetPath) => {
+    const info = entryMap.get(targetPath);
+    if (!info) return null;
+    const lo = info.localOffset;
+    if (view.getUint32(lo, true) !== 0x04034b50) return null;
+    const fnLen = view.getUint16(lo + 26, true);
+    const exLen = view.getUint16(lo + 28, true);
+    const dataStart = lo + 30 + fnLen + exLen;
+    const compBytes = bytes.subarray(dataStart, dataStart + info.compSize);
+
+    if (info.method === 0) {
+      return decoder.decode(compBytes);
+    }
+    if (info.method === 8) {
+      if (typeof DecompressionStream === "undefined") {
+        throw new Error("Trình duyệt chưa hỗ trợ giải nén file .xlsx, vui lòng copy-dán trực tiếp từ Excel.");
+      }
+      const ds = new DecompressionStream("deflate-raw");
+      const stream = new Blob([compBytes]).stream().pipeThrough(ds);
+      return await new Response(stream).text();
+    }
+    throw new Error(`Phương thức nén ZIP (${info.method}) không được hỗ trợ.`);
+  };
+
+  return { entryMap, readEntryText };
+}
+
+async function parse_xlsx_file_to_grid(file) {
+  const buf = await file.arrayBuffer();
+  const u8 = new Uint8Array(buf);
+  const isZip = u8.length >= 4 && u8[0] === 0x50 && u8[1] === 0x4b;
+  if (!isZip) {
+    const txt = new TextDecoder("utf-8").decode(u8);
+    return parse_delimited_grid_text(txt);
+  }
+
+  const { entryMap, readEntryText } = await read_xlsx_zip_entries(buf);
+
+  // Đọc sharedStrings nếu có
+  const sharedStrings = [];
+  const ssXml = await readEntryText("xl/sharedStrings.xml");
+  if (ssXml) {
+    const docSs = new DOMParser().parseFromString(ssXml, "application/xml");
+    const siNodes = docSs.getElementsByTagName("si");
+    for (let i = 0; i < siNodes.length; i++) {
+      const tNodes = siNodes[i].getElementsByTagName("t");
+      let val = "";
+      for (let j = 0; j < tNodes.length; j++) {
+        val += tNodes[j].textContent || "";
+      }
+      sharedStrings.push(val);
+    }
+  }
+
+  // Tìm worksheet đầu tiên
+  let sheetPath = "xl/worksheets/sheet1.xml";
+  if (!entryMap.has(sheetPath)) {
+    for (const k of entryMap.keys()) {
+      if (/^xl\/worksheets\/sheet\d+\.xml$/i.test(k)) {
+        sheetPath = k;
+        break;
+      }
+    }
+  }
+  const sheetXml = await readEntryText(sheetPath);
+  if (!sheetXml) {
+    throw new Error("Không tìm thấy dữ liệu bảng tính trong file .xlsx.");
+  }
+
+  const docSh = new DOMParser().parseFromString(sheetXml, "application/xml");
+  const rowNodes = docSh.getElementsByTagName("row");
+  const grid = [];
+
+  for (let i = 0; i < rowNodes.length; i++) {
+    const cNodes = rowNodes[i].getElementsByTagName("c");
+    const rowArr = [];
+    for (let j = 0; j < cNodes.length; j++) {
+      const c = cNodes[j];
+      const ref = c.getAttribute("r") || "";
+      const mCol = ref.match(/^([A-Z]+)/i);
+      const colIdx = mCol ? col_letter_to_idx0(mCol[1]) : rowArr.length;
+      const tAttr = c.getAttribute("t") || "";
+
+      let val = "";
+      if (tAttr === "inlineStr") {
+        const tEls = c.getElementsByTagName("t");
+        for (let k = 0; k < tEls.length; k++) val += tEls[k].textContent || "";
+      } else {
+        const vEl = c.getElementsByTagName("v")[0];
+        const rawV = vEl ? String(vEl.textContent || "") : "";
+        if (tAttr === "s") {
+          const idx = parseInt(rawV, 10);
+          val = !Number.isNaN(idx) && idx >= 0 && idx < sharedStrings.length ? sharedStrings[idx] : rawV;
+        } else {
+          val = rawV;
+        }
+      }
+      while (rowArr.length <= colIdx) rowArr.push("");
+      rowArr[colIdx] = String(val || "").trim();
+    }
+    if (rowArr.some((x) => x !== "")) {
+      grid.push(rowArr);
+    }
+  }
+  return grid;
+}
+
+function extract_mvd_records_from_grid(grid) {
+  if (!Array.isArray(grid) || grid.length === 0) {
+    return { items: [], error: "Không đọc được dòng dữ liệu nào." };
+  }
+
+  const normHdr = (s) => bo_dau_tieng_viet(String(s || "").trim()).toLowerCase().replace(/\s+/g, " ");
+  const isMvdHeader = (h) =>
+    (h.includes("ma van don") ||
+      h.includes("so van don") ||
+      h.includes("van don") ||
+      h.includes("ma buu gui") ||
+      h.includes("waybill") ||
+      h.includes("billcode") ||
+      h === "mvd" ||
+      h.includes("tracking")) &&
+    !h.includes("ma don hang");
+  const isPhoneHeader = (h) =>
+    (h.includes("dien thoai") || h.includes("sdt") || h.includes("so dt") || h.includes("phone") || h.includes("tel")) &&
+    !h.includes("nguoi gui") &&
+    !h.includes("kho gui");
+  const isNameHeader = (h) =>
+    (h.includes("nguoi nhan") || h.includes("ho ten") || h.includes("ten khach") || h.includes("customer")) &&
+    !h.includes("sdt") &&
+    !h.includes("dien thoai") &&
+    !h.includes("dia chi");
+  const isOrderCodeHeader = (h) => h.includes("ma don hang") || h.includes("order code") || h.includes("ma rieng");
+
+  let headerIdx = -1;
+  let colMvd = -1;
+  let colPhone = -1;
+  let colName = -1;
+  let colOrderCode = -1;
+
+  const maxScan = Math.min(20, grid.length);
+  for (let r = 0; r < maxScan; r++) {
+    const row = grid[r] || [];
+    let fMvd = -1;
+    let fPhone = -1;
+    let fName = -1;
+    let fOrderCode = -1;
+    for (let c = 0; c < row.length; c++) {
+      const h = normHdr(row[c]);
+      if (!h) continue;
+      if (fMvd === -1 && isMvdHeader(h)) fMvd = c;
+      if (fPhone === -1 && isPhoneHeader(h)) fPhone = c;
+      if (fName === -1 && isNameHeader(h)) fName = c;
+      if (fOrderCode === -1 && isOrderCodeHeader(h)) fOrderCode = c;
+    }
+    if (fMvd !== -1 && fPhone !== -1) {
+      headerIdx = r;
+      colMvd = fMvd;
+      colPhone = fPhone;
+      colName = fName;
+      colOrderCode = fOrderCode;
+      break;
+    }
+  }
+
+  if (headerIdx === -1 || colMvd === -1 || colPhone === -1) {
+    return {
+      items: [],
+      error: "Không tìm thấy cột 'Mã vận đơn' và 'Số điện thoại người nhận' trong file. Vui lòng kiểm tra lại đúng file xuất từ Quản lý vận đơn Viettel Post / J&T.",
+    };
+  }
+
+  const items = [];
+  for (let r = headerIdx + 1; r < grid.length; r++) {
+    const row = grid[r] || [];
+    const mvd = String(row[colMvd] || "").trim();
+    const rawPhone = String(row[colPhone] || "").trim();
+    const { phone } = normalize_vn_phone_for_ship(rawPhone);
+    if (!mvd || mvd === "-" || mvd === "—") continue;
+    const digits = (phone || rawPhone).replace(/\D/g, "");
+    if (digits.length < 9) continue;
+    const sdt9 = digits.slice(-9);
+    const name = colName !== -1 ? String(row[colName] || "").trim() : "";
+    const orderCode = colOrderCode !== -1 ? String(row[colOrderCode] || "").trim() : "";
+    let orderDate = "";
+    const mDate = orderCode.match(/^UPYO(\d{4})(\d{2})(\d{2})/i);
+    if (mDate) orderDate = `${mDate[1]}-${mDate[2]}-${mDate[3]}`;
+
+    items.push({
+      mvd,
+      sdt: phone || rawPhone,
+      sdt9,
+      name,
+      orderDate,
+    });
+  }
+
+  return { items, error: items.length === 0 ? "File không có dòng nào đủ Mã vận đơn + SĐT hợp lệ." : "" };
+}
+
+function match_import_mvd_with_orders(parsedItems) {
+  const allOrders = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
+  const byPhone = new Map();
+  for (const o of allOrders) {
+    const mvdCur = String(o.ma_van_don || "").trim();
+    if (mvdCur && mvdCur !== "-" && mvdCur !== "—") continue; // Bỏ qua đơn đã có MVĐ
+    const digits = String(o.sdt || "").replace(/\D/g, "");
+    if (digits.length < 9) continue;
+    const sdt9 = digits.slice(-9);
+    if (!byPhone.has(sdt9)) byPhone.set(sdt9, []);
+    byPhone.get(sdt9).push({
+      order: o,
+      ymd: tach_ngay_ymd_tu_chuoi(o.thoi_gian || o.ngay_only || ""),
+      hoTenLower: bo_dau_tieng_viet(String(o.ho_ten || "").trim()).toLowerCase(),
+      used: false,
+    });
+  }
+
+  const matched = [];
+  const unmatched = [];
+  for (const it of parsedItems) {
+    const list = byPhone.get(it.sdt9) || [];
+    const reqName = bo_dau_tieng_viet(it.name || "").toLowerCase();
+    let picked = null;
+    for (let pass = 0; pass < 3 && !picked; pass++) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        const cand = list[i];
+        if (cand.used) continue;
+        if (pass === 0 && (!it.orderDate || cand.ymd !== it.orderDate || !reqName || !cand.hoTenLower.includes(reqName))) continue;
+        if (pass === 1 && (!it.orderDate || cand.ymd !== it.orderDate)) continue;
+        picked = cand;
+        break;
+      }
+    }
+    if (picked) {
+      picked.used = true;
+      matched.push({
+        mvd: it.mvd,
+        sdt: it.sdt,
+        name: picked.order.ho_ten || it.name || "—",
+        orderDate: picked.ymd || it.orderDate || "",
+        oldStatus: picked.order.trang_thai || "",
+        sp: picked.order.dong_sp || "",
+      });
+    } else {
+      unmatched.push({
+        mvd: it.mvd,
+        sdt: it.sdt,
+        name: it.name || "—",
+        reason: list.length > 0 ? "Các đơn SĐT này đã có MVĐ" : "Không thấy đơn chưa có MVĐ",
+      });
+    }
+  }
+
+  return { matched, unmatched, totalParsed: parsedItems.length };
+}
+
+function render_import_mvd_preview() {
+  const sumEl = document.getElementById("impMvdSummaryRow");
+  const badgeEl = document.getElementById("impMvdReadyBadge");
+  const listEl = document.getElementById("impMvdPreviewList");
+  const btnCommit = document.getElementById("btnDoCommitImportMvd");
+
+  const res = _imp_mvd_match_result;
+  if (!res) {
+    if (badgeEl) badgeEl.textContent = "0 đơn khớp";
+    if (btnCommit) btnCommit.disabled = true;
+    if (sumEl) sumEl.innerHTML = "";
+    if (listEl) {
+      listEl.innerHTML = `<div class="imp-mvd-empty">Chọn file Excel hoặc dán dữ liệu ở bên trái để đối chiếu đơn chưa có MVĐ.</div>`;
+    }
+    return;
+  }
+
+  if (badgeEl) badgeEl.textContent = `${res.matched.length} đơn khớp`;
+  if (btnCommit) btnCommit.disabled = _imp_mvd_is_busy || res.matched.length === 0;
+
+  if (sumEl) {
+    sumEl.innerHTML =
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Đọc từ file</span>` +
+      `<span class="export-cp-kpi-val">${res.totalParsed} dòng</span>` +
+      `<span class="export-cp-kpi-sub">Có MVĐ &amp; SĐT</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Khớp điền Sheet</span>` +
+      `<span class="export-cp-kpi-val is-orders">${res.matched.length} đơn</span>` +
+      `<span class="export-cp-kpi-sub">Sẵn sàng cập nhật</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">Bỏ qua / Đã có</span>` +
+      `<span class="export-cp-kpi-val ${res.unmatched.length > 0 ? "is-spend" : ""}">${res.unmatched.length} đơn</span>` +
+      `<span class="export-cp-kpi-sub">Không ghi đè</span>` +
+      `</div>`;
+  }
+
+  if (listEl) {
+    const rowsHtml = [];
+    for (const m of res.matched.slice(0, 40)) {
+      rowsHtml.push(
+        `<div class="imp-mvd-row">` +
+          `<div class="imp-mvd-row-main"><span><strong>${escape_html(m.name)}</strong> (${escape_html(m.sdt)})</span><span>${escape_html(m.sp)}${m.orderDate ? " • " + escape_html(m.orderDate) : ""}</span></div>` +
+          `<span class="imp-mvd-row-code">${escape_html(m.mvd)}</span>` +
+        `</div>`
+      );
+    }
+    for (const u of res.unmatched.slice(0, 20)) {
+      rowsHtml.push(
+        `<div class="imp-mvd-row is-unmatched">` +
+          `<div class="imp-mvd-row-main"><span><strong>${escape_html(u.name)}</strong> (${escape_html(u.sdt)})</span><span>MVĐ: ${escape_html(u.mvd)}</span></div>` +
+          `<span class="imp-mvd-row-code">${escape_html(u.reason)}</span>` +
+        `</div>`
+      );
+    }
+    if (rowsHtml.length === 0) {
+      listEl.innerHTML = `<div class="imp-mvd-empty">Không có dòng nào hợp lệ để đối chiếu.</div>`;
+    } else {
+      listEl.innerHTML = rowsHtml.join("");
+    }
+  }
+}
+
+function open_import_mvd_modal() {
+  const modal = document.getElementById("importMvdModal");
+  if (!modal) return;
+  _imp_mvd_parsed_items = [];
+  _imp_mvd_match_result = null;
+  _imp_mvd_is_busy = false;
+  const fIn = document.getElementById("impMvdFileInput");
+  if (fIn) fIn.value = "";
+  const pasteEl = document.getElementById("impMvdPasteInput");
+  if (pasteEl) pasteEl.value = "";
+  document.getElementById("btnClearImpMvdPaste")?.classList.add("hidden");
+  document.getElementById("btnPickImpMvdFile")?.classList.remove("has-file");
+  const nameEl = document.getElementById("impMvdFileNameText");
+  if (nameEl) nameEl.textContent = "Bấm chọn file .xlsx / .csv tải từ Viettel Post hoặc J&T";
+  const srcBadge = document.getElementById("impMvdSourceBadge");
+  if (srcBadge) srcBadge.textContent = "CHƯA CHỌN FILE";
+  document.getElementById("impMvdStatusBox")?.classList.add("hidden");
+  render_import_mvd_preview();
+  modal.classList.remove("hidden");
+}
+
+function close_import_mvd_modal() {
+  document.getElementById("importMvdModal")?.classList.add("hidden");
+}
+
+function init_import_mvd_modal() {
+  const modal = document.getElementById("importMvdModal");
+  if (!modal) return;
+
+  const setStatus = (text, state = "done") => {
+    const box = document.getElementById("impMvdStatusBox");
+    const txt = document.getElementById("impMvdStatusText");
+    if (box) {
+      box.classList.remove("hidden", "is-done", "is-error");
+      if (state === "done") box.classList.add("is-done");
+      else if (state === "error") box.classList.add("is-error");
+    }
+    if (txt) txt.textContent = text;
+  };
+
+  const processGrid = (grid, sourceLabel) => {
+    const extracted = extract_mvd_records_from_grid(grid);
+    const srcBadge = document.getElementById("impMvdSourceBadge");
+    if (srcBadge) srcBadge.textContent = sourceLabel;
+    if (extracted.error) {
+      _imp_mvd_parsed_items = [];
+      _imp_mvd_match_result = null;
+      render_import_mvd_preview();
+      setStatus(extracted.error, "error");
+      return;
+    }
+    _imp_mvd_parsed_items = extracted.items;
+    _imp_mvd_match_result = match_import_mvd_with_orders(extracted.items);
+    document.getElementById("impMvdStatusBox")?.classList.add("hidden");
+    render_import_mvd_preview();
+  };
+
+  document.getElementById("btnOdImportMvd")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    open_import_mvd_modal();
+  });
+
+  document.getElementById("btnCloseImportMvd")?.addEventListener("click", close_import_mvd_modal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close_import_mvd_modal();
+  });
+  document.getElementById("importMvdCard")?.addEventListener("click", (e) => e.stopPropagation());
+
+  document.getElementById("btnPickImpMvdFile")?.addEventListener("click", () => {
+    document.getElementById("impMvdFileInput")?.click();
+  });
+
+  document.getElementById("impMvdFileInput")?.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    document.getElementById("btnPickImpMvdFile")?.classList.add("has-file");
+    const nameEl = document.getElementById("impMvdFileNameText");
+    if (nameEl) nameEl.textContent = file.name;
+    try {
+      const grid = await parse_xlsx_file_to_grid(file);
+      processGrid(grid, file.name);
+    } catch (err) {
+      setStatus(`Không đọc được file: ${(err && err.message) || err}`, "error");
+    }
+  });
+
+  document.getElementById("impMvdPasteInput")?.addEventListener("input", (e) => {
+    const val = String(e.target.value || "").trim();
+    document.getElementById("btnClearImpMvdPaste")?.classList.toggle("hidden", !val);
+    if (!val) {
+      _imp_mvd_parsed_items = [];
+      _imp_mvd_match_result = null;
+      render_import_mvd_preview();
+      return;
+    }
+    const grid = parse_delimited_grid_text(val);
+    processGrid(grid, "DỮ LIỆU DÁN EXCEL");
+  });
+
+  document.getElementById("btnClearImpMvdPaste")?.addEventListener("click", () => {
+    const pasteEl = document.getElementById("impMvdPasteInput");
+    if (pasteEl) pasteEl.value = "";
+    document.getElementById("btnClearImpMvdPaste")?.classList.add("hidden");
+    _imp_mvd_parsed_items = [];
+    _imp_mvd_match_result = null;
+    render_import_mvd_preview();
+  });
+
+  document.getElementById("btnDoCommitImportMvd")?.addEventListener("click", async () => {
+    if (_imp_mvd_is_busy || !_imp_mvd_match_result || _imp_mvd_match_result.matched.length === 0) return;
+    const key = get_apps_script_api_key();
+    if (!key) {
+      setStatus("Chưa có khóa xác thực, vui lòng đăng nhập lại.", "error");
+      return;
+    }
+
+    _imp_mvd_is_busy = true;
+    render_import_mvd_preview();
+    setStatus(`⏳ Đang ghi ${_imp_mvd_match_result.matched.length} mã vận đơn lên Google Sheet...`, "done");
+
+    try {
+      const autoMarkSent = Boolean(document.getElementById("impMvdAutoMarkSent")?.checked);
+      const url = build_apps_script_url("mode=update_mvd");
+      const payload = {
+        mode: "update_mvd",
+        key,
+        autoMarkSent,
+        items: _imp_mvd_match_result.matched.map((m) => ({
+          mvd: m.mvd,
+          sdt: m.sdt,
+          name: m.name,
+          orderDate: m.orderDate,
+        })),
+      };
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        redirect: "follow",
+      });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const resJson = await resp.json();
+      if (!resJson || !resJson.ok) {
+        throw new Error((resJson && resJson.error) || "Apps Script chưa hỗ trợ ghi MVĐ (cần cập nhật file .gs mới).");
+      }
+
+      setStatus(`✅ Đã ghi xong ${resJson.updated} mã vận đơn vào Google Sheet! Đang làm mới bảng...`, "done");
+      await tai_du_lieu_google_sheets(true, "", "", true, true).catch(() => false);
+      if (typeof ap_dung_bo_loc_chi_tiet_don === "function" && current_od_mode === "all_table") {
+        ap_dung_bo_loc_chi_tiet_don();
+      }
+      _imp_mvd_match_result = match_import_mvd_with_orders(_imp_mvd_parsed_items);
+      setStatus(`✅ Hoàn tất! Đã cập nhật ${resJson.updated} mã vận đơn trực tiếp vào Google Sheet.`, "done");
+    } catch (err) {
+      setStatus(`Lỗi cập nhật MVĐ: ${(err && err.message) || err}`, "error");
+    } finally {
+      _imp_mvd_is_busy = false;
+      render_import_mvd_preview();
     }
   });
 }

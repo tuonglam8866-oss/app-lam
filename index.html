@@ -628,6 +628,8 @@
         </div>
         <div class="od-header-actions">
           <button type="button" id="btnResetOdColFilters" class="rounded-btn od-reset-pill-btn hidden" title="Xóa tất cả điều kiện lọc">↺ Xóa lọc</button>
+          <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Xuất file Excel lên đơn hàng loạt (Viettel Post / J&T)">📦 Xuất đơn Excel</button>
+          <button type="button" id="btnOdImportMvd" class="rounded-btn od-import-mvd-btn" title="Nhập file Excel từ Viettel Post / J&T để tự động điền Mã vận đơn lên Google Sheet">📥 Nhập MVĐ</button>
           <button type="button" id="btnOdNoTracking" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc nhanh các đơn chưa có mã vận đơn">Đơn ko MVĐ</button>
           <button type="button" id="btnOdDupMktCheck" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc khách hàng trùng SĐT hoặc địa chỉ nhưng khác MKT">Đơn trùng MKT</button>
           <button type="button" id="btnOdLandingMktCheck" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc toàn bộ đơn lỗi vào đơn: chưa vào bảng Tổng hợp, thiếu MKT hoặc điền sai MKT">Lỗi vào đơn</button>
@@ -893,6 +895,239 @@
         <p class="export-cp-hint">
           File <strong>.xlsx</strong> mở trực tiếp trên Excel hoặc nhập vào Sheet (<em>Tệp → Nhập</em>). Nút <strong>Copy dán Google Sheets</strong> chỉ copy vào bộ nhớ máy để bạn tự dán <code>Ctrl+V</code> vào ô <code>A1</code>.
         </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Xuất File Excel Tạo Đơn Hàng Loạt (Viettel Post / J&T) - v8.6.319 -->
+  <div id="exportShipModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Xuất file Excel tạo đơn vận chuyển">
+    <div class="export-cp-card export-ship-card" id="exportShipCard">
+      <div class="export-cp-header">
+        <div class="export-cp-title-col">
+          <div class="export-cp-title-wrap">
+            <span class="exp-cp-mkt-badge" id="expShipSourceBadge">0 ĐƠN ĐANG LỌC</span>
+            <h2 class="export-cp-title">XUẤT EXCEL TẠO ĐƠN</h2>
+          </div>
+          <div class="export-cp-subtitle">Chuẩn hóa SĐT, kiểm tra địa chỉ &amp; xuất mẫu nhập hàng loạt</div>
+        </div>
+        <button type="button" class="od-close-btn" id="btnCloseExportShip" aria-label="Đóng" title="Đóng">✕</button>
+      </div>
+
+      <div class="export-cp-body export-ship-body">
+        <div class="export-ship-2col">
+          <!-- Cột trái: Thời gian, Sản phẩm (chip), Đơn vị vận chuyển -->
+          <div class="export-ship-col">
+            <div class="export-cp-panel">
+              <div class="export-cp-panel-top">
+                <span class="export-cp-section-label">Khoảng thời gian</span>
+              </div>
+              <button type="button" id="btnExpShipDateRange" class="rounded-btn btn-date-picker btn-date-range-unified exp-cp-date-btn export-ship-date-btn" aria-haspopup="dialog" title="Chọn khoảng thời gian xuất đơn">
+                <span class="cal-icon-badge" aria-hidden="true">
+                  <svg class="cal-svg-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1.75" y="3" width="12.5" height="11.25" rx="2.75" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M1.75 6.5H14.25" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M5 1.5V3.75M11 1.5V3.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <circle cx="5.3" cy="9.4" r="1" fill="currentColor"/>
+                    <circle cx="8" cy="9.4" r="1" fill="currentColor"/>
+                    <circle cx="10.7" cy="9.4" r="1" fill="currentColor"/>
+                  </svg>
+                </span>
+                <span id="expShipDateStartText">Tất cả ngày</span>
+                <span id="expShipDateSep" class="date-range-sep hidden">→</span>
+                <span id="expShipDateEndText" class="hidden"></span>
+                <svg class="exp-cp-chevron" viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+                  <path d="M4.25 6.25L8 10L11.75 6.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="export-cp-panel export-cp-test-panel">
+              <div class="export-cp-panel-top">
+                <div class="export-cp-test-title-group">
+                  <span class="export-cp-section-label">Chọn tag trạng thái (bỏ trống = tất cả)</span>
+                  <span class="export-cp-test-count hidden" id="expShipTagCountBadge">0 tag</span>
+                </div>
+                <button type="button" id="btnExpShipClearTag" class="export-cp-clear-test hidden" title="Bỏ chọn tất cả tag">Bỏ chọn</button>
+              </div>
+              <div class="export-cp-test-search-wrap">
+                <svg class="export-cp-test-search-icon" viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+                  <circle cx="7" cy="7" r="4.8" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M10.7 10.7L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <input type="text" id="expShipTagSearch" class="export-cp-test-search" placeholder="Tìm nhanh tag (vd: CHƯA LÊN ĐƠN, ĐÃ LÊN ĐƠN)..." autocomplete="off" />
+              </div>
+              <div class="export-cp-test-chips export-ship-sp-chips" id="expShipTagChips"></div>
+            </div>
+
+            <div class="export-cp-panel">
+              <div class="export-cp-panel-top">
+                <span class="export-cp-section-label">Đơn vị vận chuyển</span>
+                <span class="export-cp-days-badge" id="expShipReadyBadge">0 đơn xuất</span>
+              </div>
+              <div class="export-ship-carriers" id="expShipCarrierGroup" role="group" aria-label="Đơn vị vận chuyển">
+                <button type="button" class="export-ship-carrier-btn active" data-carrier="vtp">
+                  <span class="esc-title">📮 Viettel Post</span>
+                  <span class="esc-sub">Mẫu địa chỉ gộp chuẩn VTP</span>
+                </button>
+                <button type="button" class="export-ship-carrier-btn" data-carrier="jt">
+                  <span class="esc-title">🚚 J&amp;T Express</span>
+                  <span class="esc-sub">Tự tách sẵn cột Tỉnh/TP</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cột phải: Thông số, Tổng kết, Cảnh báo, Xuất file -->
+          <div class="export-ship-col">
+            <div class="export-cp-panel">
+              <div class="export-ship-grid">
+                <label class="export-ship-field">
+                  <span>Trọng lượng / 1 đôi (gram)</span>
+                  <input type="number" id="expShipWeight" min="50" max="50000" step="100" value="1000" />
+                </label>
+                <label class="export-ship-field" id="expShipVtpServiceWrap">
+                  <span>Dịch vụ VTP</span>
+                  <select id="expShipVtpService">
+                    <option value="VCN">VCN - Chuyển phát nhanh</option>
+                    <option value="VTK">VTK - Tiết kiệm</option>
+                    <option value="SCOD">SCOD - Giao hàng thu tiền</option>
+                    <option value="LCOD">LCOD - TMĐT chuẩn</option>
+                  </select>
+                </label>
+                <label class="export-ship-field" id="expShipSenderPhoneWrap">
+                  <span>SĐT người gửi (*)</span>
+                  <input type="text" id="expShipSenderPhone" value="0915519166" placeholder="0915519166" />
+                </label>
+                <label class="export-ship-field">
+                  <span>Ghi chú mặc định</span>
+                  <input type="text" id="expShipDefaultNote" value="Cho xem hàng và thử, ko nhận thu 30k" placeholder="VD: Cho xem hàng và thử, ko nhận thu 30k" />
+                </label>
+                <label class="export-ship-field export-ship-field-wide" id="expShipSenderAddrWrap">
+                  <span>Địa chỉ kho gửi (*)</span>
+                  <input type="text" id="expShipSenderAddr" value="Số nhà 179 Giẽ Thượng, xã Chuyên Mỹ, Hà Nội (địa chỉ mới), XÃ PHÚ YÊN, HUYỆN PHÚ XUYÊN, HÀ NỘI" placeholder="Nhập địa chỉ kho gửi..." />
+                </label>
+              </div>
+
+              <div class="export-ship-checks">
+                <label class="export-ship-check">
+                  <input type="checkbox" id="expShipOnlyNoMvd" checked />
+                  <span>Chỉ xuất đơn <strong>chưa có mã vận đơn</strong></span>
+                </label>
+                <label class="export-ship-check">
+                  <input type="checkbox" id="expShipSkipErrors" />
+                  <span>Bỏ qua đơn bị <strong>thiếu SĐT / thiếu tên / địa chỉ lỗi</strong></span>
+                </label>
+              </div>
+            </div>
+
+            <div id="expShipSummaryRow" class="export-cp-summary"></div>
+
+            <div id="expShipWarnBox" class="export-ship-warn-box hidden">
+              <div class="export-ship-warn-head">
+                <span id="expShipWarnTitle">⚠️ Có đơn cần kiểm tra lại địa chỉ / thông tin</span>
+              </div>
+              <div id="expShipWarnList" class="export-ship-warn-list"></div>
+            </div>
+
+            <div id="expShipStatusBox" class="export-cp-status hidden">
+              <div class="export-cp-status-text" id="expShipStatusText"></div>
+            </div>
+
+            <div class="export-cp-actions">
+              <button type="button" class="export-cp-btn export-cp-btn-excel" id="btnDoExportShipXlsx">
+                <svg viewBox="0 0 20 20" width="17" height="17" fill="none" aria-hidden="true">
+                  <rect x="3" y="2.5" width="14" height="15" rx="2.5" stroke="currentColor" stroke-width="1.6"/>
+                  <path d="M3 7.2H17M8.5 7.2V17.5M3 12.2H17" stroke="currentColor" stroke-width="1.4"/>
+                </svg>
+                <span>Tải file Excel (.xlsx)</span>
+              </button>
+              <button type="button" class="export-cp-btn export-cp-btn-sheet" id="btnDoExportShipCopy">
+                <svg viewBox="0 0 20 20" width="17" height="17" fill="none" aria-hidden="true">
+                  <rect x="6" y="5" width="10.5" height="12.5" rx="2" stroke="currentColor" stroke-width="1.6"/>
+                  <path d="M4 13.5V4.5C4 3.4 4.9 2.5 6 2.5H12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  <path d="M8.5 9.2H14M8.5 12.5H14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <span>Copy dán nhanh</span>
+              </button>
+            </div>
+            <p class="export-cp-hint">
+              SĐT xuất dạng chuỗi <strong>không mất số 0 đầu</strong>. Khi tải lên web Viettel Post / J&amp;T sẽ có bước xem trước để kiểm tra lại địa chỉ.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nhập Mã Vận Đơn từ Excel Viettel Post / J&T -> Google Sheet (v8.6.320) -->
+  <div id="importMvdModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Nhập mã vận đơn lên Google Sheet">
+    <div class="export-cp-card export-ship-card" id="importMvdCard">
+      <div class="export-cp-header">
+        <div class="export-cp-title-col">
+          <div class="export-cp-title-wrap">
+            <span class="exp-cp-mkt-badge" id="impMvdSourceBadge">CHƯA CHỌN FILE</span>
+            <h2 class="export-cp-title">CẬP NHẬT MÃ VẬN ĐƠN</h2>
+          </div>
+          <div class="export-cp-subtitle">Đọc file Excel từ Viettel Post / J&amp;T, tự khớp SĐT &amp; ghi hàng loạt vào Google Sheet</div>
+        </div>
+        <button type="button" class="od-close-btn" id="btnCloseImportMvd" aria-label="Đóng" title="Đóng">✕</button>
+      </div>
+
+      <div class="export-cp-body export-ship-body">
+        <div class="export-ship-2col">
+          <div class="export-ship-col">
+            <div class="export-cp-panel">
+              <div class="export-cp-panel-top">
+                <span class="export-cp-section-label">1. Chọn file Excel từ VTP / J&amp;T</span>
+              </div>
+              <input type="file" id="impMvdFileInput" class="hidden" accept=".xlsx,.csv,.tsv,.txt,.xls" />
+              <button type="button" id="btnPickImpMvdFile" class="imp-mvd-dropzone">
+                <span class="imp-mvd-drop-icon">📂</span>
+                <span class="imp-mvd-drop-title" id="impMvdFileNameText">Bấm chọn file .xlsx / .csv tải từ Viettel Post hoặc J&amp;T</span>
+                <span class="imp-mvd-drop-sub">Hỗ trợ file Quản lý vận đơn xuất từ web hãng</span>
+              </button>
+            </div>
+
+            <div class="export-cp-panel">
+              <div class="export-cp-panel-top">
+                <span class="export-cp-section-label">Hoặc dán trực tiếp từ Excel (Ctrl+V)</span>
+                <button type="button" id="btnClearImpMvdPaste" class="export-cp-clear-test hidden">Xóa</button>
+              </div>
+              <textarea id="impMvdPasteInput" class="imp-mvd-paste-box" rows="4" placeholder="Nếu file là .xls cũ, mở file trên Excel → Ctrl+A → Ctrl+C rồi dán vào đây..."></textarea>
+              <label class="export-ship-check" style="margin-top:4px;">
+                <input type="checkbox" id="impMvdAutoMarkSent" checked />
+                <span>Tự động chuyển tag sang <strong>ĐÃ LÊN ĐƠN</strong> (với đơn CHƯA LÊN ĐƠN)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="export-ship-col">
+            <div id="impMvdSummaryRow" class="export-cp-summary"></div>
+
+            <div class="export-cp-panel">
+              <div class="export-cp-panel-top">
+                <span class="export-cp-section-label">Xem trước đơn sẽ cập nhật</span>
+                <span class="export-cp-days-badge" id="impMvdReadyBadge">0 đơn khớp</span>
+              </div>
+              <div id="impMvdPreviewList" class="imp-mvd-preview-list">
+                <div class="imp-mvd-empty">Chọn file Excel hoặc dán dữ liệu ở bên trái để đối chiếu đơn chưa có MVĐ.</div>
+              </div>
+            </div>
+
+            <div id="impMvdStatusBox" class="export-cp-status hidden">
+              <div class="export-cp-status-text" id="impMvdStatusText"></div>
+            </div>
+
+            <div class="export-cp-actions">
+              <button type="button" class="export-cp-btn export-cp-btn-excel" id="btnDoCommitImportMvd" disabled>
+                <span>✅ Ghi Mã Vận Đơn vào Google Sheet</span>
+              </button>
+            </div>
+            <p class="export-cp-hint">
+              App chỉ điền vào những đơn <strong>chưa có Mã vận đơn</strong> (cột B trống), không ghi đè đơn cũ. Cần cập nhật file <strong>Apps Script (.gs)</strong> bản mới để bật quyền ghi.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
