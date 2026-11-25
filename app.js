@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.333";
+const APP_FRONTEND_VERSION = "8.6.334";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -13246,6 +13246,7 @@ function save_exp_ship_prefs() {
       defaultNote: document.getElementById("expShipDefaultNote")?.value || "",
       onlyNoMvd: Boolean(document.getElementById("expShipOnlyNoMvd")?.checked),
       skipErrors: Boolean(document.getElementById("expShipSkipErrors")?.checked),
+      vtpXmg: Boolean(document.getElementById("expShipVtpXmg")?.checked ?? true),
       tags: Array.from(exp_ship_tag_codes),
     };
     localStorage.setItem(STORAGE_KEY_EXP_SHIP_PREFS, JSON.stringify(prefs));
@@ -13262,6 +13263,7 @@ function prepare_ship_export_rows(orders, opts) {
   const senderInfo = [senderAddr, senderPhone].filter(Boolean).join(" - ");
   const defaultNote = String(opts.defaultNote || "").trim();
   const vtpService = normalize_vtp_service_value(opts.vtpService);
+  const vtpXmg = opts.vtpXmg !== false;
 
   const source = Array.isArray(orders) ? orders : [];
   const allCandidates = [];
@@ -13401,6 +13403,7 @@ function prepare_ship_export_rows(orders, opts) {
       value: cod,
       cargoType: "Bưu kiện",
       vtpService: rowVtpService,
+      vtpExtraService: vtpXmg && cod > 0 ? "XMG" : "",
       note: fullNote,
       sale: String(o.sale || "").trim(),
       mkt: String(o.mkt || "").trim(),
@@ -13516,7 +13519,7 @@ function get_ship_export_headers_and_rows(carrier, preparedRows) {
     1,
     1,
     1,
-    "",
+    r.vtpExtraService || "",
     "Người gửi trả",
     r.note,
     "",
@@ -13669,6 +13672,8 @@ function refresh_export_ship_preview() {
   const defaultNote = document.getElementById("expShipDefaultNote")?.value || "";
   const onlyNoMvd = Boolean(document.getElementById("expShipOnlyNoMvd")?.checked);
   const skipErrors = Boolean(document.getElementById("expShipSkipErrors")?.checked);
+  const vtpXmgEl = document.getElementById("expShipVtpXmg");
+  const vtpXmg = vtpXmgEl ? Boolean(vtpXmgEl.checked) : true;
 
   let filteredOrders = get_exp_ship_base_orders_by_date().filter((o) => {
     const tagNorm = bo_dau_tieng_viet(get_exp_ship_order_tag(o) || "")
@@ -13685,6 +13690,7 @@ function refresh_export_ship_preview() {
     senderPhone,
     senderAddr,
     vtpService,
+    vtpXmg,
     defaultNote,
   });
   _exp_ship_last_prepared = prep;
@@ -13776,6 +13782,8 @@ function refresh_export_ship_preview() {
   if (shipGrid) shipGrid.classList.toggle("is-jt", _exp_ship_carrier === "jt");
   const shipGridRow2 = document.getElementById("expShipGridRow2");
   if (shipGridRow2) shipGridRow2.classList.toggle("is-jt", _exp_ship_carrier === "jt");
+  const xmgWrap = document.getElementById("expShipVtpXmgWrap");
+  if (xmgWrap) xmgWrap.classList.toggle("hidden", _exp_ship_carrier !== "vtp");
 
   const b1 = document.getElementById("btnDoExportShipXlsx");
   const b2 = document.getElementById("btnDoExportShipCopy");
@@ -13826,6 +13834,8 @@ function open_export_ship_modal() {
   if (noMvdEl && typeof prefs.onlyNoMvd === "boolean") noMvdEl.checked = prefs.onlyNoMvd;
   const skipEl = document.getElementById("expShipSkipErrors");
   if (skipEl && typeof prefs.skipErrors === "boolean") skipEl.checked = prefs.skipErrors;
+  const xmgEl = document.getElementById("expShipVtpXmg");
+  if (xmgEl) xmgEl.checked = typeof prefs.vtpXmg === "boolean" ? prefs.vtpXmg : true;
 
   exp_ship_date_start = od_date_start || "";
   exp_ship_date_end = od_date_end || "";
@@ -13939,6 +13949,7 @@ function init_export_ship_modal() {
     "expShipDefaultNote",
     "expShipOnlyNoMvd",
     "expShipSkipErrors",
+    "expShipVtpXmg",
   ].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
