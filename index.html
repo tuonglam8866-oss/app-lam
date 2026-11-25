@@ -627,6 +627,7 @@
           </div>
         </div>
         <div class="od-header-actions">
+          <button type="button" id="btnOdReloadData" class="rounded-btn od-no-mvd-btn" title="Tải lại dữ liệu đơn hàng mới nhất">↻ Tải lại</button>
           <button type="button" id="btnResetOdColFilters" class="rounded-btn od-reset-pill-btn hidden" title="Xóa tất cả điều kiện lọc">↺ Xóa lọc</button>
           <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Xuất file Excel lên đơn hàng loạt (Viettel Post / J&T)">📦 Xuất đơn Excel</button>
           <button type="button" id="btnOdImportMvd" class="rounded-btn od-import-mvd-btn" title="Nhập file Excel từ Viettel Post / J&T để tự động điền Mã vận đơn lên Google Sheet">📥 Nhập MVĐ</button>
@@ -899,7 +900,7 @@
     </div>
   </div>
 
-  <!-- Modal Xuất File Excel Tạo Đơn Hàng Loạt (Viettel Post / J&T) - v8.6.319 -->
+  <!-- Modal Xuất File Excel Tạo Đơn Hàng Loạt (Viettel Post / J&T) - v8.6.321 -->
   <div id="exportShipModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Xuất file Excel tạo đơn vận chuyển">
     <div class="export-cp-card export-ship-card" id="exportShipCard">
       <div class="export-cp-header">
@@ -910,7 +911,10 @@
           </div>
           <div class="export-cp-subtitle">Chuẩn hóa SĐT, kiểm tra địa chỉ &amp; xuất mẫu nhập hàng loạt</div>
         </div>
-        <button type="button" class="od-close-btn" id="btnCloseExportShip" aria-label="Đóng" title="Đóng">✕</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" id="btnExpShipReloadData" class="rounded-btn od-no-mvd-btn" style="padding:6px 12px;font-size:12.5px;" title="Tải lại dữ liệu đơn hàng mới nhất">↻ Tải lại</button>
+          <button type="button" class="od-close-btn" id="btnCloseExportShip" aria-label="Đóng" title="Đóng">✕</button>
+        </div>
       </div>
 
       <div class="export-cp-body export-ship-body">
@@ -941,7 +945,7 @@
               </button>
             </div>
 
-            <div class="export-cp-panel export-cp-test-panel">
+            <div class="export-cp-panel export-cp-test-panel hidden">
               <div class="export-cp-panel-top">
                 <div class="export-cp-test-title-group">
                   <span class="export-cp-section-label">Chọn tag trạng thái (bỏ trống = tất cả)</span>
@@ -986,12 +990,26 @@
                   <input type="number" id="expShipWeight" min="50" max="50000" step="100" value="1000" />
                 </label>
                 <label class="export-ship-field" id="expShipVtpServiceWrap">
-                  <span>Dịch vụ VTP</span>
+                  <span>Dịch vụ VTP (*)</span>
                   <select id="expShipVtpService">
-                    <option value="VCN">VCN - Chuyển phát nhanh</option>
-                    <option value="VTK">VTK - Tiết kiệm</option>
-                    <option value="SCOD">SCOD - Giao hàng thu tiền</option>
-                    <option value="LCOD">LCOD - TMĐT chuẩn</option>
+                    <option value="VSL7 - Cam kết sản lượng 07">VSL7 - Cam kết sản lượng 07</option>
+                    <option value="SCN - Chuyển phát nhanh">SCN - Chuyển phát nhanh</option>
+                    <option value="STK - Chuyển phát tiết kiệm">STK - Chuyển phát tiết kiệm</option>
+                    <option value="VCBO - Chuyển phát đường bộ">VCBO - Chuyển phát đường bộ</option>
+                    <option value="VCBA - Chuyển phát đường bay">VCBA - Chuyển phát đường bay</option>
+                    <option value="VCN - CP nhanh thỏa thuận">VCN - CP nhanh thỏa thuận</option>
+                    <option value="VTK - CP tiết kiệm thỏa thuận">VTK - CP tiết kiệm thỏa thuận</option>
+                    <option value="SCOD - COD Liên tỉnh nhanh">SCOD - COD Liên tỉnh nhanh</option>
+                    <option value="ECOD - COD Liên tỉnh tiết kiệm">ECOD - COD Liên tỉnh tiết kiệm</option>
+                    <option value="NCOD - TMĐT nhanh thỏa thuận">NCOD - TMĐT nhanh thỏa thuận</option>
+                    <option value="LCOD - TMĐT tiết kiệm thỏa thuận">LCOD - TMĐT tiết kiệm thỏa thuận</option>
+                    <option value="PTN - Nội tỉnh nhanh thỏa thuận">PTN - Nội tỉnh nhanh thỏa thuận</option>
+                    <option value="PHS - Nội tỉnh tiết kiệm thỏa thuận">PHS - Nội tỉnh tiết kiệm thỏa thuận</option>
+                    <option value="SHT - Chuyển phát hỏa tốc">SHT - Chuyển phát hỏa tốc</option>
+                    <option value="VHT - Hỏa tốc thỏa thuận">VHT - Hỏa tốc thỏa thuận</option>
+                    <option value="VSL5 - Cam kết sản lượng 05">VSL5 - Cam kết sản lượng 05</option>
+                    <option value="VSL6 - Cam kết sản lượng 06">VSL6 - Cam kết sản lượng 06</option>
+                    <option value="VSL8 - Cam kết sản lượng 08">VSL8 - Cam kết sản lượng 08</option>
                   </select>
                 </label>
                 <label class="export-ship-field" id="expShipSenderPhoneWrap">
@@ -1023,8 +1041,9 @@
             <div id="expShipSummaryRow" class="export-cp-summary"></div>
 
             <div id="expShipWarnBox" class="export-ship-warn-box hidden">
-              <div class="export-ship-warn-head">
+              <div class="export-ship-warn-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                 <span id="expShipWarnTitle">⚠️ Có đơn cần kiểm tra lại địa chỉ / thông tin</span>
+                <button type="button" id="btnExpShipResolveOnline" style="padding:4px 10px;border-radius:8px;border:1px solid #d97706;background:#fffbeb;color:#b45309;font-size:12px;font-weight:700;cursor:pointer;">🔍 Tự tìm P/X chuẩn (Online)</button>
               </div>
               <div id="expShipWarnList" class="export-ship-warn-list"></div>
             </div>
