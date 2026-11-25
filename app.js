@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.346";
+const APP_FRONTEND_VERSION = "8.6.347";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -11745,7 +11745,7 @@ function render_exp_ship_tag_chips() {
   const countBadge = document.getElementById("expShipTagCountBadge");
   const clearBtn = document.getElementById("btnExpShipClearTag");
   const q = bo_dau_tieng_viet(String(document.getElementById("expShipTagSearch")?.value || "").trim()).toUpperCase();
-  const onlyNoMvd = Boolean(document.getElementById("expShipOnlyNoMvd")?.checked);
+  const onlyNoMvd = true;
 
   if (countBadge) {
     countBadge.textContent = `${exp_ship_tag_codes.size} tag`;
@@ -13509,8 +13509,8 @@ function save_exp_ship_prefs() {
       senderPhone: document.getElementById("expShipSenderPhone")?.value || "",
       senderAddr: document.getElementById("expShipSenderAddr")?.value || "",
       defaultNote: document.getElementById("expShipDefaultNote")?.value || "",
-      onlyNoMvd: Boolean(document.getElementById("expShipOnlyNoMvd")?.checked),
-      skipErrors: Boolean(document.getElementById("expShipSkipErrors")?.checked),
+      onlyNoMvd: true,
+      skipErrors: true,
       vtpXmg: Boolean(document.getElementById("expShipVtpXmg")?.checked ?? true),
       vtpXmgMoney: Math.max(0, Math.round(Number(document.getElementById("expShipVtpXmgMoney")?.value || 30000) || 0)),
       tags: Array.from(exp_ship_tag_codes),
@@ -13941,8 +13941,8 @@ function refresh_export_ship_preview() {
   const senderPhone = document.getElementById("expShipSenderPhone")?.value || "";
   const senderAddr = document.getElementById("expShipSenderAddr")?.value || "";
   const defaultNote = document.getElementById("expShipDefaultNote")?.value || "";
-  const onlyNoMvd = Boolean(document.getElementById("expShipOnlyNoMvd")?.checked);
-  const skipErrors = Boolean(document.getElementById("expShipSkipErrors")?.checked);
+  const onlyNoMvd = true;
+  const skipErrors = true;
   const vtpXmgEl = document.getElementById("expShipVtpXmg");
   const vtpXmg = vtpXmgEl ? Boolean(vtpXmgEl.checked) : true;
 
