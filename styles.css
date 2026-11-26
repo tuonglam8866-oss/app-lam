@@ -816,10 +816,15 @@ html, body {
 
 .quick-date-group,
 .date-range-group,
+.action-btn-group-left,
 .action-btn-group {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.action-btn-group-left {
+  flex-wrap: wrap;
 }
 
 .date-label {
@@ -1593,8 +1598,10 @@ html, body {
 .col-mkt.is-mkt-detail .section-header-card {
   min-width: 0;
   flex: 0 1 auto;
+  height: 36px;
   padding: 0 14px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1616,10 +1623,10 @@ html, body {
 .btn-back {
   min-width: auto;
   height: 36px;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: 10px;
-  font-size: 12.5px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -5344,7 +5351,7 @@ input::-ms-clear {
   color: #FFFDF9;
   border-color: #78350F;
   font-weight: 700;
-  padding: 0 13px;
+  padding: 0 14px;
   box-shadow: 0 2px 6px rgba(180, 83, 9, 0.2);
 }
 
@@ -6900,11 +6907,13 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   z-index: 100002 !important;
 }
 
-.action-btn-group .od-sync-vtp-btn {
-  height: 36px !important;
+.date-control-frame .od-sync-vtp-btn {
+  height: 37px !important;
   padding: 0 14px !important;
   font-size: 13px !important;
-  border-radius: 11px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  border-width: 1.5px !important;
 }
 
 .od-sync-vtp-btn {
@@ -7794,11 +7803,13 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   grid-template-columns: 1fr !important;
 }
 
-.action-btn-group .od-export-ship-btn {
-  height: 36px !important;
+.date-control-frame .od-export-ship-btn {
+  height: 37px !important;
   padding: 0 14px !important;
   font-size: 13px !important;
-  border-radius: 11px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  border-width: 1.5px !important;
 }
 
 .export-ship-btn-vtp-api {

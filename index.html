@@ -114,10 +114,20 @@
       </div>
 
       <div class="date-control-frame">
-        <!-- All Product Codes Button -->
-        <div class="add-sp-frame">
-          <button type="button" id="btnAllCodes" class="rounded-btn btn-default btn-all-codes" aria-haspopup="dialog">
-            <span id="btnAllCodesText">Tất cả mã</span>
+        <!-- Left Action Buttons (Lên đơn, Update trạng thái đơn, Lọc đơn, Tải Lại) -->
+        <div class="action-btn-group-left">
+          <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Lên đơn hàng loạt (Viettel Post)">Lên đơn</button>
+          <button type="button" id="btnVtpStatusModal" class="rounded-btn od-sync-vtp-btn" title="Kiểm tra trạng thái thực tế từ Viettel Post và cập nhật lên Google Sheet">Update trạng thái đơn</button>
+          <button type="button" id="btnFilterAllOrders" class="rounded-btn btn-filter-orders" title="Tra cứu &amp; Lọc toàn bộ đơn hàng trong bảng (Cột A → P)">
+            <svg class="filter-lens-svg" viewBox="0 0 20 20" width="13.5" height="13.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="8.5" cy="8.5" r="5.3"></circle>
+              <line x1="12.5" y1="12.5" x2="17" y2="17"></line>
+            </svg>
+            <span id="btnFilterAllOrdersText">Lọc đơn</span>
+          </button>
+          <button type="button" id="btnRefresh" class="rounded-btn btn-choco">
+            <span class="refresh-icon" id="refreshIcon">↻</span>
+            <span id="btnRefreshText">Tải Lại</span>
           </button>
         </div>
 
@@ -145,21 +155,8 @@
           </div>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- Right Action Buttons -->
         <div class="action-btn-group">
-          <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Lên đơn hàng loạt (Viettel Post)">Lên đơn</button>
-          <button type="button" id="btnVtpStatusModal" class="rounded-btn od-sync-vtp-btn" title="Kiểm tra trạng thái thực tế từ Viettel Post và cập nhật lên Google Sheet">Update trạng thái đơn</button>
-          <button type="button" id="btnFilterAllOrders" class="rounded-btn btn-filter-orders" title="Tra cứu &amp; Lọc toàn bộ đơn hàng trong bảng (Cột A → P)">
-            <svg class="filter-lens-svg" viewBox="0 0 20 20" width="13.5" height="13.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="8.5" cy="8.5" r="5.3"></circle>
-              <line x1="12.5" y1="12.5" x2="17" y2="17"></line>
-            </svg>
-            <span id="btnFilterAllOrdersText">Lọc đơn</span>
-          </button>
-          <button type="button" id="btnRefresh" class="rounded-btn btn-choco">
-            <span class="refresh-icon" id="refreshIcon">↻</span>
-            <span id="btnRefreshText">Tải Lại</span>
-          </button>
           <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-default btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
             <span class="refresh-icon update-arrow-icon" id="headerUpdateIcon">⬇</span>
             <span id="btnHeaderUpdateText">Cập nhật</span>

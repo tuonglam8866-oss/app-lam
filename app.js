@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.388";
+const APP_FRONTEND_VERSION = "8.6.390";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -1579,10 +1579,21 @@ function apply_scale_ui() {
       font-size: ${(13 * tf).toFixed(1)}px !important;
     }
     .date-control-frame .rounded-btn,
-    .btn-back {
+    .date-control-frame .od-export-ship-btn,
+    .date-control-frame .od-sync-vtp-btn {
       height: ${Math.round(37 * u)}px !important;
       padding: 0 ${Math.round(14 * u)}px !important;
       font-size: ${(13 * tf).toFixed(1)}px !important;
+      border-radius: ${Math.round(10 * u)}px !important;
+    }
+    .btn-back,
+    .col-mkt.is-mkt-detail .section-header-card,
+    .btn-mkt-view-camp-pill,
+    .btn-mkt-view-all-pill {
+      height: ${Math.round(36 * u)}px !important;
+      padding: 0 ${Math.round(13 * u)}px !important;
+      font-size: ${(13 * tf).toFixed(1)}px !important;
+      border-radius: ${Math.round(10 * u)}px !important;
     }
     .date-label { font-size: ${(13 * tf).toFixed(1)}px !important; }
     .badge-holder { margin-bottom: ${Math.round(18 * u)}px !important; }
