@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.362";
+const APP_FRONTEND_VERSION = "8.6.363";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -14097,6 +14097,9 @@ function refresh_export_ship_preview() {
 function open_export_ship_modal() {
   const modal = document.getElementById("exportShipModal");
   if (!modal) return;
+  if (typeof sync_vtp_token_with_cloud === "function") {
+    sync_vtp_token_with_cloud().catch(() => {});
+  }
 
   const prefs = read_exp_ship_prefs();
   _exp_ship_carrier = "vtp";
@@ -14477,6 +14480,71 @@ function init_export_ship_modal() {
     return false;
   }
 
+  async function push_vtp_token_to_cloud(tokenStr) {
+    try {
+      const apiKey = typeof get_apps_script_api_key === "function" ? get_apps_script_api_key() : "";
+      if (!apiKey) return false;
+      const url = build_apps_script_url("mode=set_vtp_token");
+      if (!url) return false;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ mode: "set_vtp_token", key: apiKey, token: String(tokenStr || "").trim() }),
+      });
+      if (resp.ok) {
+        const d = await resp.json().catch(() => null);
+        return Boolean(d && d.ok);
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  async function sync_vtp_token_with_cloud() {
+    let localHas = false;
+    let localToken = "";
+    try {
+      const rLoc = await fetch("/api/vtp-token?sync=1");
+      if (rLoc.ok) {
+        const dLoc = await rLoc.json();
+        localHas = Boolean(dLoc && dLoc.hasToken);
+        localToken = String((dLoc && dLoc.token) || "").trim();
+      }
+    } catch (e) {}
+
+    let cloudToken = "";
+    try {
+      const url = build_apps_script_url("mode=get_vtp_token");
+      if (url) {
+        const rCloud = await fetch(url);
+        if (rCloud.ok) {
+          const dCloud = await rCloud.json().catch(() => null);
+          if (dCloud && dCloud.ok && dCloud.token) {
+            cloudToken = String(dCloud.token).trim();
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Máy nhân viên chưa có Token (hoặc Token trên Cloud mới hơn) -> tự tải từ Apps Script về lưu máy
+    if (cloudToken && (!localHas || (localToken && localToken !== cloudToken))) {
+      try {
+        const sr = await fetch("/api/vtp-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: cloudToken }),
+        });
+        if (sr.ok) return true;
+      } catch (e) {}
+    }
+
+    // Máy chính đã có Token sẵn nhưng Cloud chưa có -> tự đẩy lên Apps Script để các máy khác cùng dùng
+    if (localHas && localToken && !cloudToken) {
+      await push_vtp_token_to_cloud(localToken);
+    }
+    return localHas || Boolean(cloudToken);
+  }
+  window.sync_vtp_token_with_cloud = sync_vtp_token_with_cloud;
+
   document.getElementById("btnEditVtpToken")?.addEventListener("click", async () => {
     try {
       const r0 = await fetch("/api/vtp-token");
@@ -14491,7 +14559,15 @@ function init_export_ship_modal() {
         body: JSON.stringify({ token: clean }),
       });
       if (resp.ok) {
-        setStatus(clean ? "Đã lưu Token Viettel Post vào máy thành công." : "Đã xóa Token Viettel Post.", "done");
+        const cloudOk = await push_vtp_token_to_cloud(clean);
+        setStatus(
+          clean
+            ? cloudOk
+              ? "Đã lưu Token Viettel Post vào máy và đồng bộ cho các máy nhân viên."
+              : "Đã lưu Token Viettel Post vào máy thành công."
+            : "Đã xóa Token Viettel Post.",
+          "done"
+        );
       } else {
         setStatus("Không lưu được Token (hãy chạy từ APPLAM.exe).", "error");
       }
@@ -14517,28 +14593,23 @@ function init_export_ship_modal() {
     const xmgMoney = Math.max(0, Math.round(Number(document.getElementById("expShipVtpXmgMoney")?.value || 30000) || 0));
     const senderPhone = String(document.getElementById("expShipSenderPhone")?.value || "").replace(/\D/g, "");
 
-    // Kiểm tra Token VTP đã lưu trên máy chưa
-    let hasToken = false;
-    try {
-      const tr = await fetch("/api/vtp-token");
-      if (tr.ok) {
-        const td = await tr.json();
-        hasToken = Boolean(td && td.hasToken);
-      }
-    } catch (e) {}
+    // Kiểm tra Token VTP (ưu tiên đồng bộ tự động từ Google Apps Script cho máy nhân viên)
+    let hasToken = await sync_vtp_token_with_cloud();
 
     if (!hasToken) {
       const pasted = window.prompt("Chưa có Token Viettel Post. Dán Token từ Quản lý token trên viettelpost.vn:", "");
       if (!pasted || !pasted.trim()) return;
+      const cleanTk = pasted.trim();
       const sr = await fetch("/api/vtp-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: pasted.trim() }),
+        body: JSON.stringify({ token: cleanTk }),
       });
       if (!sr.ok) {
         setStatus("Không lưu được Token Viettel Post.", "error");
         return;
       }
+      await push_vtp_token_to_cloud(cleanTk);
     }
 
     const origText = btn ? btn.textContent : "";
