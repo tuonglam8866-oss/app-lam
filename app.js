@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.378";
+const APP_FRONTEND_VERSION = "8.6.381";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -1156,7 +1156,7 @@ const I18N = {
     btnHeaderUpdate: "Cập nhật",
     btnLogout: "Đăng xuất",
     btnSettings: "Cài đặt",
-    companySummaryTitle: "🏢 TỔNG CÔNG TY",
+    companySummaryTitle: "TỔNG CÔNG TY",
     totalOrdersUnit: "tổng đơn",
     singleDateFmt: (d) => `Ngày ${d}`,
     rangeDateFmt: (s, e) => `Từ ${s} đến ${e}`,
@@ -1203,7 +1203,7 @@ const I18N = {
     toastExistingCode: (c) => `Mã ${c} đã có sẵn!`,
     testPopupTitle: "TEST NỔ ĐƠN",
     newOrderPopupTitle: "UPYO NỔ ĐƠN MỚI!",
-    allCodesBtn: "📋 Tất cả mã",
+    allCodesBtn: "Tất cả mã",
     allCodesTitle: "📋 TẤT CẢ MÃ ĐANG NHẬN DIỆN",
     colCode: "Mã SP",
     colOrders: "Đơn",
@@ -1242,7 +1242,7 @@ const I18N = {
     btnHeaderUpdate: "更新",
     btnLogout: "退出登录",
     btnSettings: "设置",
-    companySummaryTitle: "🏢 公司总计",
+    companySummaryTitle: "公司总计",
     totalOrdersUnit: "总订单",
     singleDateFmt: (d) => `日期 ${d}`,
     rangeDateFmt: (s, e) => `${s} 至 ${e}`,
@@ -1289,7 +1289,7 @@ const I18N = {
     toastExistingCode: (c) => `代码 ${c} 已存在!`,
     testPopupTitle: "测试爆单通知",
     newOrderPopupTitle: "UPYO 新订单来啦!",
-    allCodesBtn: "📋 全部代码",
+    allCodesBtn: "全部代码",
     allCodesTitle: "📋 已识别的全部产品代码",
     colCode: "产品代码",
     colOrders: "订单",
@@ -1328,7 +1328,7 @@ const I18N = {
     btnHeaderUpdate: "Update",
     btnLogout: "Sign Out",
     btnSettings: "Settings",
-    companySummaryTitle: "🏢 COMPANY TOTAL",
+    companySummaryTitle: "COMPANY TOTAL",
     totalOrdersUnit: "total orders",
     singleDateFmt: (d) => `Date ${d}`,
     rangeDateFmt: (s, e) => `${s} to ${e}`,
@@ -1375,7 +1375,7 @@ const I18N = {
     toastExistingCode: (c) => `Code ${c} already exists!`,
     testPopupTitle: "TEST NEW ORDER",
     newOrderPopupTitle: "UPYO NEW ORDER!",
-    allCodesBtn: "📋 All Codes",
+    allCodesBtn: "All Codes",
     allCodesTitle: "📋 ALL RECOGNIZED CODES",
     colCode: "Code",
     colOrders: "Orders",
@@ -3704,7 +3704,7 @@ function get_rank_style(rank) {
     return {
       cls: "rank-1",
       pillCls: "rank-pill-1",
-      icon: "👑",
+      icon: "",
       color: "var(--r1-text)",
       barColor: "#D97706",
     };
@@ -3713,7 +3713,7 @@ function get_rank_style(rank) {
     return {
       cls: "rank-2",
       pillCls: "rank-pill-2",
-      icon: "🥈",
+      icon: "",
       color: "var(--r2-text)",
       barColor: "#8C654B",
     };
@@ -3722,7 +3722,7 @@ function get_rank_style(rank) {
     return {
       cls: "rank-3",
       pillCls: "rank-pill-3",
-      icon: "🥉",
+      icon: "",
       color: "var(--r3-text)",
       barColor: "#C9643B",
     };
@@ -4233,8 +4233,8 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
       <span class="card-name">${dict.companySummaryTitle}</span>
       <span class="card-sub-label">${date_label}</span>
       ${build_card_camp_pill_html("__ALL__", "")}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">📋 Chi tiết đơn →</span>
-      <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho Toàn công ty">📤 Xuất bản CP</span>
+      <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">Chi tiết đơn →</span>
+      <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho Toàn công ty">Xuất bản CP</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-total-orders" style="color: var(--color-highlight)">0</span>
@@ -4304,8 +4304,8 @@ function create_mkt_table_card(
       <span class="card-name">${name_str}</span>
       ${build_sp_closing_rate_pill_html(null, name_str)}
       ${build_card_camp_pill_html(name_str, "")}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
-      <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho ${name_str}">📤 Xuất bản CP</span>
+      <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">Chi tiết đơn →</span>
+      <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho ${name_str}">Xuất bản CP</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -6943,7 +6943,7 @@ function build_card_camp_pill_html(ten_mkt, spFilter = "") {
   const mktLabel = isAll ? "toàn công ty" : ten_mkt;
   const scopeLabel = spFilter ? `mã ${spFilter} (${mktLabel})` : mktLabel;
   const title = `Bấm để xem ${campCount} Camp đang chạy của ${scopeLabel}`;
-  return `<span class="card-camp-hint clickable-hint js-btn-view-card-camps" title="${escape_html(title)}">📢 ${campCount} Camp</span>`;
+  return `<span class="card-camp-hint clickable-hint js-btn-view-card-camps" title="${escape_html(title)}">${campCount} Camp</span>`;
 }
 
 function is_fb_camp_paused(camp) {
@@ -8060,7 +8060,7 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
       <span class="card-name">👟 ${ma_str}</span>
       ${build_sp_closing_rate_pill_html(ma_str, current_mkt_detail)}
       ${build_card_camp_pill_html(current_mkt_detail, ma_str)}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem ${count} đơn hàng chi tiết của ${ma_str}">📋 Chi tiết đơn →</span>
+      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem ${count} đơn hàng chi tiết của ${ma_str}">Chi tiết đơn →</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: var(--color-highlight)">0</span>
@@ -8131,7 +8131,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
       <span class="card-name">${name_str}</span>
       ${build_sp_closing_rate_pill_html(name_str, null)}
       ${build_card_camp_pill_html("__ALL__", name_str)}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">📋 Chi tiết đơn →</span>
+      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">Chi tiết đơn →</span>
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -8237,7 +8237,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     if (btnMktViewCampInline) btnMktViewCampInline.classList.add("hidden");
     if (btnMktViewAllInline) btnMktViewAllInline.classList.add("hidden");
     btnBackMkt.classList.add("hidden");
-    if (headerMktIcon) headerMktIcon.textContent = "🏆";
+    if (headerMktIcon) headerMktIcon.textContent = "";
     headerMktText.textContent = dict.mktReportHeader;
     containerMkt.innerHTML = "";
     containerMkt.scrollTop = 0;
@@ -8324,7 +8324,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
     const tong_don_mkt = stats_mkt_don[ten_mkt] || 0;
     const camps_mkt = (cached_fb_camps && cached_fb_camps[ten_mkt]) || [];
     if (btnMktViewCampInline) {
-      btnMktViewCampInline.textContent = camps_mkt.length > 0 ? `📢 Xem Camp (${camps_mkt.length})` : "📢 Xem Camp";
+      btnMktViewCampInline.textContent = camps_mkt.length > 0 ? `Xem Camp (${camps_mkt.length})` : "Xem Camp";
       btnMktViewCampInline.title = `Xem danh sách chiến dịch (Camp) đang chạy của ${ten_mkt}`;
       btnMktViewCampInline.classList.remove("hidden");
       btnMktViewCampInline.onclick = () => {
@@ -8332,7 +8332,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
       };
     }
     if (btnMktViewAllInline) {
-      btnMktViewAllInline.textContent = `\ud83d\udccb Xem ${tong_don_mkt} \u0111\u01a1n \u2192`;
+      btnMktViewAllInline.textContent = `Xem ${tong_don_mkt} \u0111\u01a1n \u2192`;
       btnMktViewAllInline.title = `Xem danh s\u00e1ch t\u1ea5t c\u1ea3 ${tong_don_mkt} \u0111\u01a1n c\u1ee7a ${ten_mkt} (T\u1ea5t c\u1ea3 m\u00e3 SP)`;
       btnMktViewAllInline.classList.remove("hidden");
       btnMktViewAllInline.onclick = () => {
