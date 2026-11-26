@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.363";
+const APP_FRONTEND_VERSION = "8.6.365";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -759,7 +759,9 @@ function la_don_hop_le_de_dem(trang_thai_raw) {
     noDau.includes("LEN APP LAM") ||
     s.includes("L\u00caN APP VTP") ||
     noDau.includes("LEN APP VTP") ||
-    noDau.includes("LEN APPVTP")
+    noDau.includes("LEN APPVTP") ||
+    noDau.includes("DANG GIAO HANG") ||
+    noDau.includes("GIAO 1 PHAN")
   );
 }
 
@@ -4401,9 +4403,9 @@ function get_status_pill_cls(statusRaw) {
   const s = bo_dau_tieng_viet(String(statusRaw || "").trim()).toUpperCase();
   if (!s) return "pill-status-default";
   if (s.includes("DA LEN DON") || s.includes("THANH CONG")) return "pill-status-ok";
-  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG") || s.includes("XUAT EXCEL") || s.includes("LEN APPLAM") || s.includes("LEN APP LAM") || s.includes("LEN APP VTP") || s.includes("LEN APPVTP")) return "pill-status-direct";
+  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG") || s.includes("XUAT EXCEL") || s.includes("LEN APPLAM") || s.includes("LEN APP LAM") || s.includes("LEN APP VTP") || s.includes("LEN APPVTP") || s.includes("DANG GIAO HANG")) return "pill-status-direct";
   if (s.includes("GIAO THANG")) return "pill-status-direct";
-  if (s.includes("DOI HANG")) return "pill-status-exchange";
+  if (s.includes("DOI HANG") || s.includes("GIAO 1 PHAN")) return "pill-status-exchange";
   if (s.includes("TEST")) return "pill-status-test";
   if (
     s.includes("HUY") ||
@@ -10280,6 +10282,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         current_cal_target = null;
         return;
       }
+      const vtpSyncModal = document.getElementById("vtpStatusSyncModal");
+      if (vtpSyncModal && !vtpSyncModal.classList.contains("hidden")) {
+        close_vtp_status_sync_modal();
+        return;
+      }
       const impMvdModal = document.getElementById("importMvdModal");
       if (impMvdModal && !impMvdModal.classList.contains("hidden")) {
         close_import_mvd_modal();
@@ -10309,6 +10316,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   init_export_cp_modal();
   init_export_ship_modal();
   init_import_mvd_modal();
+  if (typeof init_vtp_status_sync_modal === "function") init_vtp_status_sync_modal();
 
   // Kiểm tra trạng thái đăng nhập khi mở app (giữ phiên qua các lần cập nhật trừ khi đổi mật khẩu mới)
   const isAuthed = await check_persisted_auth_session();
@@ -15442,5 +15450,454 @@ function init_import_mvd_modal() {
       _imp_mvd_is_busy = false;
       render_import_mvd_preview();
     }
+  });
+}
+
+
+// ==============================================================
+// MODAL UPDATE TRẠNG THÁI ĐƠN VIETTEL POST -> CỘT N GOOGLE SHEET (v8.6.365)
+// ==============================================================
+let _vtp_sync_busy = false;
+let _vtp_sync_days = 35;
+let _vtp_sync_filter = "all";
+let _vtp_sync_state = {
+  totalChecked: 0,
+  changedItems: [],
+  counts: {},
+  scanned: false,
+};
+
+function map_vtp_status_to_sheet_tag(vtpRec, sheetTotalQty) {
+  if (!vtpRec) return "";
+  const st = Number(vtpRec.orderStatus);
+  if (Number.isNaN(st)) return "";
+
+  const svcAdd = String(vtpRec.serviceAdd || "").toUpperCase();
+  const noteNorm = bo_dau_tieng_viet(String(vtpRec.note || ""))
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  const vtpQty = Math.max(0, Number(vtpRec.qty) || 0);
+  const effQty = Math.max(vtpQty, Number(sheetTotalQty) || 0, 1);
+
+  const isPartialOrReturnNote =
+    /(^|,)GGDH(,|$)/.test(svcAdd) ||
+    noteNorm.includes("giao hang mot phan") ||
+    noteNorm.includes("nhan lai san pham");
+
+  if (st === 501) {
+    if (isPartialOrReturnNote) {
+      return effQty <= 1 ? "ĐÃ HOÀN" : "GIAO 1 PHẦN";
+    }
+    return "GIAO THÀNH CÔNG";
+  }
+  if (st === 504) return "ĐÃ HOÀN";
+  if (st === 502 || st === 505 || st === 515) return "ĐANG CHUYỂN HOÀN";
+  if (st === 107 || st === 201 || st === 503) return "ĐÃ HỦY";
+  if (
+    [105, 200, 202, 300, 301, 302, 303, 320, 400, 401, 402, 403, 500, 506, 507, 508, 509].includes(st)
+  ) {
+    return "ĐANG GIAO HÀNG";
+  }
+  return "";
+}
+
+function set_vtp_sync_status_msg(text, state = "done") {
+  const box = document.getElementById("vtpSyncStatusBox");
+  const txt = document.getElementById("vtpSyncStatusText");
+  if (!box || !txt) return;
+  if (!text) {
+    box.classList.add("hidden");
+    txt.textContent = "";
+    return;
+  }
+  box.classList.remove("hidden", "is-error", "is-done");
+  if (state === "error") box.classList.add("is-error");
+  else box.classList.add("is-done");
+  txt.textContent = text;
+}
+
+function get_vtp_sync_category(tag) {
+  if (tag === "GIAO THÀNH CÔNG") return "ok";
+  if (tag === "ĐÃ HOÀN" || tag === "ĐANG CHUYỂN HOÀN" || tag === "GIAO 1 PHẦN") return "return";
+  return "shipping";
+}
+
+function render_vtp_sync_modal() {
+  const listEl = document.getElementById("vtpSyncPreviewList");
+  const kpiEl = document.getElementById("vtpSyncKpiRow");
+  const breakdownEl = document.getElementById("vtpSyncBreakdown");
+  const badgeEl = document.getElementById("vtpSyncSourceBadge");
+  const chipEl = document.getElementById("vtpSyncReadyChip");
+  const commitBtn = document.getElementById("btnDoCommitVtpSync");
+
+  const items = _vtp_sync_state.changedItems || [];
+  const counts = _vtp_sync_state.counts || {};
+  const okCount = counts["GIAO THÀNH CÔNG"] || 0;
+  const returnCount = (counts["ĐÃ HOÀN"] || 0) + (counts["ĐANG CHUYỂN HOÀN"] || 0) + (counts["GIAO 1 PHẦN"] || 0);
+
+  if (badgeEl) badgeEl.textContent = `${_vtp_sync_state.totalChecked} ĐƠN CHƯA CHỐT`;
+  if (chipEl) chipEl.textContent = `${items.length} đơn đổi`;
+
+  if (kpiEl) {
+    kpiEl.innerHTML =
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">ĐÃ QUÉT VTP</span>` +
+      `<span class="export-cp-kpi-val">${_vtp_sync_state.totalChecked} đơn</span>` +
+      `<span class="export-cp-kpi-sub">Trong ${_vtp_sync_days} ngày gần nhất</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">CẦN CẬP NHẬT</span>` +
+      `<span class="export-cp-kpi-val is-ok">${items.length} đơn</span>` +
+      `<span class="export-cp-kpi-sub">${items.length > 0 ? "Sẵn sàng ghi cột N" : "Chưa có thay đổi"}</span>` +
+      `</div>` +
+      `<div class="export-cp-kpi-card">` +
+      `<span class="export-cp-kpi-label">HOÀN / ĐỔI / 1 PHẦN</span>` +
+      `<span class="export-cp-kpi-val ${returnCount > 0 ? "is-spend" : ""}">${returnCount} đơn</span>` +
+      `<span class="export-cp-kpi-sub">${okCount} giao thành công</span>` +
+      `</div>`;
+  }
+
+  if (breakdownEl) {
+    const keys = Object.keys(counts);
+    if (!_vtp_sync_state.scanned) {
+      breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Đang đối chiếu trạng thái từ Viettel Post...</span>`;
+    } else if (keys.length === 0) {
+      breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Không phát hiện đơn nào có trạng thái mới so với Google Sheet.</span>`;
+    } else {
+      breakdownEl.innerHTML = keys
+        .map((k) => {
+          let cls = "is-ship";
+          if (k === "GIAO THÀNH CÔNG") cls = "is-ok";
+          else if (k === "ĐÃ HOÀN" || k === "ĐANG CHUYỂN HOÀN" || k === "ĐÃ HỦY") cls = "is-return";
+          else if (k === "GIAO 1 PHẦN") cls = "is-partial";
+          return `<span class="vtp-sync-stat-pill"><span>${escape_html(k)}</span><span class="vtp-sync-stat-count ${cls}">${counts[k]}</span></span>`;
+        })
+        .join("");
+    }
+  }
+
+  if (commitBtn) {
+    commitBtn.disabled = _vtp_sync_busy || items.length === 0;
+    const sp = commitBtn.querySelector("span");
+    if (sp) {
+      sp.textContent =
+        items.length > 0
+          ? `✅ Cập nhật ${items.length} đơn lên Google Sheet`
+          : "✅ Chưa có trạng thái mới để cập nhật";
+    }
+  }
+
+  if (listEl) {
+    if (!_vtp_sync_state.scanned) {
+      listEl.innerHTML = `<div class="vtp-sync-empty">⏳ Đang quét trạng thái đơn hàng từ Viettel Post...</div>`;
+      return;
+    }
+    const filtered = items.filter((it) => _vtp_sync_filter === "all" || get_vtp_sync_category(it.status) === _vtp_sync_filter);
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div class="vtp-sync-empty">${
+        items.length === 0
+          ? "Tất cả đơn đang đi đều khớp với trạng thái mới nhất trên Viettel Post."
+          : "Không có đơn nào trong nhóm lọc này."
+      }</div>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered
+      .slice(0, 120)
+      .map((it) => {
+        const oldCls = typeof get_status_pill_cls === "function" ? get_status_pill_cls(it.oldStatus) : "pill-status-default";
+        const newCls = typeof get_status_pill_cls === "function" ? get_status_pill_cls(it.status) : "pill-status-default";
+        return (
+          `<div class="vtp-sync-row">` +
+          `<div class="vtp-sync-row-left">` +
+          `<div class="vtp-sync-row-name"><strong>${escape_html(it.name || "(Khách hàng)")}</strong><span class="vtp-sync-row-mvd">${escape_html(it.mvd)}</span></div>` +
+          `<div class="vtp-sync-row-meta">${escape_html(it.phone || "—")}${it.date ? " • " + escape_html(it.date) : ""}${it.qty > 1 ? " • " + it.qty + " đôi" : ""}</div>` +
+          `</div>` +
+          `<div class="vtp-sync-row-tags">` +
+          `<span class="od-status-pill ${oldCls}">${escape_html(it.oldStatus || "Trống")}</span>` +
+          `<span class="vtp-sync-arrow">→</span>` +
+          `<span class="od-status-pill ${newCls}">${escape_html(it.status)}</span>` +
+          `</div>` +
+          `</div>`
+        );
+      })
+      .join("") +
+      (filtered.length > 120 ? `<div class="vtp-sync-empty" style="padding:10px;">...và ${filtered.length - 120} đơn khác</div>` : "");
+  }
+}
+
+async function scan_vtp_status_sync_modal() {
+  if (_vtp_sync_busy) return;
+  _vtp_sync_busy = true;
+  _vtp_sync_state = { totalChecked: 0, changedItems: [], counts: {}, scanned: false };
+  set_vtp_sync_status_msg("", "done");
+
+  const scanBtn = document.getElementById("btnVtpSyncScan");
+  const origScanTxt = scanBtn ? scanBtn.textContent : "";
+  if (scanBtn) {
+    scanBtn.disabled = true;
+    scanBtn.textContent = "⏳ Đang quét...";
+  }
+  render_vtp_sync_modal();
+
+  try {
+    if (typeof sync_vtp_token_with_cloud === "function") {
+      const hasTk = await sync_vtp_token_with_cloud().catch(() => false);
+      if (!hasTk) {
+        _vtp_sync_state.scanned = true;
+        set_vtp_sync_status_msg("Chưa có Token Viettel Post — hãy mở mục 📦 Lên đơn để kết nối Token.", "error");
+        render_vtp_sync_modal();
+        return;
+      }
+    }
+
+    const allOrders = typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function"
+      ? lay_tat_ca_don_hang_tu_bang_a_den_p(false)
+      : [];
+
+    const cutoffDate = new Date(Date.now() - _vtp_sync_days * 86400000);
+    const cutoffYmd = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`;
+
+    const PROTECTED_NORM = new Set([
+      "DON TEST",
+      "TRUNG",
+      "DOI HANG",
+      "HOAN DE DOI HANG",
+      "CHUA CHOT DUOC",
+      "GIAO THANH CONG",
+      "DA HOAN",
+      "DA HUY",
+    ]);
+
+    const normSt = (s) =>
+      bo_dau_tieng_viet(String(s || ""))
+        .toUpperCase()
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const mvdMap = new Map();
+    for (const o of allOrders) {
+      const ymd = typeof parse_order_ymd === "function" ? parse_order_ymd(o) : "";
+      if (ymd && ymd < cutoffYmd) continue;
+
+      const rawMvd = String(o.ma_van_don || o.parent_ma_van_don || "").trim();
+      if (!rawMvd || rawMvd === "-" || rawMvd === "—" || rawMvd.length < 6) continue;
+      const mvdKey = rawMvd.toUpperCase();
+
+      const stNorm = normSt(o.trang_thai);
+      const q = typeof infer_ship_order_qty === "function" ? infer_ship_order_qty(o) : 1;
+
+      let entry = mvdMap.get(mvdKey);
+      if (!entry) {
+        entry = {
+          mvd: rawMvd,
+          name: String(o.ho_ten || o.parent_ho_ten || "").trim(),
+          phone: String(o.sdt || o.parent_sdt || "").trim(),
+          date: String(o.ngay_only || "").trim(),
+          oldStatus: String(o.trang_thai || "").trim(),
+          totalQty: 0,
+          rowStatuses: new Set(),
+          hasUpdatable: false,
+        };
+        mvdMap.set(mvdKey, entry);
+      } else {
+        if (!entry.name && o.ho_ten) entry.name = String(o.ho_ten).trim();
+        if (!entry.phone && o.sdt) entry.phone = String(o.sdt).trim();
+        if (!entry.oldStatus && o.trang_thai) entry.oldStatus = String(o.trang_thai).trim();
+      }
+      entry.totalQty += q;
+      entry.rowStatuses.add(stNorm);
+      if (!PROTECTED_NORM.has(stNorm)) {
+        entry.hasUpdatable = true;
+      }
+    }
+
+    const targetMvds = [];
+    for (const entry of mvdMap.values()) {
+      if (entry.hasUpdatable) targetMvds.push(entry);
+    }
+
+    _vtp_sync_state.totalChecked = targetMvds.length;
+    if (targetMvds.length === 0) {
+      _vtp_sync_state.scanned = true;
+      set_vtp_sync_status_msg(`Không có đơn chưa chốt nào có MVĐ trong ${_vtp_sync_days} ngày gần nhất.`, "done");
+      render_vtp_sync_modal();
+      return;
+    }
+
+    if (scanBtn) scanBtn.textContent = `⏳ Tra ${targetMvds.length} MVĐ...`;
+    render_vtp_sync_modal();
+
+    const rVtp = await fetch("/api/vtp-batch-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mvds: targetMvds.map((e) => e.mvd) }),
+    });
+    const dVtp = await rVtp.json().catch(() => null);
+    if (!dVtp || !dVtp.ok) {
+      throw new Error((dVtp && dVtp.message) || "Không tra cứu được trạng thái Viettel Post.");
+    }
+
+    const results = Array.isArray(dVtp.results) ? dVtp.results : [];
+    const changedItems = [];
+    const counts = {};
+
+    for (const rec of results) {
+      const mvdKey = String(rec.mvd || "").trim().toUpperCase();
+      const info = mvdMap.get(mvdKey);
+      if (!info) continue;
+
+      const targetTag = map_vtp_status_to_sheet_tag(rec, info.totalQty);
+      if (!targetTag) continue;
+      const targetNorm = normSt(targetTag);
+
+      let needUpdate = false;
+      for (const curNorm of info.rowStatuses) {
+        if (!PROTECTED_NORM.has(curNorm) && curNorm !== targetNorm) {
+          needUpdate = true;
+          break;
+        }
+      }
+      if (!needUpdate) continue;
+
+      changedItems.push({
+        mvd: info.mvd,
+        status: targetTag,
+        name: info.name,
+        phone: info.phone,
+        date: info.date,
+        qty: info.totalQty,
+        oldStatus: info.oldStatus,
+      });
+      counts[targetTag] = (counts[targetTag] || 0) + 1;
+    }
+
+    _vtp_sync_state = {
+      totalChecked: targetMvds.length,
+      changedItems,
+      counts,
+      scanned: true,
+    };
+    if (changedItems.length > 0) {
+      set_vtp_sync_status_msg(`Đã tìm thấy ${changedItems.length} đơn có trạng thái mới. Bấm nút xanh để ghi vào cột N.`, "done");
+    } else {
+      set_vtp_sync_status_msg(`Đã quét xong ${targetMvds.length} đơn — tất cả đều đang đúng trạng thái mới nhất.`, "done");
+    }
+  } catch (err) {
+    _vtp_sync_state.scanned = true;
+    set_vtp_sync_status_msg(`Lỗi quét Viettel Post: ${(err && err.message) || err}`, "error");
+  } finally {
+    _vtp_sync_busy = false;
+    if (scanBtn) {
+      scanBtn.disabled = false;
+      scanBtn.textContent = origScanTxt || "↻ Quét lại VTP";
+    }
+    render_vtp_sync_modal();
+  }
+}
+
+async function commit_vtp_status_sync_modal() {
+  if (_vtp_sync_busy || !_vtp_sync_state.changedItems || _vtp_sync_state.changedItems.length === 0) return;
+  const apiKey = typeof get_apps_script_api_key === "function" ? get_apps_script_api_key() : "";
+  if (!apiKey) {
+    set_vtp_sync_status_msg("Chưa có khóa xác thực Apps Script, vui lòng đăng nhập lại.", "error");
+    return;
+  }
+
+  _vtp_sync_busy = true;
+  const commitBtn = document.getElementById("btnDoCommitVtpSync");
+  if (commitBtn) commitBtn.disabled = true;
+  const itemsToSend = _vtp_sync_state.changedItems.map((it) => ({ mvd: it.mvd, status: it.status }));
+  set_vtp_sync_status_msg(`⏳ Đang ghi ${itemsToSend.length} đơn vào cột N Google Sheet...`, "done");
+
+  try {
+    const syncUrl = build_apps_script_url("mode=sync_vtp_status");
+    const sr = await fetch(syncUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ mode: "sync_vtp_status", key: apiKey, items: itemsToSend }),
+      redirect: "follow",
+    });
+    const sd = await sr.json().catch(() => null);
+    if (!sd || !sd.ok) {
+      throw new Error((sd && sd.error) || "Apps Script chưa hỗ trợ sync_vtp_status (cần cập nhật file applam_v8.6.364.gs).");
+    }
+
+    set_vtp_sync_status_msg(`⏳ Đã ghi ${sd.updatedRows || itemsToSend.length} dòng! Đang đồng bộ lại bảng APPLAM...`, "done");
+    await tai_va_cap_nhat_theo_ngay(false, false, true);
+
+    const summaryParts = Object.keys(_vtp_sync_state.counts || {}).map((k) => `${_vtp_sync_state.counts[k]} ${k}`);
+    const okMsg = `✅ Đã cập nhật xong ${sd.updatedRows || itemsToSend.length} dòng lên cột N (${summaryParts.join(", ")})`;
+    _vtp_sync_state.changedItems = [];
+    _vtp_sync_state.counts = {};
+    set_vtp_sync_status_msg(okMsg, "done");
+    if (typeof show_update_toast_notification === "function") {
+      show_update_toast_notification(okMsg);
+    }
+  } catch (err) {
+    set_vtp_sync_status_msg(`Lỗi ghi Google Sheet: ${(err && err.message) || err}`, "error");
+  } finally {
+    _vtp_sync_busy = false;
+    render_vtp_sync_modal();
+  }
+}
+
+function open_vtp_status_sync_modal() {
+  const modal = document.getElementById("vtpStatusSyncModal");
+  if (!modal) return;
+  _vtp_sync_filter = "all";
+  document.querySelectorAll("#vtpSyncFilterPills .vtp-sync-filter-pill").forEach((b) => {
+    b.classList.toggle("active", b.getAttribute("data-filter") === "all");
+  });
+  modal.classList.remove("hidden");
+  scan_vtp_status_sync_modal();
+}
+
+function close_vtp_status_sync_modal() {
+  document.getElementById("vtpStatusSyncModal")?.classList.add("hidden");
+}
+
+function init_vtp_status_sync_modal() {
+  const modal = document.getElementById("vtpStatusSyncModal");
+  if (!modal) return;
+
+  document.getElementById("btnVtpStatusModal")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    open_vtp_status_sync_modal();
+  });
+  document.getElementById("btnCloseVtpSync")?.addEventListener("click", close_vtp_status_sync_modal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close_vtp_status_sync_modal();
+  });
+  document.getElementById("vtpStatusSyncCard")?.addEventListener("click", (e) => e.stopPropagation());
+
+  document.getElementById("vtpSyncDaysGroup")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".vtp-sync-day-btn");
+    if (!btn || _vtp_sync_busy) return;
+    const d = parseInt(btn.getAttribute("data-days") || "35", 10) || 35;
+    _vtp_sync_days = d;
+    document.querySelectorAll("#vtpSyncDaysGroup .vtp-sync-day-btn").forEach((b) => {
+      b.classList.toggle("active", b === btn);
+    });
+    scan_vtp_status_sync_modal();
+  });
+
+  document.getElementById("vtpSyncFilterPills")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".vtp-sync-filter-pill");
+    if (!btn) return;
+    _vtp_sync_filter = btn.getAttribute("data-filter") || "all";
+    document.querySelectorAll("#vtpSyncFilterPills .vtp-sync-filter-pill").forEach((b) => {
+      b.classList.toggle("active", b === btn);
+    });
+    render_vtp_sync_modal();
+  });
+
+  document.getElementById("btnVtpSyncScan")?.addEventListener("click", () => {
+    scan_vtp_status_sync_modal();
+  });
+
+  document.getElementById("btnDoCommitVtpSync")?.addEventListener("click", () => {
+    commit_vtp_status_sync_modal();
   });
 }

@@ -149,7 +149,8 @@
 
         <!-- Action Buttons -->
         <div class="action-btn-group">
-          <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Lên đơn hàng loạt (Viettel Post / J&amp;T)">📦 Lên đơn</button>
+          <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Lên đơn hàng loạt (Viettel Post)">📦 Lên đơn</button>
+          <button type="button" id="btnVtpStatusModal" class="rounded-btn od-sync-vtp-btn" title="Kiểm tra trạng thái thực tế từ Viettel Post và cập nhật lên Google Sheet">🔄 Update trạng thái đơn</button>
           <button type="button" id="btnFilterAllOrders" class="rounded-btn btn-filter-orders" title="Tra cứu &amp; Lọc toàn bộ đơn hàng trong bảng (Cột A → P)">
             <svg class="filter-lens-svg" viewBox="0 0 20 20" width="13.5" height="13.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="8.5" cy="8.5" r="5.3"></circle>
@@ -1051,6 +1052,80 @@
                 </button>
                 <button type="button" class="export-cp-btn export-cp-btn-sheet hidden" id="btnDoExportShipCopy">
                   <span>Copy dán nhanh</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Update Trạng Thái Đơn Viettel Post -> Google Sheet (v8.6.365) -->
+  <div id="vtpStatusSyncModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Update trạng thái đơn Viettel Post">
+    <div class="export-cp-card export-ship-compact-card export-ship-v2-card vtp-sync-card" id="vtpStatusSyncCard">
+      <div class="export-cp-header export-ship-compact-header export-ship-v2-header">
+        <div class="export-ship-v2-head-top">
+          <div class="export-cp-title-col">
+            <div class="export-cp-title-wrap">
+              <span class="exp-cp-mkt-badge" id="vtpSyncSourceBadge">0 ĐƠN CHƯA CHỐT</span>
+              <h2 class="export-cp-title">UPDATE TRẠNG THÁI ĐƠN VIETTEL POST</h2>
+            </div>
+            <div class="export-cp-subtitle">Quét trạng thái thực tế từ Viettel Post • Bắt hoàn 30k xem hàng • Tự chọn đúng tag cột N</div>
+          </div>
+          <div class="export-ship-header-btns export-ship-v2-toolbar">
+            <span class="export-ship-v2-date-label">Quét trong:</span>
+            <div class="vtp-sync-days-group" id="vtpSyncDaysGroup" role="group" aria-label="Số ngày quét">
+              <button type="button" class="vtp-sync-day-btn" data-days="7">7 ngày</button>
+              <button type="button" class="vtp-sync-day-btn" data-days="14">14 ngày</button>
+              <button type="button" class="vtp-sync-day-btn active" data-days="35">35 ngày</button>
+            </div>
+            <button type="button" id="btnVtpSyncScan" class="rounded-btn od-no-mvd-btn export-ship-reload-btn" title="Quét lại trạng thái từ Viettel Post">↻ Quét lại VTP</button>
+            <button type="button" class="od-close-btn" id="btnCloseVtpSync" aria-label="Đóng" title="Đóng">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-cp-body export-ship-compact-body export-ship-v2-body">
+        <div class="export-ship-v2-hgrid vtp-sync-hgrid">
+          <!-- Cột Trái: Danh sách đơn có thay đổi trạng thái -->
+          <div class="export-ship-v2-left">
+            <div class="export-cp-panel export-ship-v2-panel vtp-sync-list-panel">
+              <div class="export-ship-v2-panel-head">
+                <span class="export-cp-section-label" id="vtpSyncListTitle">Danh sách đơn cần cập nhật lên Sheet</span>
+                <div class="vtp-sync-filter-pills" id="vtpSyncFilterPills">
+                  <button type="button" class="vtp-sync-filter-pill active" data-filter="all">Tất cả</button>
+                  <button type="button" class="vtp-sync-filter-pill" data-filter="ok">Thành công</button>
+                  <button type="button" class="vtp-sync-filter-pill" data-filter="return">Hoàn / 1 phần</button>
+                  <button type="button" class="vtp-sync-filter-pill" data-filter="shipping">Đang giao / Hủy</button>
+                </div>
+              </div>
+              <div id="vtpSyncPreviewList" class="vtp-sync-preview-list">
+                <div class="vtp-sync-empty">Đang chuẩn bị quét dữ liệu từ Viettel Post...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cột Phải: Tổng quan KPI + Tóm tắt trạng thái + Nút cập nhật Sheet -->
+          <div class="export-ship-v2-right">
+            <div id="vtpSyncKpiRow" class="export-cp-summary export-ship-v2-kpi-row"></div>
+
+            <div class="export-cp-panel export-ship-v2-panel vtp-sync-breakdown-panel">
+              <div class="export-ship-v2-panel-head">
+                <span class="export-cp-section-label">Phân loại thay đổi phát hiện</span>
+                <span class="export-ship-v2-ready-chip" id="vtpSyncReadyChip">0 đơn đổi</span>
+              </div>
+              <div id="vtpSyncBreakdown" class="vtp-sync-breakdown"></div>
+            </div>
+
+            <div class="export-ship-v2-right-bottom">
+              <div id="vtpSyncStatusBox" class="export-cp-status hidden">
+                <div class="export-cp-status-text" id="vtpSyncStatusText"></div>
+              </div>
+
+              <div class="export-cp-actions export-ship-actions-3 is-vtp">
+                <button type="button" class="export-cp-btn export-ship-btn-vtp-api export-ship-v2-cta" id="btnDoCommitVtpSync" disabled>
+                  <span>✅ Cập nhật trạng thái lên Google Sheet</span>
                 </button>
               </div>
             </div>
