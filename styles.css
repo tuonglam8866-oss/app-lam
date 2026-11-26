@@ -7475,17 +7475,17 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   transform: translateY(-1px);
 }
 
-/* ==================== MODAL LÊN ĐƠN VIETTEL POST v8.6.351 (Đồng bộ cỡ chữ & tone Kem Cozy của App) ==================== */
+/* ==================== MODAL LÊN ĐƠN VIETTEL POST v8.6.358 (Giao diện Ngang 2 cột đồng bộ App) ==================== */
 .export-ship-v2-card {
-  width: min(740px, 94vw) !important;
-  max-width: 740px !important;
+  width: min(1120px, 95vw) !important;
+  max-width: 1120px !important;
   border-radius: 20px !important;
   overflow: visible !important;
 }
 
 .export-ship-v2-header {
-  padding: 14px 20px 12px !important;
-  gap: 10px !important;
+  padding: 13px 20px !important;
+  gap: 0 !important;
   flex-direction: column !important;
   align-items: stretch !important;
   border-radius: 19px 19px 0 0;
@@ -7495,15 +7495,8 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-}
-
-.export-ship-v2-head-date-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-top: 9px;
-  border-top: 1px dashed rgba(140, 90, 60, 0.22);
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .export-ship-v2-date-label {
@@ -7523,14 +7516,15 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 
 .export-ship-v2-header .export-cp-subtitle {
   font-size: 11.5px !important;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .export-ship-v2-toolbar {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .export-ship-header-date-btn {
@@ -7546,6 +7540,7 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   border: 1px solid #CBB49E !important;
   box-shadow: 0 1px 4px rgba(61, 35, 20, 0.06);
   gap: 6px !important;
+  flex-shrink: 0;
 }
 
 .export-ship-header-date-btn:hover,
@@ -7563,27 +7558,68 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   height: 32px !important;
   padding: 0 11px !important;
   font-size: 12px !important;
+  white-space: nowrap;
 }
 
 .export-ship-v2-toolbar .od-close-btn {
   width: 32px !important;
   height: 32px !important;
   font-size: 14px !important;
+  flex-shrink: 0;
 }
 
 .export-ship-v2-body {
+  overflow: visible !important;
   padding: 14px 20px 18px !important;
-  gap: 11px !important;
+  gap: 12px !important;
+}
+
+.export-ship-v2-hgrid {
+  display: grid;
+  grid-template-columns: 1.32fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.export-ship-v2-left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.export-ship-v2-left .export-ship-v2-panel {
+  flex: 1;
+  justify-content: space-between;
+}
+
+.export-ship-v2-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.export-ship-v2-right-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 920px) {
+  .export-ship-v2-hgrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .export-ship-v2-kpi-row {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
-  gap: 10px !important;
+  gap: 8px !important;
 }
 
 .export-ship-v2-kpi-row .export-cp-kpi-card {
-  padding: 10px 13px !important;
+  padding: 9px 11px !important;
   border-radius: 13px !important;
   border: 1px solid #E4D3C0 !important;
   background: #FAF4EC !important;
@@ -7593,11 +7629,11 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 .export-ship-v2-kpi-row .export-cp-kpi-label {
   font-size: 10px !important;
   font-weight: 800 !important;
-  letter-spacing: 0.45px;
+  letter-spacing: 0.4px;
 }
 
 .export-ship-v2-kpi-row .export-cp-kpi-val {
-  font-size: 15.5px !important;
+  font-size: 15px !important;
   line-height: 1.25 !important;
   font-weight: 800 !important;
 }
@@ -7899,6 +7935,8 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
 }
 
 .export-ship-v2-warn-item {

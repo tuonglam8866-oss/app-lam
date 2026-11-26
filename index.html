@@ -900,7 +900,7 @@
     </div>
   </div>
 
-  <!-- Modal Lên Đơn Vận Chuyển Viettel Post - v8.6.350 -->
+  <!-- Modal Lên Đơn Vận Chuyển Viettel Post - v8.6.358 (Giao diện Ngang 2 cột) -->
   <div id="exportShipModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Lên đơn vận chuyển Viettel Post">
     <div class="export-cp-card export-ship-compact-card export-ship-v2-card" id="exportShipCard">
       <div class="export-cp-header export-ship-compact-header export-ship-v2-header">
@@ -913,30 +913,28 @@
             <div class="export-cp-subtitle">Chuẩn hóa SĐT • Đổi địa chỉ mới 2025 → 3 cấp cũ VTP • Tự ghi MVĐ &amp; Phí Ship</div>
           </div>
           <div class="export-ship-header-btns export-ship-v2-toolbar">
+            <span class="export-ship-v2-date-label">Thời gian:</span>
+            <button type="button" id="btnExpShipDateRange" class="rounded-btn btn-date-picker btn-date-range-unified export-ship-header-date-btn" aria-haspopup="dialog" title="Chọn khoảng thời gian lên đơn">
+              <span class="cal-icon-badge" aria-hidden="true">
+                <svg class="cal-svg-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1.75" y="3" width="12.5" height="11.25" rx="2.75" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M1.75 6.5H14.25" stroke="currentColor" stroke-width="1.4"/>
+                  <path d="M5 1.5V3.75M11 1.5V3.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <circle cx="5.3" cy="9.4" r="1" fill="currentColor"/>
+                  <circle cx="8" cy="9.4" r="1" fill="currentColor"/>
+                  <circle cx="10.7" cy="9.4" r="1" fill="currentColor"/>
+                </svg>
+              </span>
+              <span id="expShipDateStartText">Tất cả ngày</span>
+              <span id="expShipDateSep" class="date-range-sep hidden">→</span>
+              <span id="expShipDateEndText" class="hidden"></span>
+              <svg class="exp-cp-chevron" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+                <path d="M4.25 6.25L8 10L11.75 6.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
             <button type="button" id="btnExpShipReloadData" class="rounded-btn od-no-mvd-btn export-ship-reload-btn" title="Tải lại dữ liệu đơn hàng mới nhất">↻ Tải lại</button>
             <button type="button" class="od-close-btn" id="btnCloseExportShip" aria-label="Đóng" title="Đóng">✕</button>
           </div>
-        </div>
-        <div class="export-ship-v2-head-date-row">
-          <span class="export-ship-v2-date-label">Thời gian:</span>
-          <button type="button" id="btnExpShipDateRange" class="rounded-btn btn-date-picker btn-date-range-unified export-ship-header-date-btn" aria-haspopup="dialog" title="Chọn khoảng thời gian lên đơn">
-            <span class="cal-icon-badge" aria-hidden="true">
-              <svg class="cal-svg-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1.75" y="3" width="12.5" height="11.25" rx="2.75" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M1.75 6.5H14.25" stroke="currentColor" stroke-width="1.4"/>
-                <path d="M5 1.5V3.75M11 1.5V3.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <circle cx="5.3" cy="9.4" r="1" fill="currentColor"/>
-                <circle cx="8" cy="9.4" r="1" fill="currentColor"/>
-                <circle cx="10.7" cy="9.4" r="1" fill="currentColor"/>
-              </svg>
-            </span>
-            <span id="expShipDateStartText">Tất cả ngày</span>
-            <span id="expShipDateSep" class="date-range-sep hidden">→</span>
-            <span id="expShipDateEndText" class="hidden"></span>
-            <svg class="exp-cp-chevron" viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
-              <path d="M4.25 6.25L8 10L11.75 6.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -952,106 +950,112 @@
           </div>
         </div>
 
-        <!-- Phần 1: Tổng quan 3 thẻ KPI -->
-        <div id="expShipSummaryRow" class="export-cp-summary export-ship-v2-kpi-row"></div>
-
-        <!-- Phần 2: Cấu hình đẩy đơn Viettel Post -->
-        <div class="export-cp-panel export-ship-v2-panel">
-          <div class="export-ship-v2-panel-head">
-            <span class="export-cp-section-label">Thông số vận chuyển</span>
-            <div class="export-ship-v2-carrier-pill">
-              <span>📮 Viettel Post</span>
-              <span class="export-ship-v2-ready-chip" id="expShipReadyBadge">0 đơn xuất</span>
-            </div>
-          </div>
-
-          <div class="export-ship-v2-grid3">
-            <label class="export-ship-field export-ship-v2-field">
-              <span>Trọng lượng / 1 đôi (g)</span>
-              <input type="number" id="expShipWeight" min="50" max="50000" step="100" value="1000" />
-            </label>
-            <div class="export-ship-field export-ship-v2-field" id="expShipVtpServiceWrap">
-              <span>Dịch vụ Viettel Post (*)</span>
-              <div class="exp-ship-dd" id="expShipVtpSvcDd">
-                <button type="button" class="exp-ship-dd-trigger" id="expShipVtpSvcTrigger" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="exp-ship-dd-text" id="expShipVtpSvcText">VSL7 - Cam kết sản lượng 07</span>
-                  <span class="cal-dd-caret" aria-hidden="true">▾</span>
-                </button>
-                <div class="exp-ship-dd-menu hidden" id="expShipVtpSvcMenu" role="listbox"></div>
+        <div class="export-ship-v2-hgrid">
+          <!-- Cột Trái: Thông số vận chuyển -->
+          <div class="export-ship-v2-left">
+            <div class="export-cp-panel export-ship-v2-panel">
+              <div class="export-ship-v2-panel-head">
+                <span class="export-cp-section-label">Thông số vận chuyển</span>
+                <div class="export-ship-v2-carrier-pill">
+                  <span>📮 Viettel Post</span>
+                  <span class="export-ship-v2-ready-chip" id="expShipReadyBadge">0 đơn xuất</span>
+                </div>
               </div>
-              <select id="expShipVtpService" class="hidden" aria-hidden="true" tabindex="-1">
-                <option value="VSL7 - Cam kết sản lượng 07">VSL7 - Cam kết sản lượng 07</option>
-                <option value="SCN - Chuyển phát nhanh">SCN - Chuyển phát nhanh</option>
-                <option value="STK - Chuyển phát tiết kiệm">STK - Chuyển phát tiết kiệm</option>
-                <option value="VCBO - Chuyển phát đường bộ">VCBO - Chuyển phát đường bộ</option>
-                <option value="VCBA - Chuyển phát đường bay">VCBA - Chuyển phát đường bay</option>
-                <option value="VCN - CP nhanh thỏa thuận">VCN - CP nhanh thỏa thuận</option>
-                <option value="VTK - CP tiết kiệm thỏa thuận">VTK - CP tiết kiệm thỏa thuận</option>
-                <option value="SCOD - COD Liên tỉnh nhanh">SCOD - COD Liên tỉnh nhanh</option>
-                <option value="ECOD - COD Liên tỉnh tiết kiệm">ECOD - COD Liên tỉnh tiết kiệm</option>
-                <option value="NCOD - TMĐT nhanh thỏa thuận">NCOD - TMĐT nhanh thỏa thuận</option>
-                <option value="LCOD - TMĐT tiết kiệm thỏa thuận">LCOD - TMĐT tiết kiệm thỏa thuận</option>
-                <option value="PTN - Nội tỉnh nhanh thỏa thuận">PTN - Nội tỉnh nhanh thỏa thuận</option>
-                <option value="PHS - Nội tỉnh tiết kiệm thỏa thuận">PHS - Nội tỉnh tiết kiệm thỏa thuận</option>
-                <option value="SHT - Chuyển phát hỏa tốc">SHT - Chuyển phát hỏa tốc</option>
-                <option value="VHT - Hỏa tốc thỏa thuận">VHT - Hỏa tốc thỏa thuận</option>
-                <option value="VSL5 - Cam kết sản lượng 05">VSL5 - Cam kết sản lượng 05</option>
-                <option value="VSL6 - Cam kết sản lượng 06">VSL6 - Cam kết sản lượng 06</option>
-                <option value="VSL8 - Cam kết sản lượng 08">VSL8 - Cam kết sản lượng 08</option>
-              </select>
+
+              <div class="export-ship-v2-grid3">
+                <label class="export-ship-field export-ship-v2-field">
+                  <span>Trọng lượng / 1 đôi (g)</span>
+                  <input type="number" id="expShipWeight" min="50" max="50000" step="100" value="1000" />
+                </label>
+                <div class="export-ship-field export-ship-v2-field" id="expShipVtpServiceWrap">
+                  <span>Dịch vụ Viettel Post (*)</span>
+                  <div class="exp-ship-dd" id="expShipVtpSvcDd">
+                    <button type="button" class="exp-ship-dd-trigger" id="expShipVtpSvcTrigger" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="exp-ship-dd-text" id="expShipVtpSvcText">VSL7 - Cam kết sản lượng 07</span>
+                      <span class="cal-dd-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="exp-ship-dd-menu hidden" id="expShipVtpSvcMenu" role="listbox"></div>
+                  </div>
+                  <select id="expShipVtpService" class="hidden" aria-hidden="true" tabindex="-1">
+                    <option value="VSL7 - Cam kết sản lượng 07">VSL7 - Cam kết sản lượng 07</option>
+                    <option value="SCN - Chuyển phát nhanh">SCN - Chuyển phát nhanh</option>
+                    <option value="STK - Chuyển phát tiết kiệm">STK - Chuyển phát tiết kiệm</option>
+                    <option value="VCBO - Chuyển phát đường bộ">VCBO - Chuyển phát đường bộ</option>
+                    <option value="VCBA - Chuyển phát đường bay">VCBA - Chuyển phát đường bay</option>
+                    <option value="VCN - CP nhanh thỏa thuận">VCN - CP nhanh thỏa thuận</option>
+                    <option value="VTK - CP tiết kiệm thỏa thuận">VTK - CP tiết kiệm thỏa thuận</option>
+                    <option value="SCOD - COD Liên tỉnh nhanh">SCOD - COD Liên tỉnh nhanh</option>
+                    <option value="ECOD - COD Liên tỉnh tiết kiệm">ECOD - COD Liên tỉnh tiết kiệm</option>
+                    <option value="NCOD - TMĐT nhanh thỏa thuận">NCOD - TMĐT nhanh thỏa thuận</option>
+                    <option value="LCOD - TMĐT tiết kiệm thỏa thuận">LCOD - TMĐT tiết kiệm thỏa thuận</option>
+                    <option value="PTN - Nội tỉnh nhanh thỏa thuận">PTN - Nội tỉnh nhanh thỏa thuận</option>
+                    <option value="PHS - Nội tỉnh tiết kiệm thỏa thuận">PHS - Nội tỉnh tiết kiệm thỏa thuận</option>
+                    <option value="SHT - Chuyển phát hỏa tốc">SHT - Chuyển phát hỏa tốc</option>
+                    <option value="VHT - Hỏa tốc thỏa thuận">VHT - Hỏa tốc thỏa thuận</option>
+                    <option value="VSL5 - Cam kết sản lượng 05">VSL5 - Cam kết sản lượng 05</option>
+                    <option value="VSL6 - Cam kết sản lượng 06">VSL6 - Cam kết sản lượng 06</option>
+                    <option value="VSL8 - Cam kết sản lượng 08">VSL8 - Cam kết sản lượng 08</option>
+                  </select>
+                </div>
+                <label class="export-ship-field export-ship-v2-field" id="expShipSenderPhoneWrap">
+                  <span>SĐT kho gửi (*)</span>
+                  <input type="text" id="expShipSenderPhone" value="0915519166" placeholder="0915519166" />
+                </label>
+              </div>
+
+              <div class="export-ship-v2-grid2" id="expShipGridRow2">
+                <label class="export-ship-field export-ship-v2-field">
+                  <span>Ghi chú mặc định</span>
+                  <input type="text" id="expShipDefaultNote" value="Cho xem hàng và thử, ko nhận thu 30k" placeholder="VD: Cho xem hàng và thử, ko nhận thu 30k" />
+                </label>
+                <label class="export-ship-field export-ship-v2-field" id="expShipSenderAddrWrap">
+                  <span>Địa chỉ kho gửi (*)</span>
+                  <input type="text" id="expShipSenderAddr" value="Số nhà 179 Giẽ Thượng, xã Chuyên Mỹ, Hà Nội (địa chỉ mới), XÃ PHÚ YÊN, HUYỆN PHÚ XUYÊN, HÀ NỘI" placeholder="Nhập địa chỉ kho gửi..." />
+                </label>
+              </div>
+
+              <div class="export-ship-v2-xmg-bar">
+                <label class="export-ship-check export-ship-v2-xmg-check" id="expShipVtpXmgWrap" title="Bật dịch vụ Thu tiền xem hàng (XMG) kèm số tiền thu khi khách xem không nhận">
+                  <input type="checkbox" id="expShipVtpXmg" checked />
+                  <span>Thu tiền xem hàng (<strong>XMG</strong>):</span>
+                  <input type="number" id="expShipVtpXmgMoney" min="0" max="100000" step="1000" value="30000" class="export-ship-v2-xmg-input" onclick="event.stopPropagation()" />
+                  <span class="export-ship-v2-xmg-unit">đ</span>
+                </label>
+                <span class="export-ship-v2-xmg-note">Áp dụng khi khách xem hàng không nhận</span>
+              </div>
             </div>
-            <label class="export-ship-field export-ship-v2-field" id="expShipSenderPhoneWrap">
-              <span>SĐT kho gửi (*)</span>
-              <input type="text" id="expShipSenderPhone" value="0915519166" placeholder="0915519166" />
-            </label>
           </div>
 
-          <div class="export-ship-v2-grid2" id="expShipGridRow2">
-            <label class="export-ship-field export-ship-v2-field">
-              <span>Ghi chú mặc định</span>
-              <input type="text" id="expShipDefaultNote" value="Cho xem hàng và thử, ko nhận thu 30k" placeholder="VD: Cho xem hàng và thử, ko nhận thu 30k" />
-            </label>
-            <label class="export-ship-field export-ship-v2-field" id="expShipSenderAddrWrap">
-              <span>Địa chỉ kho gửi (*)</span>
-              <input type="text" id="expShipSenderAddr" value="Số nhà 179 Giẽ Thượng, xã Chuyên Mỹ, Hà Nội (địa chỉ mới), XÃ PHÚ YÊN, HUYỆN PHÚ XUYÊN, HÀ NỘI" placeholder="Nhập địa chỉ kho gửi..." />
-            </label>
+          <!-- Cột Phải: Tổng quan KPI + Cảnh báo AI + Trạng thái + Đẩy đơn -->
+          <div class="export-ship-v2-right">
+            <div id="expShipSummaryRow" class="export-cp-summary export-ship-v2-kpi-row"></div>
+
+            <div id="expShipWarnBox" class="export-ship-warn-box export-ship-v2-warn hidden">
+              <div class="export-ship-warn-head export-ship-v2-warn-head">
+                <span id="expShipWarnTitle">⚠️ Có đơn cần kiểm tra lại địa chỉ và thông tin</span>
+              </div>
+              <div id="expShipWarnList" class="export-ship-warn-list export-ship-v2-warn-list"></div>
+              <button type="button" id="btnExpShipResolveOnline" class="export-ship-v2-ai-btn">✨ AI sửa địa chỉ chuẩn</button>
+            </div>
+
+            <div class="export-ship-v2-right-bottom">
+              <div id="expShipStatusBox" class="export-cp-status hidden">
+                <div class="export-cp-status-text" id="expShipStatusText"></div>
+              </div>
+
+              <div class="export-cp-actions export-ship-actions-3 is-vtp" id="expShipActionsBar">
+                <button type="button" class="export-cp-btn export-ship-btn-vtp-api export-ship-v2-cta" id="btnDoPushVtpApi" title="Đẩy đơn trực tiếp lên Viettel Post qua Token (chuẩn Thu tiền xem hàng 30.000đ)">
+                  <span>🚀 Đẩy đơn thẳng Viettel Post</span>
+                </button>
+                <button type="button" class="export-cp-btn export-cp-btn-excel hidden" id="btnDoExportShipXlsx">
+                  <span>Tải file Excel (.xlsx)</span>
+                </button>
+                <button type="button" class="export-cp-btn export-cp-btn-sheet hidden" id="btnDoExportShipCopy">
+                  <span>Copy dán nhanh</span>
+                </button>
+              </div>
+            </div>
           </div>
-
-          <div class="export-ship-v2-xmg-bar">
-            <label class="export-ship-check export-ship-v2-xmg-check" id="expShipVtpXmgWrap" title="Bật dịch vụ Thu tiền xem hàng (XMG) kèm số tiền thu khi khách xem không nhận">
-              <input type="checkbox" id="expShipVtpXmg" checked />
-              <span>Thu tiền xem hàng (<strong>XMG</strong>):</span>
-              <input type="number" id="expShipVtpXmgMoney" min="0" max="100000" step="1000" value="30000" class="export-ship-v2-xmg-input" onclick="event.stopPropagation()" />
-              <span class="export-ship-v2-xmg-unit">đ</span>
-            </label>
-            <span class="export-ship-v2-xmg-note">Áp dụng khi khách xem hàng không nhận</span>
-          </div>
-        </div>
-
-        <!-- Phần 3: Cảnh báo địa chỉ (nếu có) -->
-        <div id="expShipWarnBox" class="export-ship-warn-box export-ship-v2-warn hidden">
-          <div class="export-ship-warn-head export-ship-v2-warn-head">
-            <span id="expShipWarnTitle">⚠️ Có đơn cần kiểm tra lại địa chỉ và thông tin</span>
-          </div>
-          <div id="expShipWarnList" class="export-ship-warn-list export-ship-v2-warn-list"></div>
-          <button type="button" id="btnExpShipResolveOnline" class="export-ship-v2-ai-btn">✨ AI sửa địa chỉ chuẩn</button>
-        </div>
-
-        <!-- Phần 4: Trạng thái & Nút đẩy đơn chính -->
-        <div id="expShipStatusBox" class="export-cp-status hidden">
-          <div class="export-cp-status-text" id="expShipStatusText"></div>
-        </div>
-
-        <div class="export-cp-actions export-ship-actions-3 is-vtp" id="expShipActionsBar">
-          <button type="button" class="export-cp-btn export-ship-btn-vtp-api export-ship-v2-cta" id="btnDoPushVtpApi" title="Đẩy đơn trực tiếp lên Viettel Post qua Token (chuẩn Thu tiền xem hàng 30.000đ)">
-            <span>🚀 Đẩy đơn thẳng Viettel Post</span>
-          </button>
-          <button type="button" class="export-cp-btn export-cp-btn-excel hidden" id="btnDoExportShipXlsx">
-            <span>Tải file Excel (.xlsx)</span>
-          </button>
-          <button type="button" class="export-cp-btn export-cp-btn-sheet hidden" id="btnDoExportShipCopy">
-            <span>Copy dán nhanh</span>
-          </button>
         </div>
       </div>
     </div>
