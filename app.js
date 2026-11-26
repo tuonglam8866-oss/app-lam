@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.358";
+const APP_FRONTEND_VERSION = "8.6.359";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -756,7 +756,10 @@ function la_don_hop_le_de_dem(trang_thai_raw) {
     noDau.includes("XUAT EXCEL") ||
     s.includes("L\u00caN APPLAM") ||
     noDau.includes("LEN APPLAM") ||
-    noDau.includes("LEN APP LAM")
+    noDau.includes("LEN APP LAM") ||
+    s.includes("L\u00caN APP VTP") ||
+    noDau.includes("LEN APP VTP") ||
+    noDau.includes("LEN APPVTP")
   );
 }
 
@@ -4399,7 +4402,7 @@ function get_status_pill_cls(statusRaw) {
   const s = bo_dau_tieng_viet(String(statusRaw || "").trim()).toUpperCase();
   if (!s) return "pill-status-default";
   if (s.includes("DA LEN DON") || s.includes("THANH CONG")) return "pill-status-ok";
-  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG") || s.includes("XUAT EXCEL") || s.includes("LEN APPLAM") || s.includes("LEN APP LAM")) return "pill-status-direct";
+  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG") || s.includes("XUAT EXCEL") || s.includes("LEN APPLAM") || s.includes("LEN APP LAM") || s.includes("LEN APP VTP") || s.includes("LEN APPVTP")) return "pill-status-direct";
   if (s.includes("GIAO THANG")) return "pill-status-direct";
   if (s.includes("DOI HANG")) return "pill-status-exchange";
   if (s.includes("TEST")) return "pill-status-test";
@@ -13924,7 +13927,7 @@ function refresh_export_ship_preview() {
       .toUpperCase()
       .replace(/\s+/g, " ")
       .trim();
-    return tagNorm === "LEN APPLAM" || tagNorm === "LEN APP LAM";
+    return tagNorm === "LEN APP VTP" || tagNorm === "LEN APPVTP";
   });
 
   const prep = prepare_ship_export_rows(filteredOrders, {
@@ -13940,7 +13943,7 @@ function refresh_export_ship_preview() {
   _exp_ship_last_prepared = prep;
 
   const srcBadge = document.getElementById("expShipSourceBadge");
-  if (srcBadge) srcBadge.textContent = `${prep.totalSource} ĐƠN TAG LÊN APPLAM`;
+  if (srcBadge) srcBadge.textContent = `${prep.totalSource} ĐƠN TAG LÊN APP VTP`;
   const readyBadge = document.getElementById("expShipReadyBadge");
   if (readyBadge) readyBadge.textContent = `${prep.rows.length} đơn xuất`;
 
