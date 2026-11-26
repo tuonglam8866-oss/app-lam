@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.374";
+const APP_FRONTEND_VERSION = "8.6.375";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -7544,11 +7544,13 @@ function render_order_detail_table(ordersToRender) {
     if (ntUpper.includes("LAND")) platformCls = "pill-landing";
     else if (ntUpper.includes("PAN")) platformCls = "pill-pancake";
 
+    const statusColHtml = `<td class="col-trangthai" data-r="${idx}" data-c="12">${order.trang_thai ? `<span class="pill-status ${get_status_pill_cls(order.trang_thai)}">${escape_html(order.trang_thai)}</span>` : "—"}</td>`;
     const extraColsHtml = isAllTableMode
       ? `
-        <td class="col-trangthai" data-r="${idx}" data-c="12">${order.trang_thai ? `<span class="pill-status ${get_status_pill_cls(order.trang_thai)}">${escape_html(order.trang_thai)}</span>` : "—"}</td>
+        ${statusColHtml}
         <td class="col-ghichu" data-r="${idx}" data-c="13" title="${escape_html(order.ghi_chu)}">${escape_html(order.ghi_chu || "—")}</td>`
-      : "";
+      : `
+        ${statusColHtml}`;
 
     rowsHtml[idx] = `
       <tr data-r="${idx}">
@@ -7588,7 +7590,7 @@ const odSheetSel = {
 function get_od_sheet_dims() {
   const tbody = document.getElementById("odTableBody");
   const rowCount = tbody ? tbody.rows.length : 0;
-  const colCount = current_od_mode === "all_table" ? 14 : 12;
+  const colCount = current_od_mode === "all_table" ? 14 : 13;
   return { rowCount, colCount };
 }
 
