@@ -1080,7 +1080,7 @@
               <button type="button" class="vtp-sync-day-btn" data-days="14">14 ngày</button>
               <button type="button" class="vtp-sync-day-btn active" data-days="35">35 ngày</button>
             </div>
-            <button type="button" id="btnVtpSyncScan" class="rounded-btn od-no-mvd-btn export-ship-reload-btn" title="Quét lại trạng thái từ Viettel Post">↻ Quét lại VTP</button>
+            <button type="button" id="btnVtpSyncScan" class="rounded-btn od-no-mvd-btn export-ship-reload-btn" title="Quét danh sách đơn đang thay đổi trên Viettel Post">↻ Quét đơn VTP</button>
             <button type="button" class="od-close-btn" id="btnCloseVtpSync" aria-label="Đóng" title="Đóng">✕</button>
           </div>
         </div>
@@ -1124,8 +1124,9 @@
               </div>
 
               <div class="export-cp-actions export-ship-actions-3 is-vtp">
-                <button type="button" class="export-cp-btn export-ship-btn-vtp-api export-ship-v2-cta" id="btnDoCommitVtpSync" disabled>
-                  <span>✅ Cập nhật trạng thái lên Google Sheet</span>
+                <input type="file" id="vtpSyncExcelInput" class="hidden" accept=".xlsx,.csv,.tsv,.txt,.xls" />
+                <button type="button" class="export-cp-btn export-ship-btn-vtp-api export-ship-v2-cta" id="btnDoCommitVtpSync" title="Bắt buộc chọn file Excel/CSV xuất từ Viettel Post để đối soát chuẩn tiền COD (> 50k / = COD Sheet) rồi ghi thẳng lên cột N">
+                  <span>✅ Chọn Excel VTP &amp; Cập nhật lên Sheet</span>
                 </button>
               </div>
             </div>
