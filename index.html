@@ -630,7 +630,6 @@
         <div class="od-header-actions">
           <button type="button" id="btnOdReloadData" class="rounded-btn od-no-mvd-btn" title="Tải lại dữ liệu đơn hàng mới nhất">↻ Tải lại</button>
           <button type="button" id="btnResetOdColFilters" class="rounded-btn od-reset-pill-btn hidden" title="Xóa tất cả điều kiện lọc">↺ Xóa lọc</button>
-          <button type="button" id="btnOdImportMvd" class="rounded-btn od-import-mvd-btn" title="Nhập file Excel từ Viettel Post để tự động điền Mã vận đơn lên Google Sheet">📥 Nhập MVĐ</button>
           <button type="button" id="btnOdNoTracking" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc nhanh các đơn chưa có mã vận đơn">Đơn ko MVĐ</button>
           <button type="button" id="btnOdDupMktCheck" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc khách hàng trùng SĐT hoặc địa chỉ nhưng khác MKT">Đơn trùng MKT</button>
           <button type="button" id="btnOdLandingMktCheck" class="rounded-btn od-no-mvd-btn hidden" aria-pressed="false" title="Lọc toàn bộ đơn lỗi vào đơn: chưa vào bảng Tổng hợp, thiếu MKT hoặc điền sai MKT">Lỗi vào đơn</button>
@@ -1055,79 +1054,6 @@
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Nhập Mã Vận Đơn từ Excel Viettel Post / J&T -> Google Sheet (v8.6.320) -->
-  <div id="importMvdModal" class="order-detail-backdrop hidden" role="dialog" aria-modal="true" aria-label="Nhập mã vận đơn lên Google Sheet">
-    <div class="export-cp-card export-ship-card" id="importMvdCard">
-      <div class="export-cp-header">
-        <div class="export-cp-title-col">
-          <div class="export-cp-title-wrap">
-            <span class="exp-cp-mkt-badge" id="impMvdSourceBadge">CHƯA CHỌN FILE</span>
-            <h2 class="export-cp-title">CẬP NHẬT MÃ VẬN ĐƠN</h2>
-          </div>
-          <div class="export-cp-subtitle">Đọc file Excel từ Viettel Post / J&amp;T, tự khớp SĐT &amp; ghi hàng loạt vào Google Sheet</div>
-        </div>
-        <button type="button" class="od-close-btn" id="btnCloseImportMvd" aria-label="Đóng" title="Đóng">✕</button>
-      </div>
-
-      <div class="export-cp-body export-ship-body">
-        <div class="export-ship-2col">
-          <div class="export-ship-col">
-            <div class="export-cp-panel">
-              <div class="export-cp-panel-top">
-                <span class="export-cp-section-label">1. Chọn file Excel từ VTP / J&amp;T</span>
-              </div>
-              <input type="file" id="impMvdFileInput" class="hidden" accept=".xlsx,.csv,.tsv,.txt,.xls" />
-              <button type="button" id="btnPickImpMvdFile" class="imp-mvd-dropzone">
-                <span class="imp-mvd-drop-icon">📂</span>
-                <span class="imp-mvd-drop-title" id="impMvdFileNameText">Bấm chọn file .xlsx / .csv tải từ Viettel Post hoặc J&amp;T</span>
-                <span class="imp-mvd-drop-sub">Hỗ trợ file Quản lý vận đơn xuất từ web hãng</span>
-              </button>
-            </div>
-
-            <div class="export-cp-panel">
-              <div class="export-cp-panel-top">
-                <span class="export-cp-section-label">Hoặc dán trực tiếp từ Excel (Ctrl+V)</span>
-                <button type="button" id="btnClearImpMvdPaste" class="export-cp-clear-test hidden">Xóa</button>
-              </div>
-              <textarea id="impMvdPasteInput" class="imp-mvd-paste-box" rows="4" placeholder="Nếu file là .xls cũ, mở file trên Excel → Ctrl+A → Ctrl+C rồi dán vào đây..."></textarea>
-              <label class="export-ship-check" style="margin-top:4px;">
-                <input type="checkbox" id="impMvdAutoMarkSent" checked />
-                <span>Tự động chuyển tag sang <strong>ĐÃ LÊN ĐƠN</strong> (với đơn CHƯA LÊN ĐƠN)</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="export-ship-col">
-            <div id="impMvdSummaryRow" class="export-cp-summary"></div>
-
-            <div class="export-cp-panel">
-              <div class="export-cp-panel-top">
-                <span class="export-cp-section-label">Xem trước đơn sẽ cập nhật</span>
-                <span class="export-cp-days-badge" id="impMvdReadyBadge">0 đơn khớp</span>
-              </div>
-              <div id="impMvdPreviewList" class="imp-mvd-preview-list">
-                <div class="imp-mvd-empty">Chọn file Excel hoặc dán dữ liệu ở bên trái để đối chiếu đơn chưa có MVĐ.</div>
-              </div>
-            </div>
-
-            <div id="impMvdStatusBox" class="export-cp-status hidden">
-              <div class="export-cp-status-text" id="impMvdStatusText"></div>
-            </div>
-
-            <div class="export-cp-actions">
-              <button type="button" class="export-cp-btn export-cp-btn-excel" id="btnDoCommitImportMvd" disabled>
-                <span>✅ Ghi Mã Vận Đơn vào Google Sheet</span>
-              </button>
-            </div>
-            <p class="export-cp-hint">
-              App chỉ điền vào những đơn <strong>chưa có Mã vận đơn</strong> (cột B trống), không ghi đè đơn cũ. Cần cập nhật file <strong>Apps Script (.gs)</strong> bản mới để bật quyền ghi.
-            </p>
           </div>
         </div>
       </div>
