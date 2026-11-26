@@ -1020,6 +1020,8 @@ html, body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 6px;
+  flex-shrink: 0;
   position: relative;
   overflow: hidden;
   box-shadow:
@@ -1205,15 +1207,17 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   min-height: 28px;
 }
 
 .card-title-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
   min-width: 0;
+  flex: 1;
 }
 
 .rank-pill {
@@ -3553,10 +3557,11 @@ input::-ms-clear {
   background: rgba(180, 83, 9, 0.1);
   color: #B45309;
   border: 1px solid rgba(180, 83, 9, 0.25);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
+  white-space: nowrap;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   user-select: none;
 }
@@ -3589,10 +3594,11 @@ input::-ms-clear {
   background: rgba(140, 90, 60, 0.11);
   color: #5C3D28;
   border: 1px solid rgba(140, 90, 60, 0.3);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
+  white-space: nowrap;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
 }

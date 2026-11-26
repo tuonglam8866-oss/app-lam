@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.377";
+const APP_FRONTEND_VERSION = "8.6.378";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
