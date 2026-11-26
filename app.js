@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.360";
+const APP_FRONTEND_VERSION = "8.6.362";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -3235,8 +3235,7 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
       };
     } else if (lastCustomerCtx) {
       const sameDate = !mapped.ngay_only || !lastCustomerCtx.ngay_only || mapped.ngay_only === lastCustomerCtx.ngay_only;
-      const sameMkt = !mapped.mkt || !lastCustomerCtx.mkt || mapped.mkt === lastCustomerCtx.mkt;
-      if (sameDate && sameMkt) {
+      if (sameDate) {
         if (!mapped.ngay_only) mapped.ngay_only = lastCustomerCtx.ngay_only;
         mapped.group_id = lastCustomerCtx.group_id;
         mapped.parent_ma_van_don = lastCustomerCtx.ma_van_don;
@@ -13508,6 +13507,39 @@ function prepare_ship_export_rows(orders, opts) {
   const vtpXmg = opts.vtpXmg !== false;
 
   const source = Array.isArray(orders) ? orders : [];
+  const sortedSource = source.slice().sort((a, b) => (a.row_num || 0) - (b.row_num || 0));
+  const groupMap = new Map();
+  const groupedList = [];
+  for (const row of sortedSource) {
+    const ownMvd = String(row.ma_van_don || "").trim();
+    const parentMvd = String(row.parent_ma_van_don || "").trim();
+    const effMvd = ownMvd && ownMvd !== "-" && ownMvd !== "—" ? ownMvd : parentMvd;
+    if (onlyNoMvd && effMvd && effMvd !== "-" && effMvd !== "—") continue;
+
+    const rawSdt = String(row.sdt || row.parent_sdt || "").trim();
+    const { phone: normPh, valid: phOk } = normalize_vn_phone_for_ship(rawSdt);
+    const dateKey = String(row.ngay_only || "").trim();
+    let gKey;
+    if (phOk && normPh) {
+      gKey = `P:${normPh}|${dateKey}`;
+    } else if (row.group_id) {
+      gKey = `G:${row.group_id}`;
+    } else {
+      gKey = `R:${row.row_num || Math.random()}`;
+    }
+    let grp = groupMap.get(gKey);
+    if (!grp) {
+      grp = { primary: row, items: [] };
+      groupMap.set(gKey, grp);
+      groupedList.push(grp);
+    } else {
+      const pHasInfo = Boolean(String(grp.primary.ho_ten || "").trim() && String(grp.primary.dia_chi || "").trim());
+      const rHasInfo = Boolean(String(row.ho_ten || "").trim() && String(row.dia_chi || "").trim());
+      if (!pHasInfo && rHasInfo) grp.primary = row;
+    }
+    grp.items.push(row);
+  }
+
   const allCandidates = [];
   const warnings = [];
   let validCount = 0;
@@ -13515,13 +13547,11 @@ function prepare_ship_export_rows(orders, opts) {
   let totalQty = 0;
 
   let seq = 0;
-  for (const o of source) {
-    const mvd = String(o.ma_van_don || "").trim();
-    if (onlyNoMvd && mvd && mvd !== "-" && mvd !== "—") continue;
-
-    const name = String(o.ho_ten || "").trim();
-    const { phone, valid: phoneValid } = normalize_vn_phone_for_ship(o.sdt);
-    const addr = String(o.dia_chi || "").trim();
+  for (const grp of groupedList) {
+    const o = grp.primary;
+    const name = String(o.ho_ten || o.parent_ho_ten || "").trim();
+    const { phone, valid: phoneValid } = normalize_vn_phone_for_ship(o.sdt || o.parent_sdt);
+    const addr = String(o.dia_chi || o.parent_dia_chi || "").trim();
     const orderKey = `${phone}|${addr}`;
     const fullAddrOverride = _exp_ship_addr_overrides[orderKey];
     let provInfo = fullAddrOverride ? fullAddrOverride.provInfo : detect_vn_province_info(addr);
@@ -13576,14 +13606,33 @@ function prepare_ship_export_rows(orders, opts) {
         rowVtpService = VTP_SERVICE_NORMALIZE_MAP.PTN;
       }
     }
-    const sp = String(o.dong_sp || "").trim();
-    const color = String(o.mau_sac || "").trim();
-    const size = String(o.size || "").trim();
-    const qty = infer_ship_order_qty(o);
-    const rowWeightGram = qty * unitWeightGram;
+    const listItems = [];
+    let qty = 0;
+    let cod = 0;
+    let rowWeightGram = 0;
+    let hasAnySp = false;
+    for (const it of grp.items) {
+      const itSp = String(it.dong_sp || "").trim();
+      if (itSp) hasAnySp = true;
+      const itColor = String(it.mau_sac || "").trim();
+      const itSize = String(it.size || "").trim();
+      const itQty = infer_ship_order_qty(it);
+      const itWeight = itQty * unitWeightGram;
+      const itCod = Math.max(0, Math.round(Number(it.gia_ban) || 0));
+      const itCode = format_ship_item_name(itQty, itSp, itColor, itSize);
+      qty += itQty;
+      cod += itCod;
+      rowWeightGram += itWeight;
+      listItems.push({
+        PRODUCT_NAME: itCode,
+        PRODUCT_PRICE: itCod,
+        PRODUCT_WEIGHT: itWeight,
+        PRODUCT_QUANTITY: itQty,
+      });
+    }
+    const sp = hasAnySp ? "OK" : "";
     const rowWeightKg = Math.round((rowWeightGram / 1000) * 100) / 100;
-    const cod = Math.max(0, Math.round(Number(o.gia_ban) || 0));
-    const itemName = format_ship_item_name(qty, sp, color, size);
+    const itemName = listItems.map((it) => it.PRODUCT_NAME).join(", ");
     const fullNote = defaultNote;
 
     const issues = [];
@@ -13643,6 +13692,7 @@ function prepare_ship_export_rows(orders, opts) {
       ward,
       vtpWardId: wardInfo.id,
       itemName,
+      listItems,
       qty,
       weightGram: rowWeightGram,
       weightKg: rowWeightKg,
@@ -14018,7 +14068,17 @@ function refresh_export_ship_preview() {
   const pushVtpBtn = document.getElementById("btnDoPushVtpApi");
   if (pushVtpBtn) {
     pushVtpBtn.classList.toggle("hidden", !isVtp);
-    pushVtpBtn.disabled = prep.rows.length === 0;
+    const hasWarnings = prep.warnings.length > 0;
+    pushVtpBtn.disabled = prep.rows.length === 0 || hasWarnings;
+    pushVtpBtn.title = hasWarnings
+      ? `Cần xử lý hết ${prep.warnings.length} đơn trong mục Cần kiểm tra trước khi đẩy đơn Viettel Post`
+      : "Đẩy đơn trực tiếp lên Viettel Post qua Token (chuẩn Thu tiền xem hàng 30.000đ)";
+    const spanEl = pushVtpBtn.querySelector("span");
+    if (spanEl) {
+      spanEl.textContent = hasWarnings
+        ? `🔒 Cần xử lý hết ${prep.warnings.length} đơn lỗi trước khi đẩy`
+        : "🚀 Đẩy đơn thẳng Viettel Post";
+    }
   }
 
   const b1 = document.getElementById("btnDoExportShipXlsx");
@@ -14448,6 +14508,10 @@ function init_export_ship_modal() {
       setStatus("Không có đơn nào để đẩy sang Viettel Post.", "error");
       return;
     }
+    if (prep.warnings && prep.warnings.length > 0) {
+      setStatus(`Còn ${prep.warnings.length} đơn cần kiểm tra — hãy xử lý hết lỗi trước khi đẩy đơn.`, "error");
+      return;
+    }
 
     const vtpXmg = Boolean(document.getElementById("expShipVtpXmg")?.checked ?? true);
     const xmgMoney = Math.max(0, Math.round(Number(document.getElementById("expShipVtpXmgMoney")?.value || 30000) || 0));
@@ -14532,8 +14596,8 @@ function init_export_ship_modal() {
           RECEIVER_WARD: Number(r.vtpWardId),
           RECEIVER_DISTRICT: Number(r.vtpDistId),
           RECEIVER_PROVINCE: Number(r.vtpProvId),
-          PRODUCT_NAME: r.itemName,
-          PRODUCT_DESCRIPTION: r.itemName,
+          PRODUCT_NAME: String(r.itemName || "").slice(0, 240),
+          PRODUCT_DESCRIPTION: String(r.itemName || "").slice(0, 240),
           PRODUCT_QUANTITY: Number(r.qty) || 1,
           PRODUCT_PRICE: Number(r.value) || 0,
           PRODUCT_WEIGHT: Number(r.weightGram) || 1000,
@@ -14550,14 +14614,17 @@ function init_export_ship_modal() {
           ORDER_NOTE: r.note || "",
           MONEY_COLLECTION: Number(r.cod) || 0,
           CHECK_UNIQUE: false,
-          LIST_ITEM: [
-            {
-              PRODUCT_NAME: r.itemName,
-              PRODUCT_PRICE: Number(r.value) || 0,
-              PRODUCT_WEIGHT: Number(r.weightGram) || 1000,
-              PRODUCT_QUANTITY: Number(r.qty) || 1,
-            },
-          ],
+          LIST_ITEM:
+            Array.isArray(r.listItems) && r.listItems.length > 0
+              ? r.listItems
+              : [
+                  {
+                    PRODUCT_NAME: r.itemName,
+                    PRODUCT_PRICE: Number(r.value) || 0,
+                    PRODUCT_WEIGHT: Number(r.weightGram) || 1000,
+                    PRODUCT_QUANTITY: Number(r.qty) || 1,
+                  },
+                ],
         };
         const cr = await fetch("/api/vtp-proxy", {
           method: "POST",
