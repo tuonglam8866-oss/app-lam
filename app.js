@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.367";
+const APP_FRONTEND_VERSION = "8.6.374";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -761,6 +761,13 @@ function la_don_hop_le_de_dem(trang_thai_raw) {
     noDau.includes("LEN APP VTP") ||
     noDau.includes("LEN APPVTP") ||
     noDau.includes("DANG GIAO HANG") ||
+    noDau.includes("DANG VAN CHUYEN") ||
+    noDau.includes("DA LAY HANG") ||
+    noDau.includes("DANG LAY HANG") ||
+    noDau.includes("DA TIEP NHAN") ||
+    noDau.includes("CHO PHAT LAI") ||
+    noDau.includes("CHO XU LY") ||
+    noDau.includes("PHAT TIEP") ||
     noDau.includes("GIAO 1 PHAN")
   );
 }
@@ -4403,13 +4410,31 @@ function get_status_pill_cls(statusRaw) {
   const s = bo_dau_tieng_viet(String(statusRaw || "").trim()).toUpperCase();
   if (!s) return "pill-status-default";
   if (s.includes("DA LEN DON") || s.includes("THANH CONG")) return "pill-status-ok";
-  if (s.includes("CHUA LEN DON") || s.includes("CHOT CHUA CO HANG") || s.includes("XUAT EXCEL") || s.includes("LEN APPLAM") || s.includes("LEN APP LAM") || s.includes("LEN APP VTP") || s.includes("LEN APPVTP") || s.includes("DANG GIAO HANG")) return "pill-status-direct";
+  if (
+    s.includes("CHUA LEN DON") ||
+    s.includes("CHOT CHUA CO HANG") ||
+    s.includes("XUAT EXCEL") ||
+    s.includes("LEN APPLAM") ||
+    s.includes("LEN APP LAM") ||
+    s.includes("LEN APP VTP") ||
+    s.includes("LEN APPVTP") ||
+    s.includes("DANG GIAO HANG") ||
+    s.includes("DANG VAN CHUYEN") ||
+    s.includes("DA LAY HANG") ||
+    s.includes("DANG LAY HANG") ||
+    s.includes("DA TIEP NHAN") ||
+    s.includes("CHO PHAT LAI") ||
+    s.includes("CHO XU LY") ||
+    s.includes("PHAT TIEP")
+  )
+    return "pill-status-direct";
   if (s.includes("GIAO THANG")) return "pill-status-direct";
   if (s.includes("DOI HANG") || s.includes("GIAO 1 PHAN")) return "pill-status-exchange";
   if (s.includes("TEST")) return "pill-status-test";
   if (
     s.includes("HUY") ||
     s.includes("HOAN") ||
+    s.includes("DA TRA") ||
     s.includes("TRUNG") ||
     s.includes("CHUA VAO") ||
     s.includes("SAI MKT") ||
@@ -15503,8 +15528,16 @@ function map_vtp_status_to_sheet_tag(vtpRec, sheetTotalQty) {
 }
 
 function parse_vtp_excel_money(raw) {
+  if (typeof raw === "number") {
+    return Number.isFinite(raw) ? Math.max(0, Math.round(raw)) : 0;
+  }
   const s = String(raw || "").trim();
   if (!s) return 0;
+  // File .xlsx lưu ô số dạng "30000.0", "595000.00", "1.2e6" -> phải parse số trước khi lọc ký tự
+  if (/^-?\d+\.\d{1,2}$/.test(s) || /^-?\d+(?:\.\d+)?[eE][+-]?\d+$/.test(s)) {
+    const f = Number(s);
+    return Number.isFinite(f) ? Math.max(0, Math.round(f)) : 0;
+  }
   const cleaned = s.replace(/[^\d\-]/g, "");
   const n = parseInt(cleaned, 10);
   return Number.isNaN(n) ? 0 : Math.max(0, n);
@@ -15517,6 +15550,9 @@ function map_vtp_excel_row_to_sheet_tag(vtpStatusRaw, vtpThu, sheetCod) {
     .trim();
   if (!stNorm) return "";
 
+  if (stNorm === "DA TRA" || (stNorm.includes("DA TRA") && !stNorm.includes("HOAN"))) {
+    return "ĐÃ TRẢ";
+  }
   if (
     stNorm.includes("TRA LAI") ||
     stNorm.includes("DA HOAN") ||
@@ -15525,15 +15561,26 @@ function map_vtp_excel_row_to_sheet_tag(vtpStatusRaw, vtpThu, sheetCod) {
   ) {
     return "ĐÃ HOÀN";
   }
-  if (
-    stNorm.includes("CHUYEN HOAN") ||
-    stNorm.includes("DUYET HOAN") ||
-    stNorm.includes("CHO HOAN")
-  ) {
+  if (stNorm.includes("DUYET HOAN")) {
+    return "ĐÃ DUYỆT HOÀN";
+  }
+  if (stNorm.includes("CHUYEN HOAN") || stNorm.includes("CHO HOAN")) {
     return "ĐANG CHUYỂN HOÀN";
+  }
+  if (stNorm.includes("SHOP HUY")) {
+    return "SHOP HỦY LẤY";
+  }
+  if (stNorm.includes("VTP HUY")) {
+    return "VTP HỦY LẤY";
   }
   if (stNorm.includes("HUY")) {
     return "ĐÃ HỦY";
+  }
+  if (stNorm.includes("GIAO 1 PHAN") || stNorm.includes("GIAO MOT PHAN") || stNorm.includes("PHAT 1 PHAN")) {
+    if (vtpThu === sheetCod || vtpThu > 50000) {
+      return "GIAO 1 PHẦN";
+    }
+    return "ĐÃ HOÀN";
   }
   if (stNorm.includes("GIAO THANH CONG") || stNorm.includes("PHAT THANH CONG")) {
     // Quy tắc đối soát COD:
@@ -15544,16 +15591,37 @@ function map_vtp_excel_row_to_sheet_tag(vtpStatusRaw, vtpThu, sheetCod) {
     }
     return "ĐÃ HOÀN";
   }
+  if (stNorm.includes("CHO PHAT LAI")) {
+    return "CHỜ PHÁT LẠI";
+  }
+  if (stNorm.includes("CHO XU LY")) {
+    return "CHỜ XỬ LÝ";
+  }
+  if (stNorm.includes("PHAT TIEP")) {
+    return "PHÁT TIẾP";
+  }
   if (
     stNorm.includes("DANG GIAO") ||
     stNorm.includes("DANG PHAT") ||
-    stNorm.includes("VAN CHUYEN") ||
-    stNorm.includes("DA LAY HANG") ||
-    stNorm.includes("DA KET NOI") ||
-    stNorm.includes("PHAT TIEP") ||
+    stNorm.includes("GIAO KHONG THANH CONG") ||
     stNorm.includes("TON")
   ) {
     return "ĐANG GIAO HÀNG";
+  }
+  if (stNorm.includes("VAN CHUYEN") || stNorm.includes("DA KET NOI")) {
+    return "ĐANG VẬN CHUYỂN";
+  }
+  if (stNorm.includes("DA LAY HANG")) {
+    return "ĐÃ LẤY HÀNG";
+  }
+  if (stNorm.includes("DANG LAY HANG") || stNorm.includes("CHO LAY HANG") || stNorm.includes("LAY KHONG THANH CONG")) {
+    return "ĐANG LẤY HÀNG";
+  }
+  if (stNorm.includes("DA TIEP NHAN")) {
+    return "ĐÃ TIẾP NHẬN";
+  }
+  if (stNorm.includes("TAO MOI") || stNorm.includes("DA DUYET")) {
+    return "LÊN APP VTP";
   }
   return "";
 }
@@ -15631,7 +15699,7 @@ function set_vtp_sync_status_msg(text, state = "done") {
 
 function get_vtp_sync_category(tag) {
   if (tag === "GIAO THÀNH CÔNG") return "ok";
-  if (tag === "ĐÃ HOÀN" || tag === "ĐANG CHUYỂN HOÀN" || tag === "GIAO 1 PHẦN") return "return";
+  if (tag === "ĐÃ HOÀN" || tag === "ĐÃ TRẢ" || tag === "ĐANG CHUYỂN HOÀN" || tag === "ĐÃ DUYỆT HOÀN" || tag === "GIAO 1 PHẦN") return "return";
   return "shipping";
 }
 
@@ -15645,23 +15713,29 @@ function render_vtp_sync_modal() {
 
   const items = _vtp_sync_state.changedItems || [];
   const counts = _vtp_sync_state.counts || {};
+  const isCommitted = Boolean(_vtp_sync_state.committed);
+  const excelMeta = _vtp_sync_state.excelMeta || null;
   const okCount = counts["GIAO THÀNH CÔNG"] || 0;
-  const returnCount = (counts["ĐÃ HOÀN"] || 0) + (counts["ĐANG CHUYỂN HOÀN"] || 0) + (counts["GIAO 1 PHẦN"] || 0);
+  const returnCount = (counts["ĐÃ HOÀN"] || 0) + (counts["ĐÃ TRẢ"] || 0) + (counts["ĐANG CHUYỂN HOÀN"] || 0) + (counts["ĐÃ DUYỆT HOÀN"] || 0) + (counts["GIAO 1 PHẦN"] || 0);
 
-  if (badgeEl) badgeEl.textContent = `${_vtp_sync_state.totalChecked} ĐƠN CHƯA CHỐT`;
-  if (chipEl) chipEl.textContent = `${items.length} đơn đổi`;
+  if (badgeEl) {
+    badgeEl.textContent = excelMeta
+      ? `EXCEL: ${excelMeta.totalRows} ĐƠN (${excelMeta.matchedCount} KHỚP)`
+      : `${_vtp_sync_state.totalChecked} ĐƠN CHƯA CHỐT`;
+  }
+  if (chipEl) chipEl.textContent = isCommitted ? `Đã ghi ${items.length} đơn` : `${items.length} đơn đổi`;
 
   if (kpiEl) {
     kpiEl.innerHTML =
       `<div class="export-cp-kpi-card">` +
-      `<span class="export-cp-kpi-label">ĐÃ QUÉT VTP</span>` +
-      `<span class="export-cp-kpi-val">${_vtp_sync_state.totalChecked} đơn</span>` +
-      `<span class="export-cp-kpi-sub">Trong ${_vtp_sync_days} ngày gần nhất</span>` +
+      `<span class="export-cp-kpi-label">${excelMeta ? "ĐỌC FILE EXCEL" : "ĐÃ QUÉT VTP"}</span>` +
+      `<span class="export-cp-kpi-val">${excelMeta ? excelMeta.totalRows : _vtp_sync_state.totalChecked} đơn</span>` +
+      `<span class="export-cp-kpi-sub">${excelMeta ? `${excelMeta.matchedCount} đơn khớp Sheet` : `Trong ${_vtp_sync_days} ngày gần nhất`}</span>` +
       `</div>` +
       `<div class="export-cp-kpi-card">` +
-      `<span class="export-cp-kpi-label">CẦN CẬP NHẬT</span>` +
+      `<span class="export-cp-kpi-label">${isCommitted ? "ĐÃ CẬP NHẬT" : "CẦN CẬP NHẬT"}</span>` +
       `<span class="export-cp-kpi-val is-ok">${items.length} đơn</span>` +
-      `<span class="export-cp-kpi-sub">${items.length > 0 ? "Sẵn sàng ghi cột N" : "Chưa có thay đổi"}</span>` +
+      `<span class="export-cp-kpi-sub">${isCommitted ? "Đã ghi lên cột N" : items.length > 0 ? "Sẵn sàng ghi cột N" : "Chưa có thay đổi"}</span>` +
       `</div>` +
       `<div class="export-cp-kpi-card">` +
       `<span class="export-cp-kpi-label">HOÀN / ĐỔI / 1 PHẦN</span>` +
@@ -15672,16 +15746,24 @@ function render_vtp_sync_modal() {
 
   if (breakdownEl) {
     const keys = Object.keys(counts);
-    if (!_vtp_sync_state.scanned) {
+    if (_vtp_sync_state.idleReady && !_vtp_sync_state.scanned) {
+      breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Bấm nút xanh bên dưới để chọn file Excel xuất từ Viettel Post, hoặc bấm "↻ Quét đơn VTP" ở góc trên.</span>`;
+    } else if (!_vtp_sync_state.scanned) {
       breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Đang đối chiếu trạng thái từ Viettel Post...</span>`;
     } else if (keys.length === 0) {
-      breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Không phát hiện đơn nào có trạng thái mới so với Google Sheet.</span>`;
+      if (excelMeta && excelMeta.rawVtpCounts && Object.keys(excelMeta.rawVtpCounts).length > 0) {
+        breakdownEl.innerHTML = Object.keys(excelMeta.rawVtpCounts)
+          .map((rk) => `<span class="vtp-sync-stat-pill"><span>${escape_html(rk)}</span><span class="vtp-sync-stat-count is-ship">${excelMeta.rawVtpCounts[rk]}</span></span>`)
+          .join("");
+      } else {
+        breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Không phát hiện đơn nào có trạng thái mới so với Google Sheet.</span>`;
+      }
     } else {
       breakdownEl.innerHTML = keys
         .map((k) => {
           let cls = "is-ship";
           if (k === "GIAO THÀNH CÔNG") cls = "is-ok";
-          else if (k === "ĐÃ HOÀN" || k === "ĐANG CHUYỂN HOÀN" || k === "ĐÃ HỦY") cls = "is-return";
+          else if (k === "ĐÃ HOÀN" || k === "ĐÃ TRẢ" || k === "ĐANG CHUYỂN HOÀN" || k === "ĐÃ DUYỆT HOÀN" || k === "ĐÃ HỦY" || k === "SHOP HỦY LẤY" || k === "VTP HỦY LẤY") cls = "is-return";
           else if (k === "GIAO 1 PHẦN") cls = "is-partial";
           return `<span class="vtp-sync-stat-pill"><span>${escape_html(k)}</span><span class="vtp-sync-stat-count ${cls}">${counts[k]}</span></span>`;
         })
@@ -15695,22 +15777,30 @@ function render_vtp_sync_modal() {
     if (sp) {
       sp.textContent = _vtp_sync_busy
         ? "⏳ Đang đọc Excel & cập nhật lên Google Sheet..."
-        : items.length > 0
-          ? `✅ Chọn Excel VTP & Cập nhật lên Sheet (${items.length} đơn dự kiến)`
-          : "✅ Chọn Excel VTP & Cập nhật lên Sheet";
+        : isCommitted
+          ? "✅ Chọn file Excel VTP khác & Cập nhật Sheet"
+          : items.length > 0
+            ? `✅ Chọn Excel VTP & Cập nhật lên Sheet (${items.length} đơn dự kiến)`
+            : "✅ Chọn Excel VTP & Cập nhật lên Sheet";
     }
   }
 
   if (listEl) {
+    if (_vtp_sync_state.idleReady && !_vtp_sync_state.scanned) {
+      listEl.innerHTML = `<div class="vtp-sync-empty">📂 Bấm nút <strong>Chọn Excel VTP &amp; Cập nhật lên Sheet</strong> ở góc dưới bên phải để nạp file Excel tải từ Viettel Post (app tự lọc COD &gt; 50k / = COD Sheet và ghi cột N).</div>`;
+      return;
+    }
     if (!_vtp_sync_state.scanned) {
-      listEl.innerHTML = `<div class="vtp-sync-empty">⏳ Đang quét trạng thái đơn hàng từ Viettel Post...</div>`;
+      listEl.innerHTML = `<div class="vtp-sync-empty">⏳ Đang xử lý &amp; đối chiếu dữ liệu từ Viettel Post...</div>`;
       return;
     }
     const filtered = items.filter((it) => _vtp_sync_filter === "all" || get_vtp_sync_category(it.status) === _vtp_sync_filter);
     if (filtered.length === 0) {
       listEl.innerHTML = `<div class="vtp-sync-empty">${
         items.length === 0
-          ? "Tất cả đơn đang đi đều khớp với trạng thái mới nhất trên Viettel Post."
+          ? excelMeta
+            ? `Đã đọc ${excelMeta.totalRows} đơn từ "${escape_html(excelMeta.fileName)}" (${excelMeta.matchedCount} đơn khớp chưa chốt) — chưa có đơn nào cần đổi trạng thái mới.`
+            : "Tất cả đơn đang đi đều khớp với trạng thái mới nhất trên Viettel Post."
           : "Không có đơn nào trong nhóm lọc này."
       }</div>`;
       return;
@@ -15765,12 +15855,19 @@ async function scan_vtp_status_sync_modal() {
       }
     }
 
+    const cutoffDate = new Date(Date.now() - _vtp_sync_days * 86400000);
+    const cutoffYmd = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`;
+    const effCutoffYmd = typeof clamp_min_data_date === "function" ? clamp_min_data_date(cutoffYmd) : cutoffYmd;
+    if (
+      (!Array.isArray(data_hien_tai) || data_hien_tai.length === 0 || !thong_ke_loaded_start || thong_ke_loaded_start > effCutoffYmd) &&
+      typeof tai_du_lieu_google_sheets === "function"
+    ) {
+      await tai_du_lieu_google_sheets(false, effCutoffYmd, "", false).catch(() => false);
+    }
+
     const allOrders = typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function"
       ? lay_tat_ca_don_hang_tu_bang_a_den_p(false)
       : [];
-
-    const cutoffDate = new Date(Date.now() - _vtp_sync_days * 86400000);
-    const cutoffYmd = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`;
 
     const PROTECTED_NORM = new Set([
       "DON TEST",
@@ -15780,7 +15877,10 @@ async function scan_vtp_status_sync_modal() {
       "CHUA CHOT DUOC",
       "GIAO THANH CONG",
       "DA HOAN",
+      "DA TRA",
       "DA HUY",
+      "SHOP HUY LAY",
+      "VTP HUY LAY",
     ]);
 
     const normSt = (s) =>
@@ -15839,20 +15939,30 @@ async function scan_vtp_status_sync_modal() {
       return;
     }
 
-    if (scanBtn) scanBtn.textContent = `⏳ Tra ${targetMvds.length} MVĐ...`;
+    if (scanBtn) scanBtn.textContent = `⏳ Tra 0/${targetMvds.length} MVĐ...`;
     render_vtp_sync_modal();
 
-    const rVtp = await fetch("/api/vtp-batch-status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mvds: targetMvds.map((e) => e.mvd) }),
-    });
-    const dVtp = await rVtp.json().catch(() => null);
-    if (!dVtp || !dVtp.ok) {
-      throw new Error((dVtp && dVtp.message) || "Không tra cứu được trạng thái Viettel Post.");
+    const results = [];
+    const CHUNK_SZ = 40;
+    for (let idx = 0; idx < targetMvds.length; idx += CHUNK_SZ) {
+      const chunk = targetMvds.slice(idx, idx + CHUNK_SZ);
+      if (scanBtn) {
+        scanBtn.textContent = `⏳ Tra ${Math.min(idx + chunk.length, targetMvds.length)}/${targetMvds.length} MVĐ...`;
+      }
+      const rVtp = await fetch("/api/vtp-batch-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mvds: chunk.map((e) => e.mvd) }),
+      });
+      const dVtp = await rVtp.json().catch(() => null);
+      if (!dVtp || !dVtp.ok) {
+        throw new Error((dVtp && dVtp.message) || "Không tra cứu được trạng thái Viettel Post.");
+      }
+      if (Array.isArray(dVtp.results)) {
+        for (const rec of dVtp.results) results.push(rec);
+      }
     }
 
-    const results = Array.isArray(dVtp.results) ? dVtp.results : [];
     const changedItems = [];
     const counts = {};
 
@@ -15937,8 +16047,7 @@ async function sync_vtp_items_to_sheet_core(changedItems, counts, matchedCount) 
 
   const summaryParts = Object.keys(counts || {}).map((k) => `${counts[k]} ${k}`);
   const okMsg = `✅ Đã đối soát Excel VTP (${matchedCount} đơn khớp) & cập nhật ${sd.updatedRows || itemsToSend.length} dòng lên cột N (${summaryParts.join(", ")})`;
-  _vtp_sync_state.changedItems = [];
-  _vtp_sync_state.counts = {};
+  _vtp_sync_state.committed = true;
   set_vtp_sync_status_msg(okMsg, "done");
   if (typeof show_update_toast_notification === "function") {
     show_update_toast_notification(okMsg);
@@ -15952,8 +16061,12 @@ function open_vtp_status_sync_modal() {
   document.querySelectorAll("#vtpSyncFilterPills .vtp-sync-filter-pill").forEach((b) => {
     b.classList.toggle("active", b.getAttribute("data-filter") === "all");
   });
+  if (!_vtp_sync_busy) {
+    _vtp_sync_state = { totalChecked: 0, changedItems: [], counts: {}, scanned: false, idleReady: true, committed: false, excelMeta: null };
+    set_vtp_sync_status_msg("", "done");
+  }
   modal.classList.remove("hidden");
-  scan_vtp_status_sync_modal();
+  render_vtp_sync_modal();
 }
 
 function close_vtp_status_sync_modal() {
@@ -15977,6 +16090,14 @@ async function scan_vtp_excel_file_to_modal(file) {
       return;
     }
 
+    if (
+      (!Array.isArray(data_hien_tai) || data_hien_tai.length === 0 || !thong_ke_loaded_start || thong_ke_loaded_start > APP_DATA_MIN_DATE) &&
+      typeof tai_du_lieu_google_sheets === "function"
+    ) {
+      set_vtp_sync_status_msg("⏳ Đang tải đủ dữ liệu Google Sheet từ đầu tháng...", "done");
+      await tai_du_lieu_google_sheets(false, "", "", true).catch(() => false);
+    }
+
     const allOrders = typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function"
       ? lay_tat_ca_don_hang_tu_bang_a_den_p(false)
       : [];
@@ -15989,19 +16110,25 @@ async function scan_vtp_excel_file_to_modal(file) {
       "CHUA CHOT DUOC",
       "GIAO THANH CONG",
       "DA HOAN",
+      "DA TRA",
       "DA HUY",
+      "SHOP HUY LAY",
+      "VTP HUY LAY",
     ]);
     const normSt = (s) =>
       bo_dau_tieng_viet(String(s || ""))
         .toUpperCase()
         .replace(/\s+/g, " ")
         .trim();
+    const stripPkeKey = (k) => String(k || "").trim().toUpperCase().replace(/\s+/g, "").replace(/^PKE(?=\d)/, "");
 
     const mvdMap = new Map();
+    const mvdNoPkeMap = new Map();
     for (const o of allOrders) {
       const rawMvd = String(o.ma_van_don || o.parent_ma_van_don || "").trim();
       if (!rawMvd || rawMvd === "-" || rawMvd === "—" || rawMvd.length < 6) continue;
       const mvdKey = rawMvd.toUpperCase();
+      const altKey = stripPkeKey(mvdKey);
       const stNorm = normSt(o.trang_thai);
       const q = typeof infer_ship_order_qty === "function" ? infer_ship_order_qty(o) : 1;
       const rowCod = Math.max(0, Math.round(Number(o.gia_ban) || 0));
@@ -16020,6 +16147,7 @@ async function scan_vtp_excel_file_to_modal(file) {
           hasUpdatable: false,
         };
         mvdMap.set(mvdKey, entry);
+        if (altKey && !mvdNoPkeMap.has(altKey)) mvdNoPkeMap.set(altKey, entry);
       } else {
         if (!entry.name && o.ho_ten) entry.name = String(o.ho_ten).trim();
         if (!entry.phone && o.sdt) entry.phone = String(o.sdt).trim();
@@ -16035,12 +16163,22 @@ async function scan_vtp_excel_file_to_modal(file) {
 
     const changedItems = [];
     const counts = {};
+    const rawVtpCounts = {};
     let matchedCount = 0;
+    let skippedAlreadyFinal = 0;
 
     for (const rowVtp of parsed.items) {
+      const rawStLbl = String(rowVtp.vtpStatus || "").trim() || "(Trống)";
+      rawVtpCounts[rawStLbl] = (rawVtpCounts[rawStLbl] || 0) + 1;
+
       const mvdKey = String(rowVtp.mvd || "").trim().toUpperCase();
-      const info = mvdMap.get(mvdKey);
-      if (!info || !info.hasUpdatable) continue;
+      const altKey = stripPkeKey(mvdKey);
+      const info = mvdMap.get(mvdKey) || (altKey ? mvdNoPkeMap.get(altKey) : null);
+      if (!info) continue;
+      if (!info.hasUpdatable) {
+        skippedAlreadyFinal += 1;
+        continue;
+      }
       matchedCount += 1;
 
       const targetTag = map_vtp_excel_row_to_sheet_tag(rowVtp.vtpStatus, rowVtp.thuVal, info.sheetCod);
@@ -16049,10 +16187,13 @@ async function scan_vtp_excel_file_to_modal(file) {
 
       let needUpdate = false;
       for (const curNorm of info.rowStatuses) {
-        if (!PROTECTED_NORM.has(curNorm) && curNorm !== targetNorm) {
-          needUpdate = true;
-          break;
+        if (PROTECTED_NORM.has(curNorm) || curNorm === targetNorm) continue;
+        // Không hạ ngược đơn đang vận chuyển / đang giao / đang chuyển hoàn xuống LÊN APP VTP
+        if (targetNorm === "LEN APP VTP" && (curNorm === "DANG VAN CHUYEN" || curNorm === "DANG GIAO HANG" || curNorm === "DANG CHUYEN HOAN" || curNorm === "GIAO 1 PHAN")) {
+          continue;
         }
+        needUpdate = true;
+        break;
       }
       if (!needUpdate) continue;
 
@@ -16069,14 +16210,40 @@ async function scan_vtp_excel_file_to_modal(file) {
       counts[targetTag] = (counts[targetTag] || 0) + 1;
     }
 
+    const excelMeta = {
+      fileName: file.name,
+      totalRows: parsed.items.length,
+      matchedCount,
+      skippedAlreadyFinal,
+      rawVtpCounts,
+    };
+
     _vtp_sync_state = {
       totalChecked: matchedCount,
       changedItems,
       counts,
       scanned: true,
+      idleReady: false,
+      committed: false,
+      excelMeta,
     };
+    if (matchedCount === 0) {
+      const sample = parsed.items
+        .slice(0, 3)
+        .map((x) => x.mvd)
+        .join(", ");
+      const msg =
+        skippedAlreadyFinal > 0
+          ? `File Excel có ${parsed.items.length} đơn (${skippedAlreadyFinal} đơn khớp đã chốt tag cuối sẵn trên Sheet nên bỏ qua).`
+          : `File "${file.name}" đọc được ${parsed.items.length} đơn (${sample}), nhưng 0 đơn khớp với đơn chưa chốt trên Sheet (đã tải ${mvdMap.size} MVĐ). Kiểm tra lại tab lọc / ngày khi Xuất Excel trên web Viettel Post.`;
+      set_vtp_sync_status_msg(msg, skippedAlreadyFinal > 0 ? "done" : "error");
+      return;
+    }
     if (changedItems.length === 0) {
-      set_vtp_sync_status_msg(`Đã đối soát ${matchedCount} đơn từ file Excel VTP — chưa có thay đổi mới.`, "done");
+      set_vtp_sync_status_msg(
+        `Đã đọc ${parsed.items.length} dòng Excel (${matchedCount} đơn chưa chốt khớp Sheet) — chưa có thay đổi mới.`,
+        "done"
+      );
       return;
     }
 
