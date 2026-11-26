@@ -402,7 +402,6 @@ html, body {
   padding: 0 12px 0 15px;
   gap: 13px;
   border-radius: 15px;
-  border-left: 3.5px solid #B07D52;
   cursor: pointer;
   user-select: none;
   justify-content: flex-start;
@@ -415,7 +414,6 @@ html, body {
 
 [data-theme="dark"] .closing-rate-card {
   background: linear-gradient(180deg, #32241B 0%, #251B14 100%);
-  border-left-color: #C4956A;
   box-shadow:
     0 3px 12px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 240, 225, 0.06);
@@ -423,7 +421,6 @@ html, body {
 
 .call-time-card {
   cursor: pointer;
-  border-left-color: #8C654B;
 }
 
 .closing-rate-card:hover {
@@ -1570,6 +1567,14 @@ html, body {
   min-height: 42px;
 }
 
+.col-header-left-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .col-header-right-actions {
   display: inline-flex;
   align-items: center;
@@ -1609,9 +1614,14 @@ html, body {
 }
 
 .btn-back {
-  min-width: 94px;
+  min-width: auto;
   height: 36px;
   padding: 0 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 800;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .cards-list-frame {
@@ -2324,6 +2334,12 @@ html, body {
   .section-header-card {
     min-width: unset;
     width: 100%;
+  }
+  .col-mkt.is-mkt-detail .col-header-left-group {
+    width: 100%;
+  }
+  .col-mkt.is-mkt-detail .section-header-card {
+    width: auto;
   }
 }
 
@@ -3652,9 +3668,9 @@ input::-ms-clear {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(5, 150, 105, 0.1);
-  color: #047857;
-  border: 1px solid rgba(5, 150, 105, 0.28);
+  background: rgba(140, 90, 60, 0.11);
+  color: #5C3D28;
+  border: 1px solid rgba(140, 90, 60, 0.3);
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -3664,23 +3680,23 @@ input::-ms-clear {
   user-select: none;
 }
 .card-camp-hint.clickable-hint:hover {
-  background: #059669;
+  background: #7A4E32;
   color: #FFFFFF !important;
-  border-color: #059669;
+  border-color: #7A4E32;
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.28);
+  box-shadow: 0 2px 6px rgba(122, 78, 50, 0.28);
 }
 [data-theme="dark"] .card-camp-hint.clickable-hint {
-  background: rgba(16, 185, 129, 0.14);
-  color: #34D399;
-  border-color: rgba(52, 211, 153, 0.32);
+  background: rgba(215, 169, 127, 0.14);
+  color: #E8C9AA;
+  border-color: rgba(215, 169, 127, 0.32);
 }
 [data-theme="dark"] .card-camp-hint.clickable-hint:hover {
-  background: #10B981;
-  color: #0B1410 !important;
-  border-color: #10B981;
+  background: #C4956A;
+  color: #1A120B !important;
+  border-color: #C4956A;
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.28);
+  box-shadow: 0 2px 6px rgba(196, 149, 106, 0.28);
 }
 
 /* Nút xem tất cả đơn dạng pill trên thanh tiêu đề chi tiết MKT */
@@ -3734,34 +3750,34 @@ input::-ms-clear {
   height: 36px;
   padding: 0 12px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
-  border: 1.5px solid rgba(5, 150, 105, 0.42);
-  color: #047857;
+  background: linear-gradient(135deg, #FAF3EA 0%, #EFE2D2 100%);
+  border: 1.5px solid rgba(122, 78, 50, 0.38);
+  color: #6B4226;
   font-size: 12.5px;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
   gap: 6px;
-  box-shadow: 0 2px 6px rgba(6, 78, 59, 0.06);
+  box-shadow: 0 2px 6px rgba(61, 35, 20, 0.05);
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
 }
 .btn-mkt-view-camp-pill:hover {
-  background: #059669;
+  background: #7A4E32;
   color: #FFFFFF;
-  border-color: #059669;
+  border-color: #7A4E32;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 4px 12px rgba(122, 78, 50, 0.22);
 }
 [data-theme="dark"] .btn-mkt-view-camp-pill {
-  background: rgba(16, 185, 129, 0.14);
-  border-color: rgba(52, 211, 153, 0.42);
-  color: #34D399;
+  background: rgba(215, 169, 127, 0.14);
+  border-color: rgba(215, 169, 127, 0.42);
+  color: #E8C9AA;
   box-shadow: none;
 }
 [data-theme="dark"] .btn-mkt-view-camp-pill:hover {
-  background: #10B981;
-  color: #0B1410;
-  border-color: #10B981;
+  background: #C4956A;
+  color: #1A120B;
+  border-color: #C4956A;
 }
 
 .mkt-camp-card {
@@ -4497,10 +4513,9 @@ input::-ms-clear {
   justify-content: space-between;
   flex-wrap: nowrap;
   gap: 8px 14px;
-  padding: 8px 20px;
+  padding: 9px 20px;
   background: #FFFCF7;
   border-top: 1.5px dashed #DEC4A6;
-  border-bottom: 1px solid #E8D6C0;
   font-size: 12px;
   color: #4A3222;
   cursor: pointer;
@@ -4513,7 +4528,6 @@ input::-ms-clear {
 [data-theme="dark"] .mc-reconcile-bar {
   background: #201711;
   border-top-color: rgba(245, 176, 65, 0.28);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
   color: #EAD8C5;
 }
 [data-theme="dark"] .mc-reconcile-bar:hover {
@@ -6843,20 +6857,26 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 
 /* Nút & Modal Xuất Excel tạo đơn hàng loạt (Viettel Post / J&T) - v8.6.311 */
 .od-export-ship-btn {
-  background: linear-gradient(135deg, #15803D, #166534) !important;
+  background: linear-gradient(135deg, #76533B 0%, #563A27 100%) !important;
   color: #FFFDF9 !important;
-  border: 1px solid #15803D !important;
+  border: 1px solid #4A3121 !important;
   font-weight: 800 !important;
   font-size: 12px !important;
   padding: 0 12px !important;
   height: 32px !important;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.22);
+  box-shadow: 0 2px 8px rgba(74, 49, 33, 0.22);
 }
 
 .od-export-ship-btn:hover {
-  filter: brightness(1.07);
+  filter: brightness(1.08);
   transform: translateY(-1px);
+}
+
+[data-theme="dark"] .od-export-ship-btn {
+  background: linear-gradient(135deg, #946A4D 0%, #734F37 100%) !important;
+  border-color: #A97D5E !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 .od-import-mvd-btn {
@@ -6891,16 +6911,27 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 800;
-  color: #FFFDF9;
-  background: linear-gradient(135deg, #0D7A5F 0%, #095844 100%);
-  border: 1px solid #084C3A;
-  box-shadow: 0 2px 6px rgba(9, 88, 68, 0.22);
+  color: #4A2E1B;
+  background: linear-gradient(135deg, #EFE0CC 0%, #E1C8A8 100%);
+  border: 1px solid #B99672;
+  box-shadow: 0 2px 6px rgba(92, 61, 40, 0.12);
   white-space: nowrap;
 }
 
 .od-sync-vtp-btn:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: linear-gradient(135deg, #E8D3B8 0%, #D9B993 100%);
   transform: translateY(-1px);
+}
+
+[data-theme="dark"] .od-sync-vtp-btn {
+  color: #F2DFC9;
+  background: linear-gradient(135deg, #4B3629 0%, #3A281E 100%);
+  border-color: #755642;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme="dark"] .od-sync-vtp-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5A4132 0%, #483226 100%);
 }
 
 .od-sync-vtp-btn:disabled {

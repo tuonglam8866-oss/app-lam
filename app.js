@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.382";
+const APP_FRONTEND_VERSION = "8.6.388";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -5567,6 +5567,8 @@ function set_od_modal_layout_mode(isAllTableMode) {
   const metaRow = cardEl ? cardEl.querySelector(".od-meta-row") : null;
   const shipDivider = document.getElementById("odShipDivider");
   const shipText = document.getElementById("odShipText");
+  const footerBar = document.getElementById("odFooterBar");
+  const footerSummary = document.getElementById("odFooterSummary");
   const extraCols = document.querySelectorAll(".col-extra-ap");
   const thFilterBtns = document.querySelectorAll(".od-th-filter-btn");
 
@@ -5580,6 +5582,8 @@ function set_od_modal_layout_mode(isAllTableMode) {
   if (metaRow) metaRow.classList.toggle("hidden", isAllTableMode);
   if (shipDivider) shipDivider.classList.toggle("hidden", !isAllTableMode);
   if (shipText) shipText.classList.toggle("hidden", !isAllTableMode);
+  if (footerSummary) footerSummary.classList.toggle("hidden", !isAllTableMode);
+  if (footerBar) footerBar.classList.toggle("hidden", !isAllTableMode);
   extraCols.forEach((th) => th.classList.toggle("hidden", !isAllTableMode));
   thFilterBtns.forEach((btn) => btn.classList.toggle("hidden", !isAllTableMode));
 }
@@ -5951,25 +5955,13 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
     if (ten_sp) {
       spBadge.textContent = `SẢN PHẨM: ${ten_sp}`;
       spBadge.classList.remove("hidden");
-    } else if (ten_mkt) {
-      spBadge.textContent = `TẤT CẢ MÃ SP`;
-      spBadge.classList.remove("hidden");
     } else {
-      spBadge.textContent = `TẤT CẢ MỌI NGƯỜI`;
-      spBadge.classList.remove("hidden");
+      spBadge.classList.add("hidden");
     }
   }
 
   if (titleText) {
-    if (ten_mkt && ten_sp) {
-      titleText.textContent = `CHI TIẾT ĐƠN HÀNG: ${ten_mkt} - ${ten_sp}`;
-    } else if (ten_mkt) {
-      titleText.textContent = `CHI TIẾT ĐƠN HÀNG MKT: ${ten_mkt} (TẤT CẢ MÃ SP)`;
-    } else if (ten_sp) {
-      titleText.textContent = `CHI TIẾT ĐƠN HÀNG: ${ten_sp}`;
-    } else {
-      titleText.textContent = `CHI TIẾT ĐƠN HÀNG TỔNG CÔNG TY (TẤT CẢ MỌI NGƯỜI)`;
-    }
+    titleText.textContent = "CHI TIẾT ĐƠN HÀNG";
   }
 
   cap_nhat_text_ngay_chi_tiet_don(od_date_start, od_date_end);
@@ -6878,11 +6870,11 @@ function cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReco
 
     if (rec.unmatchedCount > 0) {
       reconcileLeft.innerHTML =
-        `<span>📦 Ngoài Camp: <strong>+${rec.unmatchedCount} đơn (${escape_html(format_tien_vnd(rec.unmatchedDs))})</strong></span>` +
+        `<span>Ngoài Camp: <strong>+${rec.unmatchedCount} đơn (${escape_html(format_tien_vnd(rec.unmatchedDs))})</strong></span>` +
         pillsHtml.join("") +
         `<span class="mc-rec-link">Xem chi tiết →</span>`;
     } else {
-      reconcileLeft.innerHTML = `<span>✅ Toàn bộ ${rec.outsideTotalCount} đơn đều đã khớp vào Camp</span>`;
+      reconcileLeft.innerHTML = `<span>Toàn bộ ${rec.outsideTotalCount} đơn đều đã khớp vào Camp</span>`;
     }
 
     const pctOut = rec.outsideTotalDs > 0 && fullMktSpend > 0 ? (fullMktSpend / rec.outsideTotalDs) * 100 : 0;
@@ -7026,19 +7018,10 @@ function render_mc_table_rows() {
   });
 
   const mcMktBadge = document.getElementById("mcMktBadge");
-  const mcCampCountBadge = document.getElementById("mcCampCountBadge");
-  const mcTotalResultBadge = document.getElementById("mcTotalResultBadge");
-  const mcDateRangeText = document.getElementById("mcDateRangeText");
-  const mcTotalSpendText = document.getElementById("mcTotalSpendText");
-  const mcTotalDsDivider = document.getElementById("mcTotalDsDivider");
-  const mcTotalDsText = document.getElementById("mcTotalDsText");
-  const mcTotalOutDsDivider = document.getElementById("mcTotalOutDsDivider");
-  const mcTotalOutDsText = document.getElementById("mcTotalOutDsText");
-  const mcTotalBudgetDivider = document.getElementById("mcTotalBudgetDivider");
-  const mcTotalBudgetText = document.getElementById("mcTotalBudgetText");
   const mcTableBody = document.getElementById("mcTableBody");
   const mcTableFoot = document.getElementById("mcTableFoot");
   const mcEmptyState = document.getElementById("mcEmptyState");
+  const mcFooterBar = document.getElementById("mcFooterBar");
   const mcFooterSummary = document.getElementById("mcFooterSummary");
 
   const totalSpend = filtered.reduce((acc, c) => acc + (c.spend || 0), 0);
@@ -7080,7 +7063,7 @@ function render_mc_table_rows() {
   const mcTitleText = document.getElementById("mcTitleText");
   if (mcSpFilterBadge) {
     if (spFilterNorm) {
-      mcSpFilterBadge.textContent = `👟 ${spFilterNorm}`;
+      mcSpFilterBadge.textContent = spFilterNorm;
       mcSpFilterBadge.classList.remove("hidden");
     } else {
       mcSpFilterBadge.classList.add("hidden");
@@ -7094,53 +7077,6 @@ function render_mc_table_rows() {
       ? `DANH SÁCH CAMP ĐANG CHẠY — ${spFilterNorm}`
       : "DANH SÁCH CAMP ĐANG CHẠY";
   }
-  if (mcCampCountBadge) mcCampCountBadge.textContent = `${filtered.length} Camp`;
-  if (mcTotalResultBadge) mcTotalResultBadge.textContent = `${totalResults} kết quả`;
-  if (mcDateRangeText) {
-    mcDateRangeText.textContent =
-      activeStart === activeEnd
-        ? `Ngày: ${format_date_vn_display(activeStart)}`
-        : `Từ ${format_date_vn_display(activeStart)} → ${format_date_vn_display(activeEnd)}`;
-  }
-  if (mcTotalSpendText) mcTotalSpendText.textContent = `CP: ${format_tien_vnd(totalSpend)}`;
-  if (mcTotalDsDivider && mcTotalDsText) {
-    if (totalRevenue > 0) {
-      const pctHdr = totalSpend > 0 ? ` (${((totalSpend / totalRevenue) * 100).toFixed(1)}%)` : "";
-      mcTotalDsText.textContent = `DS Camp: ${format_tien_vnd(totalRevenue)}${pctHdr}`;
-      mcTotalDsDivider.classList.remove("hidden");
-      mcTotalDsText.classList.remove("hidden");
-    } else {
-      mcTotalDsDivider.classList.add("hidden");
-      mcTotalDsText.classList.add("hidden");
-    }
-  }
-  if (mcTotalOutDsDivider && mcTotalOutDsText) {
-    const outRecHdr = outsideReconcile;
-    const allMktSpendHdr = campsList.reduce((acc, c) => acc + (c.spend || 0), 0);
-    if (outRecHdr && outRecHdr.outsideTotalDs > 0 && outRecHdr.outsideTotalDs !== totalRevenue) {
-      const pctOutHdr = allMktSpendHdr > 0 ? ` (${((allMktSpendHdr / outRecHdr.outsideTotalDs) * 100).toFixed(1)}%)` : "";
-      mcTotalOutDsText.textContent = `DS Tổng: ${format_tien_vnd(outRecHdr.outsideTotalDs)}${pctOutHdr}`;
-      mcTotalOutDsDivider.classList.remove("hidden");
-      mcTotalOutDsText.classList.remove("hidden");
-    } else {
-      mcTotalOutDsDivider.classList.add("hidden");
-      mcTotalOutDsText.classList.add("hidden");
-    }
-  }
-  if (mcTotalBudgetDivider && mcTotalBudgetText) {
-    if (totalActiveDailyBudget > 0) {
-      mcTotalBudgetText.textContent = `Ngân sách chạy: ${format_tien_vnd(totalActiveDailyBudget)}/ngày`;
-      mcTotalBudgetDivider.classList.remove("hidden");
-      mcTotalBudgetText.classList.remove("hidden");
-    } else if (totalAllDailyBudget > 0) {
-      mcTotalBudgetText.textContent = `Ngân sách: ${format_tien_vnd(totalAllDailyBudget)}/ngày`;
-      mcTotalBudgetDivider.classList.remove("hidden");
-      mcTotalBudgetText.classList.remove("hidden");
-    } else {
-      mcTotalBudgetDivider.classList.add("hidden");
-      mcTotalBudgetText.classList.add("hidden");
-    }
-  }
 
   if (mcTableBody) mcTableBody.innerHTML = "";
   if (mcTableFoot) mcTableFoot.innerHTML = "";
@@ -7150,7 +7086,7 @@ function render_mc_table_rows() {
       const titleEl = mcEmptyState.querySelector(".od-empty-title");
       const descEl = mcEmptyState.querySelector(".od-empty-desc");
       if (mc_is_loading_fb) {
-        if (titleEl) titleEl.textContent = "⏳ Đang tải dữ liệu Camp...";
+        if (titleEl) titleEl.textContent = "Đang tải dữ liệu Camp...";
         if (descEl) descEl.textContent = "Đang đồng bộ số liệu chi phí & kết quả từ Facebook Ads theo khoảng ngày vừa chọn.";
       } else {
         if (titleEl) titleEl.textContent = "Chưa có chiến dịch nào phát sinh chi phí";
@@ -7162,8 +7098,14 @@ function render_mc_table_rows() {
       }
       mcEmptyState.classList.remove("hidden");
     }
-    if (mcFooterSummary) {
-      mcFooterSummary.textContent = mc_is_loading_fb ? "⏳ Đang tải dữ liệu chiến dịch..." : "Hiển thị 0 chiến dịch";
+    if (mcFooterBar && mcFooterSummary) {
+      if (mc_is_loading_fb) {
+        mcFooterSummary.textContent = "Đang tải dữ liệu chiến dịch...";
+        mcFooterBar.classList.remove("hidden");
+      } else {
+        mcFooterSummary.textContent = "";
+        mcFooterBar.classList.add("hidden");
+      }
     }
     cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReconcile);
     return;
@@ -7196,7 +7138,7 @@ function render_mc_table_rows() {
 
     const kqSubText = kq > 0
       ? `${format_tien_vnd(cpa)}/số${chot > 0 ? ` • Chốt ${chot}` : ""}`
-      : "0 đ/số";
+      : "";
     const campNameSafe = escape_html(c.campaign_name || "(Không tên)");
 
     const dailyB = parseFloat(c.daily_budget || 0) || 0;
@@ -7205,11 +7147,11 @@ function render_mc_table_rows() {
     if (dailyB > 0) {
       const subLabel = isPaused
         ? "Đã tắt"
-        : (c.budget_type === "ABO_DAILY" ? "Nhóm QC/ngày" : "Hàng ngày");
+        : (c.budget_type === "ABO_DAILY" ? "Nhóm QC/ngày" : "");
       budgetCellHtml = `
         <div class="mc-budget-wrap">
           <span class="mc-budget-val ${isPaused ? "is-paused" : ""}">${escape_html(format_tien_vnd(dailyB))}</span>
-          <div class="mc-budget-sub ${isPaused ? "is-paused" : ""}">${escape_html(subLabel)}</div>
+          ${subLabel ? `<div class="mc-budget-sub ${isPaused ? "is-paused" : ""}">${escape_html(subLabel)}</div>` : ""}
         </div>
       `;
     } else if (lifeB > 0) {
@@ -7226,22 +7168,22 @@ function render_mc_table_rows() {
       ? `<span class="mc-status-pill is-paused"><span class="mc-status-dot"></span>Đang tắt</span>`
       : `<span class="mc-status-pill is-active"><span class="mc-status-dot"></span>Đang bật</span>`;
 
+    const subTagsHtml = [
+      isAllMkt && c._ownerMkt ? `<span class="mc-mkt-owner-tag">${escape_html(c._ownerMkt)}</span>` : "",
+      c.sp ? `<span class="mc-sp-tag">${escape_html(c.sp)}</span>` : "",
+    ].filter(Boolean).join("");
+
     tr.innerHTML = `
       <td class="mc-col-stt"><span class="mc-stt-badge">${idx + 1}</span></td>
       <td class="mc-col-name">
         <div class="mc-camp-name" title="${campNameSafe}">${campNameSafe}</div>
-        <div class="mc-camp-sub">
-          ${isAllMkt && c._ownerMkt ? `<span class="mc-mkt-owner-tag">${escape_html(c._ownerMkt)}</span>` : ""}
-          ${c.sp ? `<span class="mc-sp-tag">${escape_html(c.sp)}</span>` : ""}
-          <span class="mc-id-badge">ID: ${escape_html(c.campaign_id || "-")}</span>
-          <span class="mc-camp-open-hint">Xem khách →</span>
-        </div>
+        ${subTagsHtml ? `<div class="mc-camp-sub">${subTagsHtml}</div>` : ""}
       </td>
       <td class="mc-col-status">${statusBadgeHtml}</td>
       <td class="mc-col-result">
         <div class="mc-result-wrap">
           <span class="mc-result-pill ${kq === 0 ? "is-zero" : ""}">${kq}</span>
-          <div class="mc-cpa-sub">${escape_html(kqSubText)}</div>
+          ${kqSubText ? `<div class="mc-cpa-sub">${escape_html(kqSubText)}</div>` : ""}
         </div>
       </td>
       <td class="mc-col-budget">${budgetCellHtml}</td>
@@ -7274,7 +7216,6 @@ function render_mc_table_rows() {
       footBudgetHtml = `
         <div class="mc-budget-wrap">
           <span class="mc-budget-val">${escape_html(format_tien_vnd(totalActiveDailyBudget))}</span>
-          <div class="mc-budget-sub">Hàng ngày</div>
         </div>
       `;
     } else if (totalAllDailyBudget > 0) {
@@ -7324,13 +7265,21 @@ function render_mc_table_rows() {
     mcTableFoot.appendChild(footTr);
   }
 
-  if (mcFooterSummary) {
-    const noteMissingColQ =
-      Array.isArray(data_tong_don_upyo) && data_tong_don_upyo.length > 1 && !hasAnyCampColData
-        ? " • ⚠️ Chưa thấy dữ liệu Campaign ID"
-        : "";
-    const loadingSuffix = mc_is_loading_fb ? " • ⏳ Đang đồng bộ mới nhất..." : "";
-    mcFooterSummary.textContent = `Bấm vào dòng Camp để xem khách đặt hàng${noteMissingColQ}${loadingSuffix}`;
+  if (mcFooterBar && mcFooterSummary) {
+    const statusNotes = [];
+    if (Array.isArray(data_tong_don_upyo) && data_tong_don_upyo.length > 1 && !hasAnyCampColData) {
+      statusNotes.push("Chưa thấy dữ liệu Campaign ID");
+    }
+    if (mc_is_loading_fb) {
+      statusNotes.push("Đang đồng bộ mới nhất...");
+    }
+    if (statusNotes.length > 0) {
+      mcFooterSummary.textContent = statusNotes.join(" • ");
+      mcFooterBar.classList.remove("hidden");
+    } else {
+      mcFooterSummary.textContent = "";
+      mcFooterBar.classList.add("hidden");
+    }
   }
 
   cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReconcile);
@@ -7616,8 +7565,12 @@ function clear_od_sheet_selection() {
 
   const badge = document.getElementById("odSelBadge");
   const copyBtn = document.getElementById("btnOdCopySelection");
+  const footerBar = document.getElementById("odFooterBar");
   if (badge) badge.classList.add("hidden");
   if (copyBtn) copyBtn.classList.add("hidden");
+  if (footerBar && current_od_mode !== "all_table") {
+    footerBar.classList.add("hidden");
+  }
 }
 
 function render_od_sheet_selection() {
@@ -7700,6 +7653,7 @@ function render_od_sheet_selection() {
   const cSpan = maxC - minC + 1;
   const badge = document.getElementById("odSelBadge");
   const copyBtn = document.getElementById("btnOdCopySelection");
+  const footerBar = document.getElementById("odFooterBar");
   if (badge) {
     badge.textContent = `${rSpan} hàng × ${cSpan} cột (${rSpan * cSpan} ô)`;
     badge.classList.remove("hidden");
@@ -7707,6 +7661,9 @@ function render_od_sheet_selection() {
   if (copyBtn) {
     copyBtn.textContent = "📋 Copy (Ctrl+C)";
     copyBtn.classList.remove("hidden");
+  }
+  if (footerBar) {
+    footerBar.classList.remove("hidden");
   }
 }
 
@@ -10102,10 +10059,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     e.stopPropagation();
     dong_bang_don_hang_chi_tiet();
   });
-  document.getElementById("btnDismissOrderDetail")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    dong_bang_don_hang_chi_tiet();
-  });
 
   document.getElementById("orderDetailModal")?.addEventListener("click", (e) => {
     if (e.target.id === "orderDetailModal") {
@@ -10150,10 +10103,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     render_mc_table_rows();
   });
   document.getElementById("btnCloseMktCamp")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    dong_bang_camp_mkt();
-  });
-  document.getElementById("btnDismissMktCamp")?.addEventListener("click", (e) => {
     e.stopPropagation();
     dong_bang_camp_mkt();
   });
