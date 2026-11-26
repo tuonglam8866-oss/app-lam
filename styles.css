@@ -6421,6 +6421,8 @@ input::-ms-clear {
   display: flex;
   flex-direction: column;
   gap: 7px;
+  max-height: 96px;
+  overflow-y: auto;
 }
 
 .export-cp-status.is-done {

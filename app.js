@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.376";
+const APP_FRONTEND_VERSION = "8.6.377";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -14796,11 +14796,20 @@ function init_export_ship_modal() {
       }
 
       if (okList.length > 0 && failList.length === 0) {
-        setStatus(`✅ Đẩy thành công ${okList.length}/${prep.rows.length} đơn VTP${sheetSyncMsg}: ${okList.join(" • ")}`, "done");
+        const shortSuffix = okList.length <= 2 ? ` (${okList.join(" • ")})` : "";
+        setStatus(`✅ Đẩy thành công ${okList.length}/${prep.rows.length} đơn VTP${sheetSyncMsg}${shortSuffix}`, "done");
       } else if (okList.length > 0) {
-        setStatus(`⚠️ Thành công ${okList.length}, lỗi ${failList.length}${sheetSyncMsg}: ${failList.join(" | ")}`, "error");
+        const previewFail =
+          failList.length <= 2
+            ? failList.join(" | ")
+            : `${failList.slice(0, 2).join(" | ")} … (+${failList.length - 2} lỗi khác)`;
+        setStatus(`⚠️ Thành công ${okList.length}, lỗi ${failList.length}${sheetSyncMsg}: ${previewFail}`, "error");
       } else {
-        setStatus(`❌ Không đẩy được đơn nào: ${failList.join(" | ")}`, "error");
+        const previewFail =
+          failList.length <= 2
+            ? failList.join(" | ")
+            : `${failList.slice(0, 2).join(" | ")} … (+${failList.length - 2} lỗi khác)`;
+        setStatus(`❌ Không đẩy được đơn nào: ${previewFail}`, "error");
       }
     } catch (err) {
       setStatus(`Lỗi đẩy đơn VTP: ${(err && err.message) || err}`, "error");
@@ -15723,16 +15732,16 @@ function render_vtp_sync_modal() {
   if (badgeEl) {
     badgeEl.textContent = excelMeta
       ? `EXCEL: ${excelMeta.totalRows} ĐƠN (${excelMeta.matchedCount} KHỚP)`
-      : `${_vtp_sync_state.totalChecked} ĐƠN CHƯA CHỐT`;
+      : "EXCEL VTP";
   }
   if (chipEl) chipEl.textContent = isCommitted ? `Đã ghi ${items.length} đơn` : `${items.length} đơn đổi`;
 
   if (kpiEl) {
     kpiEl.innerHTML =
       `<div class="export-cp-kpi-card">` +
-      `<span class="export-cp-kpi-label">${excelMeta ? "ĐỌC FILE EXCEL" : "ĐÃ QUÉT VTP"}</span>` +
-      `<span class="export-cp-kpi-val">${excelMeta ? excelMeta.totalRows : _vtp_sync_state.totalChecked} đơn</span>` +
-      `<span class="export-cp-kpi-sub">${excelMeta ? `${excelMeta.matchedCount} đơn khớp Sheet` : `Trong ${_vtp_sync_days} ngày gần nhất`}</span>` +
+      `<span class="export-cp-kpi-label">ĐỌC FILE EXCEL</span>` +
+      `<span class="export-cp-kpi-val">${excelMeta ? excelMeta.totalRows : 0} đơn</span>` +
+      `<span class="export-cp-kpi-sub">${excelMeta ? `${excelMeta.matchedCount} đơn khớp Sheet` : "Chưa chọn file"}</span>` +
       `</div>` +
       `<div class="export-cp-kpi-card">` +
       `<span class="export-cp-kpi-label">${isCommitted ? "ĐÃ CẬP NHẬT" : "CẦN CẬP NHẬT"}</span>` +
@@ -15749,7 +15758,7 @@ function render_vtp_sync_modal() {
   if (breakdownEl) {
     const keys = Object.keys(counts);
     if (_vtp_sync_state.idleReady && !_vtp_sync_state.scanned) {
-      breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Bấm nút xanh bên dưới để chọn file Excel xuất từ Viettel Post, hoặc bấm "↻ Quét đơn VTP" ở góc trên.</span>`;
+      breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Bấm nút xanh bên dưới để chọn file Excel xuất từ Viettel Post.</span>`;
     } else if (!_vtp_sync_state.scanned) {
       breakdownEl.innerHTML = `<span class="vtp-sync-empty" style="padding:14px 4px;">Đang đối chiếu trạng thái từ Viettel Post...</span>`;
     } else if (keys.length === 0) {
