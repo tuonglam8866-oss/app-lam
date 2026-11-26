@@ -6880,6 +6880,22 @@ body.app-opening-ready .skeleton-card:nth-child(3) {
 }
 
 /* ==================== MODAL UPDATE TRẠNG THÁI ĐƠN VTP (v8.6.365) ==================== */
+.vtp-pass-card {
+  max-width: 420px;
+}
+
+.vtp-pass-body {
+  gap: 12px;
+}
+
+.vtp-pass-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
 .vtp-sync-days-group {
   display: inline-flex;
   align-items: center;

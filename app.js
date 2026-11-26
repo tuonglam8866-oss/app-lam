@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.375";
+const APP_FRONTEND_VERSION = "8.6.376";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -16259,13 +16259,88 @@ async function scan_vtp_excel_file_to_modal(file) {
   }
 }
 
+const VTP_SYNC_PASS_HASH = "9f81d297ced7c1a39e6bef29cc373a5416730d1043d7841326acbf78962809c6";
+
+function close_vtp_sync_pass_modal() {
+  const modal = document.getElementById("vtpSyncPassModal");
+  const inp = document.getElementById("vtpSyncPassInput");
+  const err = document.getElementById("vtpSyncPassError");
+  if (inp) {
+    inp.value = "";
+    inp.type = "password";
+  }
+  document.getElementById("vtpPassEyeOpen")?.classList.remove("hidden");
+  document.getElementById("vtpPassEyeClosed")?.classList.add("hidden");
+  if (err) err.classList.add("hidden");
+  modal?.classList.add("hidden");
+}
+
+function open_vtp_sync_pass_modal() {
+  const modal = document.getElementById("vtpSyncPassModal");
+  const inp = document.getElementById("vtpSyncPassInput");
+  const err = document.getElementById("vtpSyncPassError");
+  if (!modal || !inp) return;
+  inp.value = "";
+  inp.type = "password";
+  document.getElementById("vtpPassEyeOpen")?.classList.remove("hidden");
+  document.getElementById("vtpPassEyeClosed")?.classList.add("hidden");
+  if (err) err.classList.add("hidden");
+  modal.classList.remove("hidden");
+  setTimeout(() => {
+    try { inp.focus(); } catch (e) {}
+  }, 40);
+}
+
 function init_vtp_status_sync_modal() {
   const modal = document.getElementById("vtpStatusSyncModal");
   if (!modal) return;
 
   document.getElementById("btnVtpStatusModal")?.addEventListener("click", (e) => {
     e.stopPropagation();
-    open_vtp_status_sync_modal();
+    open_vtp_sync_pass_modal();
+  });
+
+  const passModal = document.getElementById("vtpSyncPassModal");
+  document.getElementById("btnCloseVtpSyncPass")?.addEventListener("click", close_vtp_sync_pass_modal);
+  document.getElementById("btnCancelVtpSyncPass")?.addEventListener("click", close_vtp_sync_pass_modal);
+  passModal?.addEventListener("click", (e) => {
+    if (e.target === passModal) close_vtp_sync_pass_modal();
+  });
+  document.getElementById("vtpSyncPassCard")?.addEventListener("click", (e) => e.stopPropagation());
+  document.getElementById("btnToggleVtpSyncPass")?.addEventListener("click", () => {
+    const inp = document.getElementById("vtpSyncPassInput");
+    const eyeOpen = document.getElementById("vtpPassEyeOpen");
+    const eyeClosed = document.getElementById("vtpPassEyeClosed");
+    if (!inp) return;
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    eyeOpen?.classList.toggle("hidden", show);
+    eyeClosed?.classList.toggle("hidden", !show);
+    try { inp.focus(); } catch (e) {}
+  });
+  document.getElementById("vtpSyncPassForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const inp = document.getElementById("vtpSyncPassInput");
+    const err = document.getElementById("vtpSyncPassError");
+    const rawPass = inp ? String(inp.value || "") : "";
+    const digest = await compute_sha256(rawPass);
+    if (digest === VTP_SYNC_PASS_HASH) {
+      close_vtp_sync_pass_modal();
+      open_vtp_status_sync_modal();
+      return;
+    }
+    if (err) err.classList.remove("hidden");
+    if (inp) {
+      try {
+        inp.focus();
+        inp.select();
+      } catch (ex) {}
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && passModal && !passModal.classList.contains("hidden")) {
+      close_vtp_sync_pass_modal();
+    }
   });
   document.getElementById("btnCloseVtpSync")?.addEventListener("click", close_vtp_status_sync_modal);
   modal.addEventListener("click", (e) => {
