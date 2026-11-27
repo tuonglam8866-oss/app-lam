@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.398";
+const APP_FRONTEND_VERSION = "8.6.399";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -4242,7 +4242,6 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   topRow.innerHTML = `
     <div class="card-title-group">
       <span class="card-name">${dict.companySummaryTitle}</span>
-      <span class="card-sub-label">${date_label}</span>
       ${build_card_camp_pill_html("__ALL__", "")}
       <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">Chi tiết đơn →</span>
       <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho Toàn công ty">Xuất bản CP</span>
