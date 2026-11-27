@@ -1101,13 +1101,16 @@
           <!-- Cột Trái: Danh sách đơn có thay đổi trạng thái -->
           <div class="export-ship-v2-left">
             <div class="export-cp-panel export-ship-v2-panel vtp-sync-list-panel">
-              <div class="export-ship-v2-panel-head">
+              <div class="export-ship-v2-panel-head vtp-sync-list-head">
                 <span class="export-cp-section-label" id="vtpSyncListTitle">Danh sách đơn cần cập nhật lên Sheet</span>
-                <div class="vtp-sync-filter-pills" id="vtpSyncFilterPills">
-                  <button type="button" class="vtp-sync-filter-pill active" data-filter="all">Tất cả</button>
-                  <button type="button" class="vtp-sync-filter-pill" data-filter="ok">Thành công</button>
-                  <button type="button" class="vtp-sync-filter-pill" data-filter="return">Hoàn / 1 phần</button>
-                  <button type="button" class="vtp-sync-filter-pill" data-filter="shipping">Đang giao / Hủy</button>
+                <div class="vtp-sync-tools-row">
+                  <input type="text" id="vtpSyncSearchInput" class="vtp-sync-search-input" placeholder="Tra MVĐ / tên khách..." autocomplete="off" />
+                  <div class="vtp-sync-filter-pills" id="vtpSyncFilterPills">
+                    <button type="button" class="vtp-sync-filter-pill active" data-filter="all">Tất cả</button>
+                    <button type="button" class="vtp-sync-filter-pill" data-filter="ok">Thành công</button>
+                    <button type="button" class="vtp-sync-filter-pill" data-filter="return">Hoàn / 1 phần</button>
+                    <button type="button" class="vtp-sync-filter-pill" data-filter="shipping">Đang giao / Hủy</button>
+                  </div>
                 </div>
               </div>
               <div id="vtpSyncPreviewList" class="vtp-sync-preview-list">

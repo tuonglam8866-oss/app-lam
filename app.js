@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.400";
+const APP_FRONTEND_VERSION = "8.6.407";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -520,7 +520,7 @@ function extract_confirmed_pancake_orders(conv, msgs, pageCfg, msgJson = null) {
   };
   const results = [];
   const convTags = get_pancake_conv_tags_norm(conv);
-  const isCancelledTag = convTags.some((tg) => tg.includes("HUY") || tg.includes("BOOM") || tg.includes("KHONG MUA"));
+  const isCancelledTag = convTags.some((tg) => /\bHUY\b/.test(tg) || tg.includes("BOOM") || tg.includes("KHONG MUA"));
   const allCustomers = [
     ...(Array.isArray(conv && conv.customers) ? conv.customers : []),
     ...(Array.isArray(msgJson && msgJson.customers) ? msgJson.customers : []),
@@ -771,6 +771,20 @@ function la_don_hop_le_de_dem(trang_thai_raw) {
     noDau.includes("GIAO 1 PHAN")
   );
 }
+
+function la_don_hoan(trang_thai_raw) {
+  if (!trang_thai_raw) return false;
+  const noDau = bo_dau_tieng_viet(String(trang_thai_raw).trim()).toUpperCase();
+  return noDau.includes("HOAN") || noDau.includes("DA TRA");
+}
+
+let last_return_rate_stats = {
+  total_valid: 0,
+  total_hoan: 0,
+  by_mkt: {},
+  by_sp: {},
+  by_mkt_sp: {},
+};
 
 const LIST_MKT_FB = [
   { ten: "L\u00c2M", id: "act_1219584325802699" },
@@ -2985,7 +2999,7 @@ function rebuild_cust_first_mkt_index() {
 
       if (r.length <= 12) continue;
       const ttNoDau = r.length > 13 ? bo_dau_tieng_viet(String(r[13] || "").trim()).toUpperCase() : "";
-      if (ttNoDau.includes("HUY") || ttNoDau.includes("TRUNG") || ttNoDau.includes("TEST")) continue;
+      if (/\bHUY\b/.test(ttNoDau) || ttNoDau.includes("TRUNG") || ttNoDau.includes("TEST")) continue;
 
       const mktDash = chuan_hoa_mkt_dashboard(r[12]);
       if (mktDash === "KHÁC") continue;
@@ -3077,6 +3091,13 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
   const stats_sp_dt = {};
   const stats_mkt_sp_don = {};
   const stats_mkt_sp_dt = {};
+  const retStats = {
+    total_valid: 0,
+    total_hoan: 0,
+    by_mkt: {},
+    by_sp: {},
+    by_mkt_sp: {},
+  };
 
   let lastCustSdt = "";
   let lastCustAddr = "";
@@ -3098,7 +3119,9 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
       const is_matched_date = khop_ngay_chinh_xac(tg, patternsArr);
 
       if (is_matched_date) {
-        if (la_don_hop_le_de_dem(r[13])) {
+        const isValid = la_don_hop_le_de_dem(r[13]);
+        const isHoan = !isValid && la_don_hoan(r[13]);
+        if (isValid || isHoan) {
           const sameDateCtx = !dateOnly || !lastCustDate || dateOnly === lastCustDate;
           const fallbackSdt = !sdtCell && sameDateCtx ? lastCustSdt : "";
           const fallbackAddr = !addrCell && sameDateCtx ? lastCustAddr : "";
@@ -3124,26 +3147,44 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
             continue;
           }
 
-          const gia_ban = r.length > 8 ? parse_gia_tien(r[8]) : 0;
+          if (!retStats.by_mkt[mkt_norm]) retStats.by_mkt[mkt_norm] = { valid: 0, hoan: 0 };
+          if (!retStats.by_sp[ten_mau]) retStats.by_sp[ten_mau] = { valid: 0, hoan: 0 };
+          if (!retStats.by_mkt_sp[mkt_norm]) retStats.by_mkt_sp[mkt_norm] = {};
+          if (!retStats.by_mkt_sp[mkt_norm][ten_mau]) retStats.by_mkt_sp[mkt_norm][ten_mau] = { valid: 0, hoan: 0 };
 
-          stats_mkt_don[mkt_norm] = (stats_mkt_don[mkt_norm] || 0) + 1;
-          stats_mkt_dt[mkt_norm] = (stats_mkt_dt[mkt_norm] || 0.0) + gia_ban;
+          if (isValid) {
+            retStats.total_valid += 1;
+            retStats.by_mkt[mkt_norm].valid += 1;
+            retStats.by_sp[ten_mau].valid += 1;
+            retStats.by_mkt_sp[mkt_norm][ten_mau].valid += 1;
 
-          stats_sp_don[ten_mau] = (stats_sp_don[ten_mau] || 0) + 1;
-          stats_sp_dt[ten_mau] = (stats_sp_dt[ten_mau] || 0.0) + gia_ban;
+            const gia_ban = r.length > 8 ? parse_gia_tien(r[8]) : 0;
 
-          if (!stats_mkt_sp_don[mkt_norm]) {
-            stats_mkt_sp_don[mkt_norm] = {};
-            stats_mkt_sp_dt[mkt_norm] = {};
+            stats_mkt_don[mkt_norm] = (stats_mkt_don[mkt_norm] || 0) + 1;
+            stats_mkt_dt[mkt_norm] = (stats_mkt_dt[mkt_norm] || 0.0) + gia_ban;
+
+            stats_sp_don[ten_mau] = (stats_sp_don[ten_mau] || 0) + 1;
+            stats_sp_dt[ten_mau] = (stats_sp_dt[ten_mau] || 0.0) + gia_ban;
+
+            if (!stats_mkt_sp_don[mkt_norm]) {
+              stats_mkt_sp_don[mkt_norm] = {};
+              stats_mkt_sp_dt[mkt_norm] = {};
+            }
+            stats_mkt_sp_don[mkt_norm][ten_mau] =
+              (stats_mkt_sp_don[mkt_norm][ten_mau] || 0) + 1;
+            stats_mkt_sp_dt[mkt_norm][ten_mau] =
+              (stats_mkt_sp_dt[mkt_norm][ten_mau] || 0.0) + gia_ban;
+          } else {
+            retStats.total_hoan += 1;
+            retStats.by_mkt[mkt_norm].hoan += 1;
+            retStats.by_sp[ten_mau].hoan += 1;
+            retStats.by_mkt_sp[mkt_norm][ten_mau].hoan += 1;
           }
-          stats_mkt_sp_don[mkt_norm][ten_mau] =
-            (stats_mkt_sp_don[mkt_norm][ten_mau] || 0) + 1;
-          stats_mkt_sp_dt[mkt_norm][ten_mau] =
-            (stats_mkt_sp_dt[mkt_norm][ten_mau] || 0.0) + gia_ban;
         }
       }
     }
   }
+  last_return_rate_stats = retStats;
 
   const sorted_mkt_entries = Object.entries(stats_mkt_don).sort(
     (a, b) => b[1] - a[1]
@@ -3282,7 +3323,7 @@ function lay_tat_ca_don_hang_tu_bang_a_den_p(onlySelectedDateRange = false) {
 }
 
 // Lấy danh sách các đơn hàng thực tế đã được đếm (khớp ngày, MKT, SP và trạng thái hợp lệ)
-function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp, startOverride = "", endOverride = "") {
+function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp, startOverride = "", endOverride = "", onlyReturned = false) {
   if (!Array.isArray(data_hien_tai) || data_hien_tai.length === 0) return [];
   const start_str = startOverride || current_start_date || "";
   const end_str = endOverride || current_end_date || "";
@@ -3309,7 +3350,8 @@ function lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp, startOverride = "", endOver
     const is_matched_date = khop_ngay_chinh_xac(tg, patternsArr);
     if (!is_matched_date) continue;
 
-    if (!la_don_hop_le_de_dem(r[13])) continue;
+    const statusOk = onlyReturned ? la_don_hoan(r[13]) : la_don_hop_le_de_dem(r[13]);
+    if (!statusOk) continue;
 
     const sameDateCtx = !dateOnly || !lastCustDate || dateOnly === lastCustDate;
     const fallbackSdt = !sdtCell && sameDateCtx ? lastCustSdt : "";
@@ -4226,6 +4268,36 @@ function attach_right_click_copy(cardEl, spend) {
   });
 }
 
+function build_card_return_rate_pill_html(ten_mkt, ma_str, extraClass = "") {
+  const rs = last_return_rate_stats || {};
+  let stat = null;
+  if (!ten_mkt && !ma_str) {
+    stat = { valid: rs.total_valid || 0, hoan: rs.total_hoan || 0 };
+  } else if (ten_mkt && ma_str) {
+    stat = rs.by_mkt_sp && rs.by_mkt_sp[ten_mkt] && rs.by_mkt_sp[ten_mkt][ma_str];
+  } else if (ten_mkt) {
+    stat = rs.by_mkt && rs.by_mkt[ten_mkt];
+  } else if (ma_str) {
+    stat = rs.by_sp && rs.by_sp[ma_str];
+  }
+  const valid = (stat && stat.valid) || 0;
+  const hoan = (stat && stat.hoan) || 0;
+  const tong = valid + hoan;
+  const pct = tong > 0 ? (hoan / tong) * 100 : 0;
+  const pctStr = hoan > 0
+    ? `${Number.isInteger(Number(pct.toFixed(1))) ? pct.toFixed(0) : pct.toFixed(1)}%`
+    : "0%";
+  const labelText = hoan > 0 ? `Hoàn ${pctStr} (${hoan}/${tong})` : "Hoàn 0%";
+  const levelCls = pct > 15 ? "is-high" : (pct > 5 ? "is-mid" : "");
+  const scopeDesc = ten_mkt && ma_str
+    ? `${ten_mkt} - ${ma_str}`
+    : (ten_mkt || ma_str || "Toàn công ty");
+  const tooltip = tong > 0
+    ? `Tỉ lệ hoàn ${scopeDesc}: ${pct.toFixed(1)}% (${hoan}/${tong} đơn) • Bấm để xem danh sách đơn hoàn`
+    : `Chưa có đơn hàng ${scopeDesc} trong khoảng ngày này`;
+  return `<span class="card-return-rate-hint clickable-hint ${levelCls} ${extraClass}" title="${escape_html(tooltip)}">${escape_html(labelText)}</span>`;
+}
+
 function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   const holder = document.getElementById("badgeHolder");
   if (!holder) return;
@@ -4243,7 +4315,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
     <div class="card-title-group">
       <span class="card-name">${dict.companySummaryTitle}</span>
       ${build_card_camp_pill_html("__ALL__", "")}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-company-orders" title="Bấm để xem chi tiết tất cả ${tong_don} đơn hàng của mọi người">Chi tiết đơn →</span>
+      ${build_card_return_rate_pill_html(null, null, "js-btn-view-company-orders")}
       <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho Toàn công ty">Xuất bản CP</span>
     </div>
     <div class="card-count-group">
@@ -4259,7 +4331,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
 
   const openCompanyOrders = (e) => {
     if (e) e.stopPropagation();
-    hien_thi_bang_don_hang_chi_tiet(null, null);
+    hien_thi_bang_don_hang_chi_tiet(null, null, true);
   };
 
   const btnViewCompanyCamps = topRow.querySelector(".js-btn-view-card-camps");
@@ -4313,7 +4385,7 @@ function create_mkt_table_card(
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
       ${build_card_camp_pill_html(name_str, "")}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">Chi tiết đơn →</span>
+      ${build_card_return_rate_pill_html(name_str, null, "js-btn-view-mkt-orders")}
       <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho ${name_str}">Xuất bản CP</span>
     </div>
     <div class="card-count-group">
@@ -4358,7 +4430,7 @@ function create_mkt_table_card(
   if (btnViewOrders) {
     btnViewOrders.addEventListener("click", (e) => {
       e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(name_str, null);
+      hien_thi_bang_don_hang_chi_tiet(name_str, null, true);
     });
   }
 
@@ -4383,6 +4455,7 @@ let current_od_filtered_list = [];
 let current_od_mode = "card"; // "all_table" | "card"
 let current_od_mkt = null;
 let current_od_sp = null;
+let current_od_only_returned = false;
 let od_sort_newest_first = true;
 let od_render_limit = 500;
 
@@ -4441,7 +4514,7 @@ function get_status_pill_cls(statusRaw) {
   if (s.includes("DOI HANG") || s.includes("GIAO 1 PHAN")) return "pill-status-exchange";
   if (s.includes("TEST")) return "pill-status-test";
   if (
-    s.includes("HUY") ||
+    /\bHUY\b/.test(s) ||
     s.includes("HOAN") ||
     s.includes("DA TRA") ||
     s.includes("TRUNG") ||
@@ -5013,7 +5086,7 @@ function lay_danh_sach_don_khong_mkt(cachedSrcIdx = null, cachedDupRowNums = nul
     if (dupMktRowNums.has(o.row_num)) continue;
 
     const ttNoDau = bo_dau_tieng_viet(String(o.trang_thai || "")).toUpperCase();
-    if (ttNoDau.includes("HUY") || ttNoDau.includes("TRUNG") || ttNoDau.includes("TEST")) continue;
+    if (/\bHUY\b/.test(ttNoDau) || ttNoDau.includes("TRUNG") || ttNoDau.includes("TEST")) continue;
 
     const sdt = o.sdt || o.parent_sdt || "";
     const addr = o.dia_chi || o.parent_dia_chi || "";
@@ -5146,7 +5219,7 @@ function lay_danh_sach_don_pancake_loi_mkt(cachedSrcIdx = null, cachedDupRowNums
     for (const mRow of matchedRows) {
       if (addedThRowNums.has(mRow.row_num)) continue;
       const ttNoDau = bo_dau_tieng_viet(String(mRow.trang_thai || "")).toUpperCase();
-      if (ttNoDau.includes("HUY") || ttNoDau.includes("TRUNG") || ttNoDau.includes("TEST")) continue;
+      if (/\bHUY\b/.test(ttNoDau) || ttNoDau.includes("TRUNG") || ttNoDau.includes("TEST")) continue;
 
       const mktThNorm = chuan_hoa_mkt_so_sanh(mRow.mkt);
       const isDupCustomer = dupMktRowNums.has(mRow.row_num) || srcIdx.isMultiSourceMkt(mRow.sdt || mRow.parent_sdt, mRow.dia_chi || mRow.parent_dia_chi);
@@ -5918,7 +5991,7 @@ function cap_nhat_text_ngay_chi_tiet_don(st, en) {
   dateRangeText.textContent = s === e ? `Ngày ${sVn}` : `Từ ${sVn} → ${eVn}`;
 }
 
-function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
+function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp, onlyReturned = false) {
   const modal = document.getElementById("orderDetailModal");
   if (!modal) return;
 
@@ -5928,6 +6001,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   current_od_mode = "card";
   current_od_mkt = ten_mkt;
   current_od_sp = ten_sp;
+  current_od_only_returned = Boolean(onlyReturned);
   od_sort_newest_first = false;
   od_render_limit = 500;
   od_excel_filters = {};
@@ -5941,7 +6015,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   set_od_modal_layout_mode(false);
   update_od_date_btn_ui();
 
-  const orders = lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp, od_date_start, od_date_end);
+  const orders = lay_danh_sach_don_chi_tiet(ten_mkt, ten_sp, od_date_start, od_date_end, current_od_only_returned);
   current_od_raw_list = orders;
 
   const mktBadge = document.getElementById("odMktBadge");
@@ -5970,7 +6044,7 @@ function hien_thi_bang_don_hang_chi_tiet(ten_mkt, ten_sp) {
   }
 
   if (titleText) {
-    titleText.textContent = "CHI TIẾT ĐƠN HÀNG";
+    titleText.textContent = current_od_only_returned ? "DANH SÁCH ĐƠN HOÀN" : "CHI TIẾT ĐƠN HÀNG";
   }
 
   cap_nhat_text_ngay_chi_tiet_don(od_date_start, od_date_end);
@@ -7450,7 +7524,7 @@ function render_order_detail_table(ordersToRender) {
   if (countBadge) {
     countBadge.textContent = isAllTableMode
       ? `${totalMatched} đơn hàng`
-      : `${totalMatched} đơn đã đếm`;
+      : (current_od_only_returned ? `${totalMatched} đơn hoàn` : `${totalMatched} đơn đã đếm`);
   }
   if (qtyBadge) {
     qtyBadge.textContent = `Tổng SL: ${tong_sl}`;
@@ -8026,7 +8100,7 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
       <span class="card-name">👟 ${ma_str}</span>
       ${build_sp_closing_rate_pill_html(ma_str, current_mkt_detail)}
       ${build_card_camp_pill_html(current_mkt_detail, ma_str)}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem ${count} đơn hàng chi tiết của ${ma_str}">Chi tiết đơn →</span>
+      ${build_card_return_rate_pill_html(current_mkt_detail, ma_str, "js-btn-view-sp-orders")}
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: var(--color-highlight)">0</span>
@@ -8054,12 +8128,12 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
-  // Chỉ nút Chi tiết đơn mới mở chi tiết đơn hàng; bấm các vùng khác (kể cả số đơn) đều mở Camp
+  // Chỉ nút Tỉ lệ hoàn mới mở danh sách đơn hoàn; bấm các vùng khác (kể cả số đơn) đều mở Camp
   const btnViewSpOrders = topRow.querySelector(".js-btn-view-sp-orders");
   if (btnViewSpOrders) {
     btnViewSpOrders.addEventListener("click", (e) => {
       e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str);
+      hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str, true);
     });
   }
 
@@ -8097,7 +8171,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
       <span class="card-name">${name_str}</span>
       ${build_sp_closing_rate_pill_html(name_str, null)}
       ${build_card_camp_pill_html("__ALL__", name_str)}
-      <span class="card-view-orders-hint clickable-hint js-btn-view-sp-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">Chi tiết đơn →</span>
+      ${build_card_return_rate_pill_html(null, name_str, "js-btn-view-sp-orders")}
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -8133,7 +8207,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
   if (btnViewTopSpOrders) {
     btnViewTopSpOrders.addEventListener("click", (e) => {
       e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(null, name_str);
+      hien_thi_bang_don_hang_chi_tiet(null, name_str, true);
     });
   }
 
@@ -8966,7 +9040,7 @@ function ap_dung_khoang_ngay_loc_don(st, en) {
 
   if (isCardMode) {
     cap_nhat_text_ngay_chi_tiet_don(effSt, effEn);
-    current_od_raw_list = lay_danh_sach_don_chi_tiet(current_od_mkt, current_od_sp, effSt, effEn);
+    current_od_raw_list = lay_danh_sach_don_chi_tiet(current_od_mkt, current_od_sp, effSt, effEn, current_od_only_returned);
   }
   apply_od_filters_and_render(true);
 
@@ -8979,7 +9053,7 @@ function ap_dung_khoang_ngay_loc_don(st, en) {
           current_od_raw_list = lay_tat_ca_don_hang_tu_bang_a_den_p(false);
           apply_od_filters_and_render(true);
         } else if (current_od_mode === "card") {
-          current_od_raw_list = lay_danh_sach_don_chi_tiet(current_od_mkt, current_od_sp, od_date_start, od_date_end);
+          current_od_raw_list = lay_danh_sach_don_chi_tiet(current_od_mkt, current_od_sp, od_date_start, od_date_end, current_od_only_returned);
           apply_od_filters_and_render(true);
         }
       }).catch(() => {});
@@ -13507,6 +13581,7 @@ function prepare_ship_export_rows(orders, opts) {
     const ownMvd = String(row.ma_van_don || "").trim();
     const parentMvd = String(row.parent_ma_van_don || "").trim();
     const effMvd = ownMvd && ownMvd !== "-" && ownMvd !== "—" ? ownMvd : parentMvd;
+    if (la_mvd_ghi_chu_don_khach(effMvd)) continue;
     if (onlyNoMvd && effMvd && effMvd !== "-" && effMvd !== "—") continue;
 
     const rawSdt = String(row.sdt || row.parent_sdt || "").trim();
@@ -13952,6 +14027,33 @@ function build_ship_tsv(carrier, preparedRows) {
     lines.push(arr.map(cleanCell).join("\t"));
   }
   return lines.join("\n");
+}
+
+function load_recent_vtp_pushed_map() {
+  const out = {};
+  try {
+    const raw = JSON.parse(localStorage.getItem("applam_vtp_recent_pushed") || "{}");
+    const now = Date.now();
+    for (const k of Object.keys(raw || {})) {
+      if (now - Number(raw[k]) < 15 * 60 * 1000) out[k] = raw[k];
+    }
+  } catch (e) {}
+  return out;
+}
+
+function mark_vtp_row_pushed(key) {
+  try {
+    const m = load_recent_vtp_pushed_map();
+    m[key] = Date.now();
+    localStorage.setItem("applam_vtp_recent_pushed", JSON.stringify(m));
+  } catch (e) {}
+}
+
+// MVĐ ghi chú tay (khách mua tại VP, khách ship hỏa tốc ở HN, đến lấy tại VP...) = đơn khách, không đẩy VTP
+function la_mvd_ghi_chu_don_khach(mvdRaw) {
+  const s = String(mvdRaw || "").trim();
+  if (!s || s === "-" || s === "—") return false;
+  return !/\d{6,}/.test(s);
 }
 
 function refresh_export_ship_preview() {
@@ -14419,6 +14521,8 @@ function init_export_ship_modal() {
         if (dateRangeText) {
           dateRangeText.textContent = `Tổng cộng ${current_od_raw_list.length} đơn hàng trong bảng`;
         }
+      } else if (current_od_mode === "card" && typeof lay_danh_sach_don_chi_tiet === "function") {
+        current_od_raw_list = lay_danh_sach_don_chi_tiet(current_od_mkt, current_od_sp, od_date_start, od_date_end, current_od_only_returned);
       }
       const odModal = document.getElementById("orderDetailModal");
       if (odModal && !odModal.classList.contains("hidden") && typeof apply_od_filters_and_render === "function") {
@@ -14569,7 +14673,7 @@ function init_export_ship_modal() {
     }
   });
 
-  document.getElementById("btnDoPushVtpApi")?.addEventListener("click", async () => {
+  const _do_push_vtp_api_impl = async () => {
     const btn = document.getElementById("btnDoPushVtpApi");
     refresh_export_ship_preview();
     const prep = _exp_ship_last_prepared;
@@ -14580,6 +14684,21 @@ function init_export_ship_modal() {
     if (prep.warnings && prep.warnings.length > 0) {
       setStatus(`Còn ${prep.warnings.length} đơn cần kiểm tra — hãy xử lý hết lỗi trước khi đẩy đơn.`, "error");
       return;
+    }
+
+    // Chặn đẩy lặp: bỏ qua đơn vừa đẩy thành công trong 15 phút gần nhất mà Sheet chưa kịp ghi MVĐ
+    const pushedKeyOf = (r) => `${r.phone}|${r.orderDateYmd}|${r.itemName}|${r.cod}`;
+    const recentPushed = load_recent_vtp_pushed_map();
+    const dupRows = prep.rows.filter((r) => recentPushed[pushedKeyOf(r)]);
+    if (dupRows.length > 0) {
+      prep.rows = prep.rows.filter((r) => !recentPushed[pushedKeyOf(r)]);
+      if (prep.rows.length === 0) {
+        setStatus(
+          `Đã chặn đẩy lặp ${dupRows.length} đơn vừa lên VTP (${dupRows.map((r) => r.name).join(", ")}). Hãy bấm Tải lại để Sheet cập nhật MVĐ.`,
+          "error"
+        );
+        return;
+      }
     }
 
     const vtpXmg = Boolean(document.getElementById("expShipVtpXmg")?.checked ?? true);
@@ -14699,6 +14818,7 @@ function init_export_ship_modal() {
         if (cd && !cd.error && cd.data && cd.data.ORDER_NUMBER) {
           const mvdStr = String(cd.data.ORDER_NUMBER).trim();
           const shipFeeVal = Math.round(Number(cd.data.MONEY_TOTAL) || 0);
+          mark_vtp_row_pushed(pushedKeyOf(r));
           okList.push(`${r.name}: ${mvdStr} (cước ${format_tien_vnd(shipFeeVal)})`);
           let ymdDate = "";
           const dm = String(r.orderDateYmd || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -14776,6 +14896,21 @@ function init_export_ship_modal() {
         btn.disabled = false;
         btn.textContent = origText || "🚀 Đẩy thẳng VTP";
       }
+    }
+  };
+
+  // Khóa đồng bộ ngay khi bấm: tránh bấm đúp / giữ phím tạo 2-3 đơn VTP trùng nhau
+  let _vtp_push_inflight = false;
+  document.getElementById("btnDoPushVtpApi")?.addEventListener("click", async () => {
+    if (_vtp_push_inflight) return;
+    _vtp_push_inflight = true;
+    const b = document.getElementById("btnDoPushVtpApi");
+    if (b) b.disabled = true;
+    try {
+      await _do_push_vtp_api_impl();
+    } finally {
+      _vtp_push_inflight = false;
+      if (b) b.disabled = false;
     }
   });
 
@@ -15487,7 +15622,8 @@ function map_vtp_status_to_sheet_tag(vtpRec, sheetTotalQty) {
   }
   if (st === 504) return "ĐÃ HOÀN";
   if (st === 502 || st === 505 || st === 515) return "ĐANG CHUYỂN HOÀN";
-  if (st === 107 || st === 201 || st === 503) return "ĐÃ HỦY";
+  if (st === 503) return "CHỜ XỬ LÝ";
+  if (st === 107 || st === 201) return "ĐÃ HỦY";
   if (
     [105, 200, 202, 300, 301, 302, 303, 320, 400, 401, 402, 403, 500, 506, 507, 508, 509].includes(st)
   ) {
@@ -15542,7 +15678,18 @@ function map_vtp_excel_row_to_sheet_tag(vtpStatusRaw, vtpThu, sheetCod) {
   if (stNorm.includes("VTP HUY")) {
     return "VTP HỦY LẤY";
   }
-  if (stNorm.includes("HUY")) {
+  if (
+    /\bHUY\b/.test(stNorm) &&
+    (stNorm.includes("KHACH") ||
+      stNorm.includes("NGUOI NHAN") ||
+      stNorm.includes("YEU CAU") ||
+      stNorm.includes("GIAO") ||
+      stNorm.includes("PHAT") ||
+      /\bTON\b/.test(stNorm))
+  ) {
+    return "CHỜ XỬ LÝ";
+  }
+  if (/\bHUY\b/.test(stNorm)) {
     return "ĐÃ HỦY";
   }
   if (stNorm.includes("GIAO 1 PHAN") || stNorm.includes("GIAO MOT PHAN") || stNorm.includes("PHAT 1 PHAN")) {
@@ -15566,18 +15713,24 @@ function map_vtp_excel_row_to_sheet_tag(vtpStatusRaw, vtpThu, sheetCod) {
   if (stNorm.includes("CHO XU LY")) {
     return "CHỜ XỬ LÝ";
   }
-  if (stNorm.includes("PHAT TIEP")) {
+  if (stNorm.includes("PHAT TIEP") || stNorm.includes("HEN PHAT")) {
     return "PHÁT TIẾP";
+  }
+  if (stNorm.includes("TU CHOI") || stNorm.includes("SAI THONG TIN") || stNorm.includes("KHONG LIEN LAC")) {
+    return "CHỜ XỬ LÝ";
   }
   if (
     stNorm.includes("DANG GIAO") ||
     stNorm.includes("DANG PHAT") ||
-    stNorm.includes("GIAO KHONG THANH CONG") ||
-    stNorm.includes("TON")
+    stNorm.includes("GIAO KHONG THANH") ||
+    stNorm.includes("PHAT KHONG THANH") ||
+    stNorm.includes("THAT BAI") ||
+    stNorm.includes("LUU KHO") ||
+    /\bTON\b/.test(stNorm)
   ) {
     return "ĐANG GIAO HÀNG";
   }
-  if (stNorm.includes("VAN CHUYEN") || stNorm.includes("DA KET NOI")) {
+  if (stNorm.includes("VAN CHUYEN") || stNorm.includes("KET NOI") || stNorm.includes("LUAN CHUYEN") || stNorm.includes("CHUYEN TIEP")) {
     return "ĐANG VẬN CHUYỂN";
   }
   if (stNorm.includes("DA LAY HANG")) {
@@ -15763,14 +15916,36 @@ function render_vtp_sync_modal() {
       listEl.innerHTML = `<div class="vtp-sync-empty">⏳ Đang xử lý &amp; đối chiếu dữ liệu từ Viettel Post...</div>`;
       return;
     }
-    const filtered = items.filter((it) => _vtp_sync_filter === "all" || get_vtp_sync_category(it.status) === _vtp_sync_filter);
+    const qSearch = String(document.getElementById("vtpSyncSearchInput")?.value || "").trim();
+    const qUpper = qSearch.toUpperCase();
+    const qAlt = qUpper.replace(/\s+/g, "").replace(/^PKE(?=\d)/, "");
+    const qLow = qSearch.toLowerCase();
+
+    const filtered = items.filter((it) => {
+      if (_vtp_sync_filter !== "all" && get_vtp_sync_category(it.status) !== _vtp_sync_filter) return false;
+      if (!qSearch) return true;
+      return (
+        String(it.mvd || "").toUpperCase().includes(qUpper) ||
+        String(it.name || "").toLowerCase().includes(qLow) ||
+        String(it.phone || "").includes(qSearch)
+      );
+    });
     if (filtered.length === 0) {
+      if (qSearch && _vtp_sync_state.diagLookup) {
+        const diag = _vtp_sync_state.diagLookup(qUpper, qAlt);
+        if (diag) {
+          listEl.innerHTML = diag;
+          return;
+        }
+      }
       listEl.innerHTML = `<div class="vtp-sync-empty">${
         items.length === 0
           ? excelMeta
             ? `Đã đọc ${excelMeta.totalRows} đơn từ "${escape_html(excelMeta.fileName)}" (${excelMeta.matchedCount} đơn khớp chưa chốt) — chưa có đơn nào cần đổi trạng thái mới.`
             : "Tất cả đơn đang đi đều khớp với trạng thái mới nhất trên Viettel Post."
-          : "Không có đơn nào trong nhóm lọc này."
+          : qSearch
+            ? `Không tìm thấy "${escape_html(qSearch)}" trong danh sách thay đổi.`
+            : "Không có đơn nào trong nhóm lọc này."
       }</div>`;
       return;
     }
@@ -15847,7 +16022,6 @@ async function scan_vtp_status_sync_modal() {
       "GIAO THANH CONG",
       "DA HOAN",
       "DA TRA",
-      "DA HUY",
       "SHOP HUY LAY",
       "VTP HUY LAY",
     ]);
@@ -15940,13 +16114,32 @@ async function scan_vtp_status_sync_modal() {
       const info = mvdMap.get(mvdKey);
       if (!info) continue;
 
-      const targetTag = map_vtp_status_to_sheet_tag(rec, info.totalQty);
-      if (!targetTag) continue;
+      const rawTargetTag = map_vtp_status_to_sheet_tag(rec, info.totalQty);
+      if (!rawTargetTag) continue;
+      let targetTag = rawTargetTag;
+      if (normSt(targetTag) === "DA HUY") {
+        const hasTransitStatus = Array.from(info.rowStatuses).some((curNorm) =>
+          curNorm === "DANG VAN CHUYEN" ||
+          curNorm === "DANG GIAO HANG" ||
+          curNorm === "DA LAY HANG" ||
+          curNorm === "CHO PHAT LAI" ||
+          curNorm === "CHO XU LY" ||
+          curNorm === "PHAT TIEP" ||
+          curNorm === "DANG CHUYEN HOAN" ||
+          curNorm === "GIAO 1 PHAN"
+        );
+        if (hasTransitStatus) {
+          targetTag = "CHỜ XỬ LÝ";
+        }
+      }
       const targetNorm = normSt(targetTag);
 
       let needUpdate = false;
       for (const curNorm of info.rowStatuses) {
         if (!PROTECTED_NORM.has(curNorm) && curNorm !== targetNorm) {
+          if (curNorm === "DA HUY" && (targetNorm === "LEN APP VTP" || targetNorm === "DA TIEP NHAN" || targetNorm === "DANG LAY HANG")) {
+            continue;
+          }
           needUpdate = true;
           break;
         }
@@ -16015,7 +16208,13 @@ async function sync_vtp_items_to_sheet_core(changedItems, counts, matchedCount) 
   await tai_va_cap_nhat_theo_ngay(false, false, true);
 
   const summaryParts = Object.keys(counts || {}).map((k) => `${counts[k]} ${k}`);
-  const okMsg = `✅ Đã đối soát Excel VTP (${matchedCount} đơn khớp) & cập nhật ${sd.updatedRows || itemsToSend.length} dòng lên cột N (${summaryParts.join(", ")})`;
+  const hadOldDaHuy = changedItems.some((it) => bo_dau_tieng_viet(String(it.oldStatus || "")).toUpperCase().trim() === "DA HUY");
+  const matchedMvdsCount = Number(sd.matchedMvds);
+  const partialNote =
+    hadOldDaHuy && Number.isFinite(matchedMvdsCount) && matchedMvdsCount < itemsToSend.length
+      ? ` ⚠️ Còn ${itemsToSend.length - matchedMvdsCount} đơn đang là ĐÃ HỦY chưa được ghi (cần cập nhật file applam_v8.6.405.gs lên Apps Script hoặc đổi tay ĐÃ HỦY trên Sheet).`
+      : "";
+  const okMsg = `✅ Đã đối soát Excel VTP (${matchedCount} đơn khớp) & cập nhật ${sd.updatedRows ?? itemsToSend.length} dòng lên cột N (${summaryParts.join(", ")})${partialNote}`;
   _vtp_sync_state.committed = true;
   set_vtp_sync_status_msg(okMsg, "done");
   if (typeof show_update_toast_notification === "function") {
@@ -16027,6 +16226,8 @@ function open_vtp_status_sync_modal() {
   const modal = document.getElementById("vtpStatusSyncModal");
   if (!modal) return;
   _vtp_sync_filter = "all";
+  const sIn = document.getElementById("vtpSyncSearchInput");
+  if (sIn) sIn.value = "";
   document.querySelectorAll("#vtpSyncFilterPills .vtp-sync-filter-pill").forEach((b) => {
     b.classList.toggle("active", b.getAttribute("data-filter") === "all");
   });
@@ -16059,12 +16260,9 @@ async function scan_vtp_excel_file_to_modal(file) {
       return;
     }
 
-    if (
-      (!Array.isArray(data_hien_tai) || data_hien_tai.length === 0 || !thong_ke_loaded_start || thong_ke_loaded_start > APP_DATA_MIN_DATE) &&
-      typeof tai_du_lieu_google_sheets === "function"
-    ) {
-      set_vtp_sync_status_msg("⏳ Đang tải đủ dữ liệu Google Sheet từ đầu tháng...", "done");
-      await tai_du_lieu_google_sheets(false, "", "", true).catch(() => false);
+    if (typeof tai_du_lieu_google_sheets === "function") {
+      set_vtp_sync_status_msg("⏳ Đang tải dữ liệu Google Sheet mới nhất để đối soát...", "done");
+      await tai_du_lieu_google_sheets(true, "", "", true, true).catch(() => false);
     }
 
     const allOrders = typeof lay_tat_ca_don_hang_tu_bang_a_den_p === "function"
@@ -16080,7 +16278,6 @@ async function scan_vtp_excel_file_to_modal(file) {
       "GIAO THANH CONG",
       "DA HOAN",
       "DA TRA",
-      "DA HUY",
       "SHOP HUY LAY",
       "VTP HUY LAY",
     ]);
@@ -16152,13 +16349,32 @@ async function scan_vtp_excel_file_to_modal(file) {
 
       const targetTag = map_vtp_excel_row_to_sheet_tag(rowVtp.vtpStatus, rowVtp.thuVal, info.sheetCod);
       if (!targetTag) continue;
-      const targetNorm = normSt(targetTag);
+      let finalTag = targetTag;
+      if (normSt(finalTag) === "DA HUY") {
+        const hasTransitStatus = Array.from(info.rowStatuses).some((curNorm) =>
+          curNorm === "DANG VAN CHUYEN" ||
+          curNorm === "DANG GIAO HANG" ||
+          curNorm === "DA LAY HANG" ||
+          curNorm === "CHO PHAT LAI" ||
+          curNorm === "CHO XU LY" ||
+          curNorm === "PHAT TIEP" ||
+          curNorm === "DANG CHUYEN HOAN" ||
+          curNorm === "GIAO 1 PHAN"
+        );
+        if (hasTransitStatus) {
+          finalTag = "CHỜ XỬ LÝ";
+        }
+      }
+      const targetNorm = normSt(finalTag);
 
       let needUpdate = false;
       for (const curNorm of info.rowStatuses) {
         if (PROTECTED_NORM.has(curNorm) || curNorm === targetNorm) continue;
         // Không hạ ngược đơn đang vận chuyển / đang giao / đang chuyển hoàn xuống LÊN APP VTP
         if (targetNorm === "LEN APP VTP" && (curNorm === "DANG VAN CHUYEN" || curNorm === "DANG GIAO HANG" || curNorm === "DANG CHUYEN HOAN" || curNorm === "GIAO 1 PHAN")) {
+          continue;
+        }
+        if (curNorm === "DA HUY" && (targetNorm === "LEN APP VTP" || targetNorm === "DA TIEP NHAN" || targetNorm === "DANG LAY HANG")) {
           continue;
         }
         needUpdate = true;
@@ -16168,7 +16384,7 @@ async function scan_vtp_excel_file_to_modal(file) {
 
       changedItems.push({
         mvd: info.mvd,
-        status: targetTag,
+        status: finalTag,
         name: info.name,
         phone: info.phone,
         date: info.date,
@@ -16176,7 +16392,7 @@ async function scan_vtp_excel_file_to_modal(file) {
         oldStatus: info.oldStatus,
         codNote: `Thu VTP: ${format_tien_vnd(rowVtp.thuVal)} / COD Sheet: ${format_tien_vnd(info.sheetCod)}`,
       });
-      counts[targetTag] = (counts[targetTag] || 0) + 1;
+      counts[finalTag] = (counts[finalTag] || 0) + 1;
     }
 
     const excelMeta = {
@@ -16187,6 +16403,39 @@ async function scan_vtp_excel_file_to_modal(file) {
       rawVtpCounts,
     };
 
+    const excelByAltKey = new Map();
+    for (const rowVtp of parsed.items) {
+      const mK = String(rowVtp.mvd || "").trim().toUpperCase();
+      const aK = stripPkeKey(mK);
+      if (mK && !excelByAltKey.has(mK)) excelByAltKey.set(mK, rowVtp);
+      if (aK && !excelByAltKey.has(aK)) excelByAltKey.set(aK, rowVtp);
+    }
+
+    const diagLookup = (qUpper, qAlt) => {
+      const exRow = excelByAltKey.get(qUpper) || (qAlt ? excelByAltKey.get(qAlt) : null);
+      const shRow = mvdMap.get(qUpper) || (qAlt ? mvdNoPkeMap.get(qAlt) : null);
+      if (!exRow && !shRow) return "";
+      const exText = exRow ? `${exRow.vtpStatus || "(Trống)"} (Thu: ${format_tien_vnd(exRow.thuVal)})` : "KHÔNG CÓ trong file Excel vừa chọn";
+      const mappedTag = exRow ? map_vtp_excel_row_to_sheet_tag(exRow.vtpStatus, exRow.thuVal, shRow ? shRow.sheetCod : 0) : "";
+      const shText = shRow ? `${shRow.oldStatus || "(Trống)"} (${shRow.name || ""})` : "KHÔNG TÌM THẤY trên Sheet";
+      let reason = "";
+      if (!exRow) reason = "Mã vận đơn này không có mặt trong file Excel bạn vừa chọn.";
+      else if (!shRow) reason = "Không tìm thấy mã vận đơn này trong bảng Google Sheet đã tải.";
+      else if (!shRow.hasUpdatable) reason = `Đang có trạng thái chốt bảo vệ trên Sheet (${shRow.oldStatus}).`;
+      else if (!mappedTag) reason = `Chưa nhận diện được chuỗi trạng thái Excel "${exRow.vtpStatus}".`;
+      else reason = `Trạng thái đích (${mappedTag}) trùng với trạng thái hiện có trên Sheet (${shRow.oldStatus}).`;
+      return (
+        `<div class="vtp-sync-row">` +
+        `<div class="vtp-sync-row-left">` +
+        `<div class="vtp-sync-row-name"><strong>Kiểm tra MVĐ: ${escape_html(qUpper)}</strong></div>` +
+        `<div class="vtp-sync-row-meta">Excel: <strong>${escape_html(exText)}</strong> → Dịch: <strong>${escape_html(mappedTag || "—")}</strong></div>` +
+        `<div class="vtp-sync-row-meta">Sheet: <strong>${escape_html(shText)}</strong></div>` +
+        `<div class="vtp-sync-row-meta">Lý do: ${escape_html(reason)}</div>` +
+        `</div>` +
+        `</div>`
+      );
+    };
+
     _vtp_sync_state = {
       totalChecked: matchedCount,
       changedItems,
@@ -16195,6 +16444,7 @@ async function scan_vtp_excel_file_to_modal(file) {
       idleReady: false,
       committed: false,
       excelMeta,
+      diagLookup,
     };
     if (matchedCount === 0) {
       const sample = parsed.items
@@ -16333,6 +16583,10 @@ function init_vtp_status_sync_modal() {
     document.querySelectorAll("#vtpSyncFilterPills .vtp-sync-filter-pill").forEach((b) => {
       b.classList.toggle("active", b === btn);
     });
+    render_vtp_sync_modal();
+  });
+
+  document.getElementById("vtpSyncSearchInput")?.addEventListener("input", () => {
     render_vtp_sync_modal();
   });
 
