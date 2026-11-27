@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.399";
+const APP_FRONTEND_VERSION = "8.6.400";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -4312,7 +4312,6 @@ function create_mkt_table_card(
     <div class="card-title-group">
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
-      ${build_sp_closing_rate_pill_html(null, name_str)}
       ${build_card_camp_pill_html(name_str, "")}
       <span class="card-view-orders-hint clickable-hint js-btn-view-mkt-orders" title="Bấm để xem chi tiết tất cả ${count} đơn của ${name_str}">Chi tiết đơn →</span>
       <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho ${name_str}">Xuất bản CP</span>
