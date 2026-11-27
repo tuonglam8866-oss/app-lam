@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.410";
+const APP_FRONTEND_VERSION = "8.6.411";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -4292,11 +4292,12 @@ function build_card_return_rate_pill_html(ten_mkt, ma_str, extraClass = "") {
   const hoan = (stat && stat.hoan) || 0;
   const tong = valid + hoan;
   const pct = tong > 0 ? (hoan / tong) * 100 : 0;
+  const pctDisp = tong > 0 ? Number(pct.toFixed(1)) : 0;
   const pctStr = hoan > 0
-    ? `${Number.isInteger(Number(pct.toFixed(1))) ? pct.toFixed(0) : pct.toFixed(1)}%`
+    ? `${Number.isInteger(pctDisp) ? pct.toFixed(0) : pct.toFixed(1)}%`
     : "0%";
   const labelText = `Hoàn ${pctStr}`;
-  const levelCls = pct > 15 ? "is-high" : (pct > 5 ? "is-mid" : "");
+  const levelCls = pctDisp >= 25 ? "is-high" : (pctDisp >= 20 ? "is-mid" : "");
   const scopeDesc = ten_mkt && ma_str
     ? `${ten_mkt} - ${ma_str}`
     : (ten_mkt || ma_str || "Toàn công ty");

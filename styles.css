@@ -3680,15 +3680,15 @@ input::-ms-clear {
   box-shadow: 0 2px 6px rgba(245, 176, 65, 0.28);
 }
 
-/* Nút tỉ lệ hoàn trên thẻ Tổng công ty / MKT / SP (v8.6.401) */
+/* Nút tỉ lệ hoàn trên thẻ Tổng công ty / MKT / SP (v8.6.411: <20% xanh, 20-24.9% vàng, >=25% đỏ) */
 .card-return-rate-hint.clickable-hint {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(180, 83, 9, 0.1);
-  color: #B45309;
-  border: 1px solid rgba(180, 83, 9, 0.25);
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803D;
+  border: 1px solid rgba(22, 163, 74, 0.3);
   padding: 2px 7px;
   border-radius: 999px;
   font-size: 10.5px;
@@ -3698,22 +3698,22 @@ input::-ms-clear {
   user-select: none;
 }
 .card-return-rate-hint.clickable-hint:hover {
-  background: #B45309;
+  background: #15803D;
   color: #FFFFFF !important;
-  border-color: #B45309;
+  border-color: #15803D;
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.28);
+  box-shadow: 0 2px 6px rgba(21, 128, 61, 0.28);
 }
 .card-return-rate-hint.clickable-hint.is-mid {
-  background: rgba(194, 65, 12, 0.11);
-  color: #C2410C;
-  border-color: rgba(194, 65, 12, 0.3);
+  background: rgba(234, 179, 8, 0.16);
+  color: #A16207;
+  border-color: rgba(202, 138, 4, 0.38);
 }
 .card-return-rate-hint.clickable-hint.is-mid:hover {
-  background: #C2410C;
+  background: #CA8A04;
   color: #FFFFFF !important;
-  border-color: #C2410C;
-  box-shadow: 0 2px 6px rgba(194, 65, 12, 0.28);
+  border-color: #CA8A04;
+  box-shadow: 0 2px 6px rgba(202, 138, 4, 0.28);
 }
 .card-return-rate-hint.clickable-hint.is-high {
   background: rgba(185, 28, 28, 0.1);
@@ -3727,24 +3727,24 @@ input::-ms-clear {
   box-shadow: 0 2px 6px rgba(185, 28, 28, 0.28);
 }
 [data-theme="dark"] .card-return-rate-hint.clickable-hint {
-  background: rgba(245, 176, 65, 0.14);
-  color: #F5B041;
-  border-color: rgba(245, 176, 65, 0.3);
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ADE80;
+  border-color: rgba(74, 222, 128, 0.32);
 }
 [data-theme="dark"] .card-return-rate-hint.clickable-hint:hover {
-  background: #F5B041;
+  background: #22C55E;
   color: #1A120B !important;
-  border-color: #F5B041;
+  border-color: #22C55E;
 }
 [data-theme="dark"] .card-return-rate-hint.clickable-hint.is-mid {
-  background: rgba(251, 146, 60, 0.16);
-  color: #FB923C;
-  border-color: rgba(251, 146, 60, 0.34);
+  background: rgba(250, 204, 21, 0.16);
+  color: #FACC15;
+  border-color: rgba(250, 204, 21, 0.34);
 }
 [data-theme="dark"] .card-return-rate-hint.clickable-hint.is-mid:hover {
-  background: #FB923C;
+  background: #EAB308;
   color: #1A120B !important;
-  border-color: #FB923C;
+  border-color: #EAB308;
 }
 [data-theme="dark"] .card-return-rate-hint.clickable-hint.is-high {
   background: rgba(248, 113, 113, 0.16);
