@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.409";
+const APP_FRONTEND_VERSION = "8.6.410";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -4295,7 +4295,7 @@ function build_card_return_rate_pill_html(ten_mkt, ma_str, extraClass = "") {
   const pctStr = hoan > 0
     ? `${Number.isInteger(Number(pct.toFixed(1))) ? pct.toFixed(0) : pct.toFixed(1)}%`
     : "0%";
-  const labelText = hoan > 0 ? `Hoàn ${pctStr} (${hoan}/${tong})` : "Hoàn 0%";
+  const labelText = `Hoàn ${pctStr}`;
   const levelCls = pct > 15 ? "is-high" : (pct > 5 ? "is-mid" : "");
   const scopeDesc = ten_mkt && ma_str
     ? `${ten_mkt} - ${ma_str}`
@@ -8096,7 +8096,7 @@ function build_sp_closing_rate_pill_html(ma_str, ten_mkt) {
   const pctFormatted = dem > 0
     ? `${Number.isInteger(Number(pct.toFixed(1))) ? pct.toFixed(0) : pct.toFixed(1)}%`
     : "0%";
-  const labelText = dem > 0 ? `Chốt ${pctFormatted} (${chot}/${dem})` : `Chốt 0%`;
+  const labelText = `Chốt ${pctFormatted}`;
   const scopeDesc = ma_str
     ? `mã ${ma_str}${ten_mkt ? ` (${ten_mkt})` : ""}`
     : `${ten_mkt || "MKT"}`;
