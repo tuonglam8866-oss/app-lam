@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.407";
+const APP_FRONTEND_VERSION = "8.6.408";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -4298,6 +4298,31 @@ function build_card_return_rate_pill_html(ten_mkt, ma_str, extraClass = "") {
   return `<span class="card-return-rate-hint clickable-hint ${levelCls} ${extraClass}" title="${escape_html(tooltip)}">${escape_html(labelText)}</span>`;
 }
 
+function build_card_view_orders_pill_html(ten_mkt, ma_str) {
+  const scopeDesc = ten_mkt && ma_str
+    ? `${ma_str} của ${ten_mkt}`
+    : (ten_mkt || ma_str || "Toàn công ty");
+  return `<span class="card-view-orders-hint clickable-hint js-btn-view-all-orders" title="${escape_html(`Xem danh sách chi tiết đơn ${scopeDesc}`)}">Chi tiết đơn &rarr;</span>`;
+}
+
+function bind_card_order_detail_buttons(topRow, ten_mkt, ma_str) {
+  if (!topRow) return;
+  const btnReturnOrders = topRow.querySelector(".js-btn-view-return-orders");
+  if (btnReturnOrders) {
+    btnReturnOrders.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_don_hang_chi_tiet(ten_mkt, ma_str, true);
+    });
+  }
+  const btnAllOrders = topRow.querySelector(".js-btn-view-all-orders");
+  if (btnAllOrders) {
+    btnAllOrders.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hien_thi_bang_don_hang_chi_tiet(ten_mkt, ma_str, false);
+    });
+  }
+}
+
 function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
   const holder = document.getElementById("badgeHolder");
   if (!holder) return;
@@ -4315,7 +4340,8 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
     <div class="card-title-group">
       <span class="card-name">${dict.companySummaryTitle}</span>
       ${build_card_camp_pill_html("__ALL__", "")}
-      ${build_card_return_rate_pill_html(null, null, "js-btn-view-company-orders")}
+      ${build_card_return_rate_pill_html(null, null, "js-btn-view-return-orders")}
+      ${build_card_view_orders_pill_html(null, null)}
       <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho Toàn công ty">Xuất bản CP</span>
     </div>
     <div class="card-count-group">
@@ -4329,11 +4355,6 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
     create_metrics_grid_dom(tong_cp, tong_dt, tong_don, dict.noRevenueYet)
   );
 
-  const openCompanyOrders = (e) => {
-    if (e) e.stopPropagation();
-    hien_thi_bang_don_hang_chi_tiet(null, null, true);
-  };
-
   const btnViewCompanyCamps = topRow.querySelector(".js-btn-view-card-camps");
   if (btnViewCompanyCamps) {
     btnViewCompanyCamps.addEventListener("click", (e) => {
@@ -4341,10 +4362,7 @@ function render_company_summary_card(date_label, tong_don, tong_dt, tong_cp) {
       hien_thi_bang_camp_mkt("__ALL__", "");
     });
   }
-  const btnViewCompanyOrders = topRow.querySelector(".js-btn-view-company-orders");
-  if (btnViewCompanyOrders) {
-    btnViewCompanyOrders.addEventListener("click", openCompanyOrders);
-  }
+  bind_card_order_detail_buttons(topRow, null, null);
   const btnExportCompanyCp = topRow.querySelector(".js-btn-export-cp");
   if (btnExportCompanyCp) {
     btnExportCompanyCp.addEventListener("click", (e) => {
@@ -4385,7 +4403,8 @@ function create_mkt_table_card(
       <span class="rank-pill ${pillCls}">${icon ? icon + " " : ""}#${rank}</span>
       <span class="card-name">${name_str}</span>
       ${build_card_camp_pill_html(name_str, "")}
-      ${build_card_return_rate_pill_html(name_str, null, "js-btn-view-mkt-orders")}
+      ${build_card_return_rate_pill_html(name_str, null, "js-btn-view-return-orders")}
+      ${build_card_view_orders_pill_html(name_str, null)}
       <span class="card-export-cp-hint clickable-hint js-btn-export-cp" title="Xuất bản chi phí (Excel &amp; Google Sheets) cho ${name_str}">Xuất bản CP</span>
     </div>
     <div class="card-count-group">
@@ -4426,13 +4445,7 @@ function create_mkt_table_card(
     });
   }
 
-  const btnViewOrders = topRow.querySelector(".js-btn-view-mkt-orders");
-  if (btnViewOrders) {
-    btnViewOrders.addEventListener("click", (e) => {
-      e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(name_str, null, true);
-    });
-  }
+  bind_card_order_detail_buttons(topRow, name_str, null);
 
   const btnExportCp = topRow.querySelector(".js-btn-export-cp");
   if (btnExportCp) {
@@ -8100,7 +8113,8 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
       <span class="card-name">👟 ${ma_str}</span>
       ${build_sp_closing_rate_pill_html(ma_str, current_mkt_detail)}
       ${build_card_camp_pill_html(current_mkt_detail, ma_str)}
-      ${build_card_return_rate_pill_html(current_mkt_detail, ma_str, "js-btn-view-sp-orders")}
+      ${build_card_return_rate_pill_html(current_mkt_detail, ma_str, "js-btn-view-return-orders")}
+      ${build_card_view_orders_pill_html(current_mkt_detail, ma_str)}
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: var(--color-highlight)">0</span>
@@ -8128,14 +8142,7 @@ function create_sp_detail_card(idx, ma_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
-  // Chỉ nút Tỉ lệ hoàn mới mở danh sách đơn hoàn; bấm các vùng khác (kể cả số đơn) đều mở Camp
-  const btnViewSpOrders = topRow.querySelector(".js-btn-view-sp-orders");
-  if (btnViewSpOrders) {
-    btnViewSpOrders.addEventListener("click", (e) => {
-      e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(current_mkt_detail, ma_str, true);
-    });
-  }
+  bind_card_order_detail_buttons(topRow, current_mkt_detail, ma_str);
 
   // Click vào pill Camp hoặc vào card SP để hiện danh sách Camp của riêng mã SP đó
   const btnViewSpCamps = topRow.querySelector(".js-btn-view-card-camps");
@@ -8171,7 +8178,8 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
       <span class="card-name">${name_str}</span>
       ${build_sp_closing_rate_pill_html(name_str, null)}
       ${build_card_camp_pill_html("__ALL__", name_str)}
-      ${build_card_return_rate_pill_html(null, name_str, "js-btn-view-sp-orders")}
+      ${build_card_return_rate_pill_html(null, name_str, "js-btn-view-return-orders")}
+      ${build_card_view_orders_pill_html(null, name_str)}
     </div>
     <div class="card-count-group">
       <span class="card-count-val js-count" style="color: ${color}">0</span>
@@ -8203,13 +8211,7 @@ function create_top_sp_card(rank, name_str, count, spend, doanh_so, maxCount) {
   const countEl = topRow.querySelector(".js-count");
   animate_number(countEl, count, (v) => String(Math.round(v)), 520);
 
-  const btnViewTopSpOrders = topRow.querySelector(".js-btn-view-sp-orders");
-  if (btnViewTopSpOrders) {
-    btnViewTopSpOrders.addEventListener("click", (e) => {
-      e.stopPropagation();
-      hien_thi_bang_don_hang_chi_tiet(null, name_str, true);
-    });
-  }
+  bind_card_order_detail_buttons(topRow, null, name_str);
 
   const btnViewCardCamps = topRow.querySelector(".js-btn-view-card-camps");
   if (btnViewCardCamps) {
