@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.411";
+const APP_FRONTEND_VERSION = "8.6.412";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -4208,6 +4208,13 @@ function toggle_avg_call_time_popup(anchorEl) {
   pop.style.top = `${rect.bottom + 7}px`;
   pop.style.maxHeight = `${Math.max(240, window.innerHeight - rect.bottom - 24)}px`;
 }
+function get_cpds_pill_cls(pct) {
+  const pctDisp = Number(Number(pct || 0).toFixed(1));
+  if (pctDisp >= 25) return "val-red";
+  if (pctDisp >= 20) return "val-highlight";
+  return "val-green";
+}
+
 function calc_metrics_display(spend, doanh_so, count, zeroDsLabel) {
   const cpo_val = spend > 0 && count > 0 ? spend / count : 0;
 
@@ -4217,8 +4224,7 @@ function calc_metrics_display(spend, doanh_so, count, zeroDsLabel) {
   if (spend > 0 && doanh_so > 0) {
     const pct_ds = (spend / doanh_so) * 100;
     pct_str = `${pct_ds.toFixed(1)}%`;
-    pct_cls =
-      pct_ds < 15 ? "val-green" : pct_ds > 25 ? "val-red" : "val-highlight";
+    pct_cls = get_cpds_pill_cls(pct_ds);
   } else if (spend > 0 && doanh_so === 0) {
     pct_str = zeroDsLabel;
     pct_cls = "val-red";
@@ -6983,7 +6989,7 @@ function cap_nhat_reconcile_bar_mc(ten_mkt, spFilterNorm, campsList, outsideReco
     }
 
     const pctOut = rec.outsideTotalDs > 0 && fullMktSpend > 0 ? (fullMktSpend / rec.outsideTotalDs) * 100 : 0;
-    const pctClsOut = pctOut < 15 ? "val-green" : pctOut > 25 ? "val-red" : "val-highlight";
+    const pctClsOut = get_cpds_pill_cls(pctOut);
     const pctOutBadge = (rec.outsideTotalDs > 0 && fullMktSpend > 0)
       ? `<span class="cpds-pill mc-cpds-pill ${pctClsOut}">${pctOut.toFixed(1)}%</span>`
       : "";
@@ -7232,7 +7238,7 @@ function render_mc_table_rows() {
     const cpdsHtml = (spend > 0 && ds > 0)
       ? (() => {
           const pct = (spend / ds) * 100;
-          const pctCls = pct < 15 ? "val-green" : pct > 25 ? "val-red" : "val-highlight";
+          const pctCls = get_cpds_pill_cls(pct);
           return `<span class="cpds-pill mc-cpds-pill ${pctCls}">${pct.toFixed(1)}%</span>`;
         })()
       : `<span class="mc-metric-val">-</span>`;
@@ -7335,7 +7341,7 @@ function render_mc_table_rows() {
     const footCpdsHtml = (totalSpend > 0 && totalRevenue > 0)
       ? (() => {
           const pct = (totalSpend / totalRevenue) * 100;
-          const pctCls = pct < 15 ? "val-green" : pct > 25 ? "val-red" : "val-highlight";
+          const pctCls = get_cpds_pill_cls(pct);
           return `<span class="cpds-pill mc-cpds-pill ${pctCls}">${pct.toFixed(1)}%</span>`;
         })()
       : `<span class="mc-metric-val">-</span>`;
