@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.413";
+const APP_FRONTEND_VERSION = "8.6.414";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -2021,7 +2021,12 @@ function play_web_speech_vi(text_doc) {
         const viVoice = voices.find((v) =>
           v.lang && (v.lang.toLowerCase().includes("vi") || v.lang.toLowerCase().includes("vie"))
         );
-        if (viVoice) utter.voice = viVoice;
+        // Không bao giờ đọc bằng giọng tiếng Anh (David/Zira) nếu máy không có giọng tiếng Việt
+        if (!viVoice) {
+          resolve();
+          return;
+        }
+        utter.voice = viVoice;
         utter.onend = () => resolve();
         utter.onerror = () => resolve();
         window.speechSynthesis.speak(utter);
@@ -2031,12 +2036,17 @@ function play_web_speech_vi(text_doc) {
       if (voices && voices.length > 0) {
         speak();
       } else {
+        let spoken = false;
         window.speechSynthesis.onvoiceschanged = () => {
+          if (spoken) return;
+          spoken = true;
           speak();
         };
         setTimeout(() => {
-          try { window.speechSynthesis.speak(utter); } catch (e) {}
-          resolve();
+          if (!spoken) {
+            spoken = true;
+            speak();
+          }
         }, 600);
       }
     } catch (e) {
