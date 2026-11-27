@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.408";
+const APP_FRONTEND_VERSION = "8.6.409";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -778,6 +778,12 @@ function la_don_hoan(trang_thai_raw) {
   return noDau.includes("HOAN") || noDau.includes("DA TRA");
 }
 
+function la_don_da_giao_khach(trang_thai_raw) {
+  if (!trang_thai_raw) return false;
+  const noDau = bo_dau_tieng_viet(String(trang_thai_raw).trim()).toUpperCase();
+  return noDau.includes("GIAO THANH CONG") || noDau.includes("GIAO 1 PHAN");
+}
+
 let last_return_rate_stats = {
   total_valid: 0,
   total_hoan: 0,
@@ -1224,7 +1230,7 @@ const I18N = {
     allCodesTotal: "TỔNG",
     crBadgeTitle: "TỈ LỆ CHỐT LANDING",
     crDescText: "Lọc trùng & Capture Form",
-    crSubHint: "Chi tiết →",
+    crSubHint: "Chi tiết",
     actBadgeTitle: "THỜI GIAN GỌI TB",
     actDescText: "Trừ giờ nghỉ",
     crLblClosed: "ĐƠN ĐÃ CHỐT",
@@ -3153,10 +3159,12 @@ function dem_don_chi_tiet_theo_ngay(start_str, end_str) {
           if (!retStats.by_mkt_sp[mkt_norm][ten_mau]) retStats.by_mkt_sp[mkt_norm][ten_mau] = { valid: 0, hoan: 0 };
 
           if (isValid) {
-            retStats.total_valid += 1;
-            retStats.by_mkt[mkt_norm].valid += 1;
-            retStats.by_sp[ten_mau].valid += 1;
-            retStats.by_mkt_sp[mkt_norm][ten_mau].valid += 1;
+            if (la_don_da_giao_khach(r[13])) {
+              retStats.total_valid += 1;
+              retStats.by_mkt[mkt_norm].valid += 1;
+              retStats.by_sp[ten_mau].valid += 1;
+              retStats.by_mkt_sp[mkt_norm][ten_mau].valid += 1;
+            }
 
             const gia_ban = r.length > 8 ? parse_gia_tien(r[8]) : 0;
 
@@ -4293,8 +4301,8 @@ function build_card_return_rate_pill_html(ten_mkt, ma_str, extraClass = "") {
     ? `${ten_mkt} - ${ma_str}`
     : (ten_mkt || ma_str || "Toàn công ty");
   const tooltip = tong > 0
-    ? `Tỉ lệ hoàn ${scopeDesc}: ${pct.toFixed(1)}% (${hoan}/${tong} đơn) • Bấm để xem danh sách đơn hoàn`
-    : `Chưa có đơn hàng ${scopeDesc} trong khoảng ngày này`;
+    ? `Tỉ lệ hoàn ${scopeDesc}: ${pct.toFixed(1)}% (${hoan}/${tong} đơn đã giao & hoàn) • Bấm để xem danh sách đơn hoàn`
+    : `Chưa có đơn đã giao hoặc hoàn ${scopeDesc} trong khoảng ngày này`;
   return `<span class="card-return-rate-hint clickable-hint ${levelCls} ${extraClass}" title="${escape_html(tooltip)}">${escape_html(labelText)}</span>`;
 }
 
@@ -4302,7 +4310,7 @@ function build_card_view_orders_pill_html(ten_mkt, ma_str) {
   const scopeDesc = ten_mkt && ma_str
     ? `${ma_str} của ${ten_mkt}`
     : (ten_mkt || ma_str || "Toàn công ty");
-  return `<span class="card-view-orders-hint clickable-hint js-btn-view-all-orders" title="${escape_html(`Xem danh sách chi tiết đơn ${scopeDesc}`)}">Chi tiết đơn &rarr;</span>`;
+  return `<span class="card-view-orders-hint clickable-hint js-btn-view-all-orders" title="${escape_html(`Xem danh sách chi tiết đơn ${scopeDesc}`)}">Chi tiết đơn</span>`;
 }
 
 function bind_card_order_detail_buttons(topRow, ten_mkt, ma_str) {
