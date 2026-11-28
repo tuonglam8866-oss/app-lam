@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.415";
+const APP_FRONTEND_VERSION = "8.6.417";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -3917,8 +3917,9 @@ let last_closing_rate_data = null;
 
 function get_closing_rate_pill_cls(pct, totalDem) {
   if (!totalDem || totalDem <= 0) return "val-muted";
-  if (pct >= 60) return "val-green";
-  if (pct >= 45) return "val-highlight";
+  const pctDisp = Number(Number(pct || 0).toFixed(1));
+  if (pctDisp >= 80) return "val-green";
+  if (pctDisp >= 70) return "val-highlight";
   return "val-red";
 }
 
@@ -3937,8 +3938,9 @@ function format_call_duration(sec) {
 
 function get_call_time_pill_cls(avgSec, calledCount) {
   if (!calledCount || calledCount <= 0) return "val-muted";
-  if (avgSec <= 10 * 60) return "val-green";
-  if (avgSec <= 25 * 60) return "val-highlight";
+  const s = Math.max(0, Math.round(Number(avgSec) || 0));
+  if (s <= 3 * 60) return "val-green";
+  if (s < 10 * 60) return "val-highlight";
   return "val-red";
 }
 
