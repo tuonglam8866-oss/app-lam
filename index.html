@@ -127,32 +127,31 @@
           <button type="button" id="btnVtpStatusModal" class="rounded-btn od-sync-vtp-btn" title="Kiểm tra trạng thái thực tế từ Viettel Post và cập nhật lên Google Sheet">Update trạng thái đơn</button>
         </div>
 
-        <!-- Quick Date Buttons -->
-        <!-- Date Range Selectors (các nút nhanh Hôm nay/Hôm qua/Tháng này/Tháng trước nằm bên cạnh lịch khi mở) -->
-        <div class="date-range-group">
-          <div class="popover-anchor">
-            <button type="button" id="btnStartDate" class="rounded-btn btn-date-picker btn-date-range-unified" aria-haspopup="dialog" title="Chọn khoảng thời gian">
-              <span class="cal-icon-badge" aria-hidden="true">
-                <svg class="cal-svg-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="1.75" y="3" width="12.5" height="11.25" rx="2.75" stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M1.75 6.5H14.25" stroke="currentColor" stroke-width="1.4"/>
-                  <path d="M5 1.5V3.75M11 1.5V3.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                  <circle cx="5.3" cy="9.4" r="1" fill="currentColor"/>
-                  <circle cx="8" cy="9.4" r="1" fill="currentColor"/>
-                  <circle cx="10.7" cy="9.4" r="1" fill="currentColor"/>
-                </svg>
-              </span>
-              <span class="date-label hidden" id="lblFromDate">Từ:</span>
-              <span id="startDateText" class="date-range-val">--/--/----</span>
-              <span class="date-range-sep hidden">→</span>
-              <span class="date-label hidden" id="lblToDate">Đến:</span>
-              <span id="endDateText" class="date-range-val hidden"></span>
-            </button>
-          </div>
-        </div>
-
         <!-- Right Action Buttons -->
         <div class="action-btn-group">
+          <!-- Quick Date Buttons -->
+          <!-- Date Range Selectors (các nút nhanh Hôm nay/Hôm qua/Tháng này/Tháng trước nằm bên cạnh lịch khi mở) -->
+          <div class="date-range-group">
+            <div class="popover-anchor">
+              <button type="button" id="btnStartDate" class="rounded-btn btn-date-picker btn-date-range-unified" aria-haspopup="dialog" title="Chọn khoảng thời gian">
+                <span class="cal-icon-badge" aria-hidden="true">
+                  <svg class="cal-svg-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1.75" y="3" width="12.5" height="11.25" rx="2.75" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M1.75 6.5H14.25" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M5 1.5V3.75M11 1.5V3.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <circle cx="5.3" cy="9.4" r="1" fill="currentColor"/>
+                    <circle cx="8" cy="9.4" r="1" fill="currentColor"/>
+                    <circle cx="10.7" cy="9.4" r="1" fill="currentColor"/>
+                  </svg>
+                </span>
+                <span class="date-label hidden" id="lblFromDate">Từ:</span>
+                <span id="startDateText" class="date-range-val">--/--/----</span>
+                <span class="date-range-sep hidden">→</span>
+                <span class="date-label hidden" id="lblToDate">Đến:</span>
+                <span id="endDateText" class="date-range-val hidden"></span>
+              </button>
+            </div>
+          </div>
           <button type="button" id="btnRefresh" class="rounded-btn btn-default">
             <span class="refresh-icon" id="refreshIcon">↻</span>
             <span id="btnRefreshText">Tải Lại</span>
@@ -363,7 +362,7 @@
         <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-default btn-header-update settings-pill-btn" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
           <span class="refresh-icon update-arrow-icon" id="headerUpdateIcon">⬇</span>
           <span id="btnHeaderUpdateText">Cập nhật</span>
-          <span class="header-ver-badge" id="headerVersionBadge">v8.6.422</span>
+          <span class="header-ver-badge" id="headerVersionBadge">v8.6.600</span>
         </button>
       </div>
     </div>
