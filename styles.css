@@ -990,14 +990,13 @@ button, input, select, textarea, optgroup {
 .header-ver-badge {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: rgba(110, 79, 58, 0.12);
-  color: #5C3D28;
-  font-size: 11px;
+  padding: 0;
+  background: transparent;
+  color: var(--choco-dark);
+  font-size: 13.5px;
   font-weight: 800;
-  letter-spacing: 0.2px;
+  line-height: 1.25;
+  letter-spacing: 0;
 }
 
 [data-theme="dark"] .btn-header-update .update-arrow-icon {
@@ -1005,8 +1004,8 @@ button, input, select, textarea, optgroup {
 }
 
 [data-theme="dark"] .header-ver-badge {
-  background: rgba(245, 176, 65, 0.18);
-  color: #F5B041;
+  background: transparent;
+  color: var(--choco-dark);
 }
 
 #btnSettings {
@@ -1959,6 +1958,13 @@ button, input, select, textarea, optgroup {
 .settings-inline-row .settings-label {
   margin-bottom: 0;
   white-space: nowrap;
+}
+
+.settings-version-left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
 }
 
 .settings-dual-grid {
