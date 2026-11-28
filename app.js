@@ -2,7 +2,7 @@
 // APP LÂM v8.6.62 - Upgraded Web & Desktop Hybrid Application Logic
 // ==============================================================
 
-const APP_FRONTEND_VERSION = "8.6.418";
+const APP_FRONTEND_VERSION = "8.6.422";
 const APP_DATA_MIN_DATE = "2026-11-01"; // Không lấy dữ liệu trước tháng 11/2026
 
 function clamp_min_data_date(ymdStr) {
@@ -1198,14 +1198,15 @@ const I18N = {
     calMonthYearFmt: (m, y) => `Tháng ${m} / ${y}`,
     weekdays: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
     settingsTitle: "⚙ CÀI ĐẶT HỆ THỐNG",
-    lblVoice: "1. Âm thanh (Chuông nhẹ & Giọng đọc):",
-    lblPopup: "2. Popup Góc Màn Hình:",
-    lblFontSize: "3. Cỡ chữ:",
-    lblUiScale: "4. Kích thước UI:",
-    lblTheme: "5. Giao diện (Dark Mode):",
-    lblLang: "6. Ngôn ngữ (Language):",
-    lblAutoStart: "7. Khởi động cùng Windows:",
-    lblUpdate: "8. Tự động cập nhật (GitHub):",
+    lblVoice: "Âm thanh (Chuông nhẹ & Giọng đọc):",
+    lblPopup: "Popup Góc Màn Hình:",
+    lblFontSize: "Cỡ chữ:",
+    lblUiScale: "Kích thước UI:",
+    lblTheme: "Giao diện (Dark Mode):",
+    lblLang: "Ngôn ngữ (Language):",
+    lblAutoStart: "Khởi động cùng Windows:",
+    lblVersion: "Phiên bản:",
+    lblUpdate: "Tự động cập nhật (GitHub):",
     btnSaveUpdateUrl: "💾 Lưu & Cập nhật",
     btnCheckUpdateNow: "🔄 Kiểm tra ngay",
     updateUrlPlaceholder: "Dán link GitHub repo (vd: https://github.com/ten/app-lam)...",
@@ -1284,14 +1285,15 @@ const I18N = {
     calMonthYearFmt: (m, y) => `${y}年 ${m}月`,
     weekdays: ["日", "一", "二", "三", "四", "五", "六"],
     settingsTitle: "⚙ 系统设置",
-    lblVoice: "1. 提示音与语音 (轻柔铃声):",
-    lblPopup: "2. 屏幕右下角弹窗:",
-    lblFontSize: "3. 字体大小:",
-    lblUiScale: "4. 界面缩放:",
-    lblTheme: "5. 界面主题 (深色模式):",
-    lblLang: "6. 语言选择 (Language):",
-    lblAutoStart: "7. 开机自动启动:",
-    lblUpdate: "8. 自动更新 (GitHub):",
+    lblVoice: "提示音与语音 (轻柔铃声):",
+    lblPopup: "屏幕右下角弹窗:",
+    lblFontSize: "字体大小:",
+    lblUiScale: "界面缩放:",
+    lblTheme: "界面主题 (深色模式):",
+    lblLang: "语言选择 (Language):",
+    lblAutoStart: "开机自动启动:",
+    lblVersion: "当前版本:",
+    lblUpdate: "自动更新 (GitHub):",
     btnSaveUpdateUrl: "💾 保存并更新",
     btnCheckUpdateNow: "🔄 立即检查",
     updateUrlPlaceholder: "粘贴 GitHub 仓库链接 (如: https://github.com/user/app-lam)...",
@@ -1370,14 +1372,15 @@ const I18N = {
     calMonthYearFmt: (m, y) => `Month ${m} / ${y}`,
     weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     settingsTitle: "⚙ SYSTEM SETTINGS",
-    lblVoice: "1. Sound (Soft Chime & Voice):",
-    lblPopup: "2. Corner Popup Alert:",
-    lblFontSize: "3. Font Size:",
-    lblUiScale: "4. UI Scale:",
-    lblTheme: "5. Appearance (Dark Mode):",
-    lblLang: "6. Language:",
-    lblAutoStart: "7. Start with Windows:",
-    lblUpdate: "8. Auto-Update (GitHub):",
+    lblVoice: "Sound (Soft Chime & Voice):",
+    lblPopup: "Corner Popup Alert:",
+    lblFontSize: "Font Size:",
+    lblUiScale: "UI Scale:",
+    lblTheme: "Appearance (Dark Mode):",
+    lblLang: "Language:",
+    lblAutoStart: "Start with Windows:",
+    lblVersion: "Version:",
+    lblUpdate: "Auto-Update (GitHub):",
     btnSaveUpdateUrl: "💾 Save & Update",
     btnCheckUpdateNow: "🔄 Check Now",
     updateUrlPlaceholder: "Paste GitHub repo URL (e.g. https://github.com/user/app-lam)...",
@@ -1710,6 +1713,7 @@ function apply_language_ui(rerenderDashboard = false) {
   setText("lblSettingTheme", dict.lblTheme);
   setText("lblSettingLang", dict.lblLang);
   setText("lblSettingAutoStart", dict.lblAutoStart);
+  setText("lblSettingVersion", dict.lblVersion);
 
   setText("btnTestVoice", dict.btnTestVoice);
   setText("btnTestPopup", dict.btnTestPopup);
@@ -8401,7 +8405,7 @@ function ve_noi_dung_dashboard(start_str, end_str, fb_chi_tiet_map, fb_tong_map)
       };
     }
     if (btnMktViewAllInline) {
-      btnMktViewAllInline.textContent = `Xem ${tong_don_mkt} \u0111\u01a1n \u2192`;
+      btnMktViewAllInline.textContent = `Xem ${tong_don_mkt} \u0111\u01a1n`;
       btnMktViewAllInline.title = `Xem danh s\u00e1ch t\u1ea5t c\u1ea3 ${tong_don_mkt} \u0111\u01a1n c\u1ee7a ${ten_mkt} (T\u1ea5t c\u1ea3 m\u00e3 SP)`;
       btnMktViewAllInline.classList.remove("hidden");
       btnMktViewAllInline.onclick = () => {

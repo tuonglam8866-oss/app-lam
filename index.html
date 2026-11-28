@@ -114,7 +114,7 @@
       </div>
 
       <div class="date-control-frame">
-        <!-- Left Action Buttons (Lọc đơn, Tải Lại, Lên đơn, Update trạng thái đơn) -->
+        <!-- Left Action Buttons (Lọc đơn, Lên đơn, Update trạng thái đơn) -->
         <div class="action-btn-group-left">
           <button type="button" id="btnFilterAllOrders" class="rounded-btn btn-filter-orders" title="Tra cứu &amp; Lọc toàn bộ đơn hàng trong bảng (Cột A → P)">
             <svg class="filter-lens-svg" viewBox="0 0 20 20" width="13.5" height="13.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -122,10 +122,6 @@
               <line x1="12.5" y1="12.5" x2="17" y2="17"></line>
             </svg>
             <span id="btnFilterAllOrdersText">Lọc đơn</span>
-          </button>
-          <button type="button" id="btnRefresh" class="rounded-btn btn-choco">
-            <span class="refresh-icon" id="refreshIcon">↻</span>
-            <span id="btnRefreshText">Tải Lại</span>
           </button>
           <button type="button" id="btnOdExportShip" class="rounded-btn od-export-ship-btn" title="Lên đơn hàng loạt (Viettel Post)">Lên đơn</button>
           <button type="button" id="btnVtpStatusModal" class="rounded-btn od-sync-vtp-btn" title="Kiểm tra trạng thái thực tế từ Viettel Post và cập nhật lên Google Sheet">Update trạng thái đơn</button>
@@ -157,10 +153,9 @@
 
         <!-- Right Action Buttons -->
         <div class="action-btn-group">
-          <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-default btn-header-update" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
-            <span class="refresh-icon update-arrow-icon" id="headerUpdateIcon">⬇</span>
-            <span id="btnHeaderUpdateText">Cập nhật</span>
-            <span class="header-ver-badge" id="headerVersionBadge">v8.6.305</span>
+          <button type="button" id="btnRefresh" class="rounded-btn btn-default">
+            <span class="refresh-icon" id="refreshIcon">↻</span>
+            <span id="btnRefreshText">Tải Lại</span>
           </button>
           <div class="popover-anchor">
             <button type="button" id="btnSettings" class="rounded-btn btn-default" aria-haspopup="dialog">
@@ -200,7 +195,7 @@
                   Xem Camp
                 </button>
                 <button type="button" id="btnMktViewAllInline" class="rounded-btn btn-mkt-view-all-pill hidden" title="Xem danh sách tất cả đơn hàng của MKT này">
-                  Xem 0 đơn →
+                  Xem 0 đơn
                 </button>
               </div>
             </div>
@@ -291,7 +286,7 @@
 
     <div class="settings-body-list">
       <div class="settings-section settings-card-block">
-        <label class="settings-label" id="lblSettingVoice">1. Âm thanh (Chuông nhẹ & Giọng đọc):</label>
+        <label class="settings-label" id="lblSettingVoice">Âm thanh (Chuông nhẹ & Giọng đọc):</label>
         <div class="settings-pair-row">
           <button type="button" id="btnToggleVoice" class="rounded-btn btn-green settings-toggle-btn">
             ĐANG BẬT
@@ -303,7 +298,7 @@
       </div>
 
       <div class="settings-section settings-card-block">
-        <label class="settings-label" id="lblSettingPopup">2. Popup Góc Màn Hình:</label>
+        <label class="settings-label" id="lblSettingPopup">Popup Góc Màn Hình:</label>
         <div class="settings-pair-row">
           <button type="button" id="btnTogglePopup" class="rounded-btn btn-green settings-toggle-btn">
             ĐANG BẬT
@@ -316,7 +311,7 @@
 
       <div class="settings-dual-grid">
         <div class="settings-section settings-mini-card">
-          <label class="settings-label" id="lblSettingFontSize">3. Cỡ chữ:</label>
+          <label class="settings-label" id="lblSettingFontSize">Cỡ chữ:</label>
           <div class="scale-control-group">
             <button type="button" id="btnFontDec" class="rounded-btn btn-default scale-step-btn" title="Giảm cỡ chữ">A−</button>
             <button type="button" id="fontScaleVal" class="rounded-btn btn-default scale-val-badge" title="Nhấn để đặt lại 100%">100%</button>
@@ -325,7 +320,7 @@
         </div>
 
         <div class="settings-section settings-mini-card">
-          <label class="settings-label" id="lblSettingUiScale">4. Kích thước UI:</label>
+          <label class="settings-label" id="lblSettingUiScale">Kích thước UI:</label>
           <div class="scale-control-group">
             <button type="button" id="btnUiDec" class="rounded-btn btn-default scale-step-btn" title="Thu nhỏ giao diện">−</button>
             <button type="button" id="uiScaleVal" class="rounded-btn btn-default scale-val-badge" title="Nhấn để đặt lại 100%">100%</button>
@@ -335,14 +330,14 @@
       </div>
 
       <div class="settings-section settings-inline-row">
-        <label class="settings-label" id="lblSettingTheme">5. Giao diện (Dark Mode):</label>
+        <label class="settings-label" id="lblSettingTheme">Giao diện (Dark Mode):</label>
         <button type="button" id="btnToggleTheme" class="rounded-btn btn-default settings-toggle-btn settings-theme-pill">
           ☀️ Sáng (Kem Cozy)
         </button>
       </div>
 
       <div class="settings-section settings-card-block">
-        <label class="settings-label" id="lblSettingLang">6. Ngôn ngữ (Language):</label>
+        <label class="settings-label" id="lblSettingLang">Ngôn ngữ (Language):</label>
         <div class="lang-switch-group" role="group" aria-label="Language selection">
           <button type="button" class="rounded-btn btn-default lang-btn active-lang" data-lang="vi">
             Tiếng Việt
@@ -357,20 +352,19 @@
       </div>
 
       <div class="settings-section settings-inline-row">
-        <label class="settings-label" id="lblSettingAutoStart">7. Khởi động cùng Windows:</label>
+        <label class="settings-label" id="lblSettingAutoStart">Khởi động cùng Windows:</label>
         <button type="button" id="btnToggleAutoStart" class="rounded-btn btn-green settings-toggle-btn settings-pill-btn">
           ĐANG BẬT
         </button>
       </div>
-    </div>
 
-    <div class="settings-section settings-status-row">
-      <div class="scanner-status">
-        <span class="status-dot-online"></span>
-        <span id="scannerStatusText">Đang Online: Quét đơn (5s/lần)</span>
-      </div>
-      <div class="known-codes-info">
-        <span id="knownCodesCount">Đang nhận diện: 20 mã SP</span>
+      <div class="settings-section settings-inline-row">
+        <label class="settings-label" id="lblSettingVersion">Phiên bản:</label>
+        <button type="button" id="btnHeaderUpdate" class="rounded-btn btn-default btn-header-update settings-pill-btn" title="Nhấn để đồng bộ và cập nhật phiên bản mới nhất">
+          <span class="refresh-icon update-arrow-icon" id="headerUpdateIcon">⬇</span>
+          <span id="btnHeaderUpdateText">Cập nhật</span>
+          <span class="header-ver-badge" id="headerVersionBadge">v8.6.422</span>
+        </button>
       </div>
     </div>
   </div>
